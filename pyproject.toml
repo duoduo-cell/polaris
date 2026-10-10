@@ -16,6 +16,13 @@ dependencies = [
     "pgvector>=0.3",
     "openai>=1.55",
     "typer>=0.13",
+    "langgraph>=1.2.14",
+    "langchain>=1.4.4",
+    "langchain-openai>=1.7.0",
+    "langgraph-checkpoint-postgres>=3.1.2",
+    "mcp>=1.10",
+    "langchain-mcp-adapters>=0.3.2",
+    "langsmith>=0.14.7",
 ]
 
 [project.scripts]
@@ -39,7 +46,7 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [tool.ruff]
-line-length = 120
+line-length = 140  # 中文字符串多，放宽一点
 target-version = "py312"
 src = ["src", "tests"]
 extend-exclude = ["src/polaris/db/migrations/versions"]

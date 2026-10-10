@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris"
     ingest_token: SecretStr | None = None
+    mcp_token: SecretStr | None = None  # /mcp 的口令；不配就关闭 MCP
 
     def model_for(self, role: Role) -> str:
         return getattr(self, f"llm_model_{role}") or self.llm_model

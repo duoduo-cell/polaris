@@ -54,3 +54,15 @@ def test_llm_calls_list_and_detail(db):
     assert [c["id"] for c in listed] == [call_id] and "request" not in listed[0]
     detail = client.get(f"/api/llm-calls/{call_id}").json()
     assert detail["request"]["messages"][0]["content"] == "hi" and detail["latency_ms"] == 12
+
+
+def test_tool_calls_endpoint(db):
+    from polaris.tools import REGISTRY
+    from polaris.tools.runtime import ToolRuntime
+
+    rt = ToolRuntime(agent="test")
+    rt.invoke(REGISTRY["raw_items_search"], {"query": "不存在的词"})
+    rt.invoke(REGISTRY["raw_items_search"], {"query": ""})
+    listed = client.get("/api/tool-calls").json()
+    assert [c["ok"] for c in listed] == [False, True]  # 新的在前
+    assert client.get("/api/tool-calls", params={"ok": False}).json()[0]["error_kind"] == "invalid_args"

@@ -1,29 +1,65 @@
 """Polaris Core 的 REST 接口。/docs 是自动生成的接口文档，可以直接试调。"""
 import hmac
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from polaris import __version__
 from polaris.config import get_settings
-from polaris.db.models import LLMCall, RawItem, Run
+from polaris.db.models import LLMCall, RawItem, Run, ToolCall
 from polaris.db.session import db_ok, session_factory
 from polaris.ingest import IngestResult, RawItemIn, ingest_raw_items
+from polaris.mcp_server import build_mcp
+
+mcp = build_mcp()
+mcp_app = mcp.streamable_http_app()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async with mcp.session_manager.run():
+        yield
+
 
 app = FastAPI(
     title="Polaris Core",
     version=__version__,
     description=(
         "Business core of Polaris, a personal job-hunting agent for LLM and Agent internships. "
-        "Every model call is traced (tokens, latency, cost) and every job can be traced back to its source."
+        "Every model call and tool call is traced (tokens, latency, cost) and every job can be traced back "
+        "to its source. Read-only tools are also exposed over MCP (streamable HTTP) at /mcp/ with a bearer token."
     ),
+    lifespan=lifespan,
 )
+
+
+class BearerGuard:
+    """给挂载的 MCP 服务加口令。没配 MCP_TOKEN 时整个 /mcp 关闭。"""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            token = get_settings().mcp_token
+            if token is None:
+                await JSONResponse({"detail": "MCP is disabled: MCP_TOKEN is not configured"}, 503)(scope, receive, send)
+                return
+            auth = dict(scope.get("headers") or []).get(b"authorization", b"")
+            if not hmac.compare_digest(auth, f"Bearer {token.get_secret_value()}".encode()):
+                await JSONResponse({"detail": "invalid or missing bearer token"}, 401)(scope, receive, send)
+                return
+        await self.inner(scope, receive, send)
+
+
+app.mount("/mcp", BearerGuard(mcp_app))
 
 
 def get_db() -> Iterator[Session]:
@@ -74,6 +110,22 @@ class LLMCallDetail(LLMCallSummary):
     request: dict[str, Any]
     response: dict[str, Any] | None
     cached_tokens: int | None
+
+
+class ToolCallOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    run_id: int | None
+    thread_id: str | None
+    agent: str | None
+    tool: str
+    args: dict[str, Any]
+    output: str | None
+    ok: bool
+    error_kind: str | None
+    latency_ms: int
+    replayed: bool
+    created_at: datetime
 
 
 class RunOut(BaseModel):
@@ -143,6 +195,25 @@ def get_llm_call(call_id: int, db: Db) -> LLMCall:
     if call is None:
         raise HTTPException(404, "llm call not found")
     return call
+
+
+@app.get("/api/tool-calls", response_model=list[ToolCallOut], tags=["tracing"],
+         summary="List traced tool calls (newest first), including failed and replayed ones")
+def list_tool_calls(db: Db, run_id: int | None = None, tool: str | None = None, ok: bool | None = None,
+                    limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> list[ToolCallOut]:
+    stmt = select(ToolCall).order_by(ToolCall.id.desc()).limit(limit).offset(offset)
+    if run_id is not None:
+        stmt = stmt.where(ToolCall.run_id == run_id)
+    if tool:
+        stmt = stmt.where(ToolCall.tool == tool)
+    if ok is not None:
+        stmt = stmt.where(ToolCall.ok.is_(ok))
+    out = []
+    for call in db.execute(stmt).scalars():
+        row = ToolCallOut.model_validate(call)
+        row.output = preview(row.output, 500)
+        out.append(row)
+    return out
 
 
 @app.get("/api/runs", response_model=list[RunOut], tags=["tracing"],

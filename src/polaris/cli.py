@@ -16,6 +16,8 @@ if (sys.stdout.encoding or "").lower() != "utf-8":
 app = typer.Typer(help="Polaris Core 命令行", no_args_is_help=True, add_completion=False)
 metrics_app = typer.Typer(help="各模块的指标，结果写到 eval/reports/", no_args_is_help=True)
 app.add_typer(metrics_app, name="metrics")
+agent_app = typer.Typer(help="agent", no_args_is_help=True)
+app.add_typer(agent_app, name="agent")
 
 
 @app.command("db-upgrade")
@@ -77,6 +79,37 @@ def metrics_m1() -> None:
     stats = m1.run()
     typer.echo((m1.REPORT_DIR / "M1.md").read_text(encoding="utf-8"))
     typer.echo(f"已写到 {m1.REPORT_DIR / 'M1.md'}（run {stats.get('synth', {}).get('run_id', '—')}）")
+
+
+@metrics_app.command("m2")
+def metrics_m2(k: int = typer.Option(3, help="每题跑几次，用来算 pass^k")) -> None:
+    """M2：工具调用套件（会调模型）、出错恢复、追踪完整率、回放一致性。"""
+    from polaris.eval import m2
+
+    m2.run(k=k)
+    typer.echo((m2.REPORT_DIR / "M2.md").read_text(encoding="utf-8"))
+
+
+@agent_app.command("ask")
+def agent_ask(question: str,
+              record: Path = typer.Option(None, help="把这次运行录下来，存到这个文件"),
+              replay: Path = typer.Option(None, help="从这个录像回放工具调用"),
+              full: bool = typer.Option(False, help="和 --replay 一起用：模型回答也从录像取，不调任何服务")) -> None:
+    """问最小 agent 一个问题（它只会查原始条目）。"""
+    from polaris.agent.minimal import ask
+    from polaris.replay import Cassette
+
+    cassette = (Cassette(record, "record") if record else
+                Cassette(replay, "replay", llm_replay=full) if replay else None)
+    with run_scope("agent", {"question": question, "replay": str(replay) if replay else None}) as (run_id, stats):
+        r = ask(question, run_id=run_id, cassette=cassette)
+        if record and cassette is not None:
+            cassette.save()
+        stats.update({"tool_calls": len(r.tool_calls), "latency_ms": r.latency_ms, "error": r.error})
+    for c in r.tool_calls:
+        mark = "回放" if c["replayed"] else ("成功" if c["ok"] else f"失败:{c['error_kind']}")
+        typer.echo(f"  [{mark}] {c['tool']} {c['args']}")
+    typer.echo(r.error or r.answer)
 
 
 if __name__ == "__main__":

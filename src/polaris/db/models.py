@@ -79,6 +79,26 @@ class LLMCall(Base):
     created_at: Mapped[datetime] = created_at()
 
 
+class ToolCall(Base):
+    """每一次工具调用，包括参数校验失败的和回放的。评测工具选择、参数正确率、出错恢复都从这里取数。"""
+
+    __tablename__ = "tool_calls"
+    __table_args__ = (Index("ix_tool_calls_run_tool", "run_id", "tool"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"))
+    thread_id: Mapped[str | None] = mapped_column(String(64))  # 同一次对话或任务
+    agent: Mapped[str | None] = mapped_column(String(64))  # 哪个角色调的
+    tool: Mapped[str] = mapped_column(String(64))
+    args: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    output: Mapped[str | None] = mapped_column(Text)
+    ok: Mapped[bool] = mapped_column(Boolean)
+    error_kind: Mapped[str | None] = mapped_column(String(32))  # invalid_args / tool_error / internal / injected
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    replayed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = created_at()
+
+
 class Company(Base):
     __tablename__ = "companies"
 

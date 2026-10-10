@@ -15,6 +15,7 @@ os.environ.update({
     "EMBED_MODEL": "test-embed",
     "EMBED_DIM": "1024",
     "INGEST_TOKEN": "test-ingest-token",
+    "MCP_TOKEN": "test-mcp-token",
     "DATABASE_URL": TEST_DB,
 })
 
@@ -28,7 +29,7 @@ from polaris.db.session import get_engine  # noqa: E402
 get_settings.cache_clear()
 get_engine.cache_clear()
 
-TABLES = ["postings", "jobs", "raw_items", "companies", "llm_calls", "runs"]
+TABLES = ["postings", "jobs", "raw_items", "companies", "tool_calls", "llm_calls", "runs"]
 
 
 def _ensure_test_database() -> None:
