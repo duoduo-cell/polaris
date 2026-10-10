@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-10-10T15:51:47+00:00",
+  "git_commit": "2554c15",
+  "settings": {
+    "models": {
+      "chat": "deepseek-v4.1-flash",
+      "extract": "deepseek-v4.1-flash",
+      "judge": "deepseek-v4.1-flash",
+      "brief": "deepseek-v4.1-flash"
+    },
+    "embed_model": "text-embedding-v4",
+    "embed_dim": 1024,
+    "cache": false
+  },
+  "synth": {
+    "run_id": 2,
+    "git_commit": "2119aaf",
+    "calls_total": 63,
+    "calls_answered": 63,
+    "trace_complete": 63,
+    "json_ok": 63,
+    "json_bad": 0,
+    "request_errors": {},
+    "latency_p50_ms": 8770,
+    "latency_p95_ms": 17793,
+    "latency_mean_ms": 9894,
+    "prompt_tokens": 20502,
+    "completion_tokens": 39228,
+    "reasoning_tokens": 26063,
+    "cost_usd": null,
+    "models": [
+      "deepseek-v4.1-flash"
+    ]
+  },
+  "fixture": {
+    "records": 60,
+    "checked": 60,
+    "first_try": 57,
+    "tries": {
+      "1": 57,
+      "2": 3
+    },
+    "cold": 10,
+    "negative": 6,
+    "dups": 10,
+    "english": 4,
+    "unchecked_ids": []
+  },
+  "seed": {
+    "first_inserted": 0,
+    "second_inserted": 0,
+    "fixture_items": 60,
+    "synthetic_in_db": 60
+  },
+  "cache": {
+    "probes": 3,
+    "second_round_hits": 3
+  }
+}
