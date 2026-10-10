@@ -1,0 +1,4 @@
+# 仓库里统一用 LF，避免 Windows 换行符混进脚本和 Docker 镜像
+* text=auto eol=lf
+*.png binary
+*.jpg binary

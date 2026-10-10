@@ -1,0 +1,21 @@
+# 密钥和本机配置
+.env
+.env.*
+!.env.example
+
+# 测试结果和本机数据
+scripts/smoke_result.json
+data/
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
