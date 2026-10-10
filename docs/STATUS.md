@@ -4,7 +4,7 @@
 
 ## 现在的状态
 
-M0（开发用的服务）和 M1 已完成。10-11 做完了技术调研和最终计划：项目介绍定稿（`INTRO.md`），技术栈定稿（`STACK.md`），模块顺序重订（`PLAN.md`）。
+M0、M1、M2 已完成（M2 比排期提前一天）。10-11 做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
 
 | 项 | 状态 |
 |---|---|
@@ -14,19 +14,21 @@ M0（开发用的服务）和 M1 已完成。10-11 做完了技术调研和最�
 | 岗位调研 | 字节 50 个、小红书 59 个，见 `research/`；阿里官网今天没有在招的校招和实习岗位 |
 | M0 冒烟 | 开发用的对话服务和阿里云的接口已测完 |
 | M1 骨架 | 完成。设计见 `design/M1.md`，指标见 `../eval/reports/M1.md` |
-| M2 到 M11 | 没开始 |
+| M2 工具层和 agent 底座 | 完成。设计见 `design/M2.md`，指标见 `../eval/reports/M2.md` |
+| M3 到 M11 | 没开始 |
 | 本机环境 | Python 3.12（uv 管理）、git、Node 24、Docker Desktop、WSL2 |
 
 ## 每个模块留下的、HR 能核实的东西
 
 | 模块 | 能运行的入口 | 指标 | 提交 |
 |---|---|---|---|
-| M1 | `docker compose up -d --build` 后打开 http://127.0.0.1:8000/docs；`uv run polaris seed`、`uv run polaris metrics m1`；`uv run pytest`（33 个测试） | `eval/reports/M1.md`：追踪完整率 100%，合成数据事实核对 60/60，入库幂等，缓存命中 3/3 | 见 git log |
+| M1 | `docker compose up -d --build` 后打开 http://127.0.0.1:8000/docs；`uv run polaris seed`、`uv run polaris metrics m1`；`uv run pytest` | `eval/reports/M1.md`：追踪完整率 100%，合成数据事实核对 60/60，入库幂等，缓存命中 3/3 | 见 git log |
+| M2 | `uv run polaris agent ask "问题"`（可录制、回放）；MCP 服务在 `/mcp/`；`uv run polaris metrics m2`；`uv run pytest`（61 个，含 14 个不花钱的录像回放回归） | `eval/reports/M2.md`：工具调用套件 14 题 pass^3 14/14，参数一次合格率 100%，模型调用追踪 131/131，完整回放 14/14 一致。题目偏简单，验证的是底座 | 见 git log |
 
 ## 下一步
 
-1. **M2 工具层和 agent 底座（10-12）：** 接入 LangGraph、LangChain、LangSmith；工具层规范；录制回放；MCP 服务；agent 的模型调用写进 `llm_calls`。
-2. **M3 采集和抽取（10-13 到 10-15）：** 小红书横向加纵向深挖、Boss 大量搜索和筛选、字节和腾讯和小红书官网；只看大厂。需要用户在本机扫码登录小红书、在浏览器登录 Boss。
+1. **M3 采集和抽取（10-13 到 10-15）：** 小红书横向加纵向深挖、Boss 大量搜索和筛选、字节和腾讯和小红书官网；只看大厂；岗位和笔记的结构化抽取；标准答案集；工具调用套件换成真实数据。需要用户在本机扫码登录小红书、在浏览器登录 Boss。
+2. 先做不需要用户登录的部分（腾讯公开接口、字节和小红书招聘官网、抽取、大厂名单），小红书和 Boss 等用户登录后接上。
 
 ## 用户已经做的决定
 

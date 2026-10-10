@@ -1,0 +1,2 @@
+{"kind": "meta", "meta": {"task": "irrelevant-1", "category": "irrelevant", "question": "用一句话解释什么是 Transformer。", "faults": {}, "suite": "tool-calling-v0"}}
+{"kind": "llm", "message": {"role": "assistant", "content": "Transformer 是一种基于自注意力机制（self-attention）的神经网络架构，能并行处理序列中所有位置之间的关系，是现代大语言模型的基础。\n\n（这个问题和岗位检索无关，所以没有调用工具。）"}}

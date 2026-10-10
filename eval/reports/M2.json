@@ -1,0 +1,904 @@
+{
+  "generated_at": "2026-10-10T18:45:03+00:00",
+  "git_commit": "7f7de04",
+  "suite": "tool-calling-v0",
+  "prompt_version": "minimal-v1",
+  "k": 3,
+  "model": "deepseek-v4.1-flash",
+  "tasks": 14,
+  "runs": 42,
+  "success": 42,
+  "pass_k": 14,
+  "categories": {
+    "lookup": {
+      "runs": 21,
+      "success": 21,
+      "tasks": 7,
+      "pass_k": 7
+    },
+    "english": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "conflict": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    },
+    "irrelevant": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "abstain": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "recovery": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    }
+  },
+  "tool_calls": 125,
+  "invalid_args": 0,
+  "tool_errors": 0,
+  "injected": 6,
+  "arg_valid_rate": 1.0,
+  "avg_tool_calls": 2.9761904761904763,
+  "latency_p50_ms": 12017,
+  "latency_p95_ms": 16403,
+  "llm_calls": 131,
+  "llm_answered": 131,
+  "llm_trace_complete": 131,
+  "prompt_tokens": 150802,
+  "completion_tokens": 11937,
+  "replay_identical": 14,
+  "replay_total": 14,
+  "failures": [],
+  "results": [
+    {
+      "task": "salary-1",
+      "category": "lookup",
+      "k": 0,
+      "answer": "九衢互联「AI Agent 工程实习生」的实习补贴是 **200–300 元/天**（依据 R-3）。\n\n补充几条同条目里的信息（R-3）：\n- 工作地点：武汉\n- 每周至少 5 天，实习 4 个月以上\n- 本岗位不提供转正机会\n- 投递截止 2026 年 12 月 17 日，发布于 2026 年 10 月 7 日\n\n注：原文写的是\"实习补贴\"，未单独给出\"日薪\"字样。",
+      "error": null,
+      "latency_ms": 11915,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-2",
+      "category": "lookup",
+      "k": 0,
+      "answer": "砚池数据的「多模态算法实习生」实习日薪为 **300–400 元/天**，表现优秀可转正（依据条目 **R-6**）。\n\n补充：该岗位工作地点在深圳，要求尽快入职，发布日期为 2026年10月2日，投递截止 2026年12月24日（同见 R-6）。",
+      "error": null,
+      "latency_ms": 14050,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-3",
+      "category": "lookup",
+      "k": 0,
+      "answer": "**鹿鸣医疗AI「大模型推理优化实习生」的日薪（实习补贴）：200-400元/天。**\n\n依据条目 **R-7**（来源 synthetic:article，链接 https://posts.example.com/s007）：\n\n> \"工作地点在北京，每周至少3天到岗，实习6个月以上，能尽快入职。**实习补贴200-400元/天**。\"\n\n补充该条目中的其他信息：岗位为推理工程组，做推理服务性能优化与部署（算子、显存、批处理策略、线上灰度与监控），要求了解 PyTorch、CUDA 和推理框架，简历投递截止 2026年12月12日。",
+      "error": null,
+      "latency_ms": 14921,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-4",
+      "category": "lookup",
+      "k": 0,
+      "answer": "浮光生物计算「LLM 应用工程实习生」的日薪是 **400–600 元/天**（原文还写明每周至少 5 天、尽快入职，表现优秀可转正）。\n\n依据：**R-8**（浮光生物计算的招聘介绍原文，其中\"待遇 400-600元/天\"）。",
+      "error": null,
+      "latency_ms": 16176,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-1",
+      "category": "lookup",
+      "k": 0,
+      "answer": "曜石网络「模型评估算法实习生」的投递截止日期是 **2026年12月26日**（依据 R-4）。\n\nR-4 的实习说明中写明：\"投递截止2026年12月26日\"，该条同时确认公司为曜石网络、工作地点哈尔滨。",
+      "error": null,
+      "latency_ms": 13617,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-2",
+      "category": "lookup",
+      "k": 0,
+      "answer": "青梧智能的「训练数据开发实习生」投递截止时间是 **2026年11月27日**。\n\n依据：R-5（【青梧智能内推】训练数据开发实习生，坐标深圳，急招！），原文末句为\"有兴趣的私我发简历，投递截止2026年11月27日，合适就安排聊\"。\n\n补充说明：检索还命中了几条同名的「训练数据开发实习生」岗位（R-19 鹿鸣医疗AI、R-26 / R-56 星槎科技），但它们不是青梧智能的岗位，请注意区分。",
+      "error": null,
+      "latency_ms": 14885,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-3",
+      "category": "lookup",
+      "k": 0,
+      "answer": "**投递截止：2026年12月11日**（依据 R-10）。\n\nR-10（来源：论坛内推帖）原文写明：「投递截止2026年12月11日，有意向的尽快把简历发过来」。\n\n补充几点该帖的其他信息，供参考：\n- 地点：北京\n- 薪资：250–350元/天\n- 时间要求：实习3个月以上\n- 特别说明：本岗位不提供转正机会\n\n如果还要看其他来源是否有同一个岗位的招聘信息，可以再帮你查。",
+      "error": null,
+      "latency_ms": 12767,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "english-1",
+      "category": "english",
+      "k": 0,
+      "answer": "The application deadline is **2026-11-23** (\"Apply by 2026-11-23\"), per raw item **R-31** (Northwind Labs, AI Agent Engineering Intern, source: synthetic:ats).",
+      "error": null,
+      "latency_ms": 11283,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "conflict-1",
+      "category": "conflict",
+      "k": 0,
+      "answer": "**两条原始记录给的截止日期不一致，请注意：**\n\n- **R-51**（来源：synthetic:official，标题即「岗位名称：机器人交互实习生 / 公司：九衢互联 / 工作地点：北京」）：**投递截止 2026年11月21日**，原文写「投递截止2026年11月21日，欢迎对机器人交互感兴趣的同学加入九衢互联。」\n- **R-42**（来源：synthetic:article，九衢互联机器人小组的招聘帖，同为「机器人交互实习生」）：**投递截止 2026年11月14日**，原文写「投递截止2026年11月14日，请在此之前把简历发来」。\n\n两者相差一周，工具里没有更多信息可以判定哪个为准。R-51 是官方岗位条目（有岗位职责/任职要求、链接 https://jobs.example.com/s051），通常更权威；但 R-42 是同期采集的招聘帖，无法排除是不同批次或改期。建议按较早的 **11月14日** 准备投递，或直接向九衢互联确认。",
+      "error": null,
+      "latency_ms": 9735,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "conflict-2",
+      "category": "conflict",
+      "k": 0,
+      "answer": "关于「大模型推理优化实习生」的投递截止时间，原始条目里有两处说法，且不一致：\n\n- **R-21**（synthetic:article，松间金融科技招聘推文）：投递截止 **2026年11月21日**，推文发布于2026年10月6日。\n- **R-53**（synthetic:group-forward，内推转发）：投递截止 **2026年11月28日**，发布于2026年10月6日。\n\n两条都是同一岗位、同一发布时间，但截止日期相差一周，建议以官方渠道（R-21 为公司推文）为准，或向内推人确认。",
+      "error": null,
+      "latency_ms": 11631,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "irrelevant-1",
+      "category": "irrelevant",
+      "k": 0,
+      "answer": "Transformer 是一种基于自注意力机制（self-attention）的神经网络架构，能并行处理序列中所有位置之间的关系，是现代大语言模型的基础。\n\n（这个问题和岗位检索无关，所以没有调用工具。）",
+      "error": null,
+      "latency_ms": 4318,
+      "tools": [],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 0,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "abstain-1",
+      "category": "abstain",
+      "k": 0,
+      "answer": "**没有找到「量子计算编译器实习生」这个岗位。**\n\n检索过程与依据：\n\n- 搜「量子计算编译器实习生」：0 条命中。\n- 拆开搜「量子计算」「量子」：均为 0 条命中 —— 说明采集到的原文里根本没有\"量子\"相关内容，不是关键词组合太严的问题。\n- 搜「编译器 实习生」：只有 1 条，是 R-21「大模型推理优化实习生」。\n- 搜「编译器」：同样只有 R-21 一条。\n\n也就是说，唯一和\"编译器\"沾边的岗位是 **R-21（松间金融科技 · 大模型推理优化实习生）**，工作内容围绕显卡、编译器和推理瓶颈，属于大模型推理优化方向，与量子计算无关。\n\n如果你其实是想找编译器/推理优化方向的实习岗，R-21 可以看一下；需要的话我可以把它的完整原文取出来给你。",
+      "error": null,
+      "latency_ms": 15288,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 6,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "recovery-1",
+      "category": "recovery",
+      "k": 0,
+      "answer": "九衢互联「AI Agent 工程实习生」的实习补贴为 **200–300 元/天**（原文表述为\"实习补贴\"，未单独使用\"日薪\"字样）。\n\n依据原始条目：**R-3**（九衢互联 | AI Agent 工程实习生，工作地点武汉）。",
+      "error": null,
+      "latency_ms": 12017,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "recovery-2",
+      "category": "recovery",
+      "k": 0,
+      "answer": "砚池数据「多模态算法实习生」的实习待遇是 **300–400元/天**（表现优秀可转正）。\n\n依据条目：**R-6**（公司：砚池数据，工作地点：深圳）。",
+      "error": null,
+      "latency_ms": 12738,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "salary-1",
+      "category": "lookup",
+      "k": 1,
+      "answer": "九衢互联「AI Agent 工程实习生」的实习补贴为 **200–300 元/天**（依据 **R-3**）。\n\n补充说明：另有条目 **R-15** 虽也来自九衢互联，但那是「大模型应用开发实习生」岗位（工作地点哈尔滨，日薪 200–400 元/天），与「AI Agent 工程实习生」不是同一岗位，不要混淆；R-3 中该岗位工作地点为武汉。",
+      "error": null,
+      "latency_ms": 16067,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-2",
+      "category": "lookup",
+      "k": 1,
+      "answer": "砚池数据的「多模态算法实习生」日薪是 **300-400元/天**（原文写\"表现优秀可转正\"）。\n\n依据条目：**R-6**（来源 synthetic:official，工作地点深圳）。",
+      "error": null,
+      "latency_ms": 10166,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-3",
+      "category": "lookup",
+      "k": 1,
+      "answer": "鹿鸣医疗AI「大模型推理优化实习生」的实习补贴是 **200–400 元/天**（依据 R-7）。\n\n补充一点相关信息（同样来自 R-7）：工作地点在北京，每周至少到岗 3 天，实习 6 个月以上，简历投递截止 2026 年 12 月 12 日。",
+      "error": null,
+      "latency_ms": 16403,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-4",
+      "category": "lookup",
+      "k": 1,
+      "answer": "浮光生物计算的「LLM 应用工程实习生」日薪是 **400-600 元/天**。\n\n依据：**R-8**（标题提到浮光生物计算在大模型工程方向找 LLM 应用工程实习生，正文写明\"待遇 400-600元/天\"）。该条目还注明工作地哈尔滨、每周至少 5 天、发布于 2026 年 9 月 27 日、投递截止 2026 年 11 月 9 日。",
+      "error": null,
+      "latency_ms": 15741,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-1",
+      "category": "lookup",
+      "k": 1,
+      "answer": "曜石网络「模型评估算法实习生」的投递截止日期是 **2026年12月26日**（依据原始条目 **R-4**，该条明确写有\"投递截止2026年12月26日\"）。\n\n另外补充该条的其他关键信息：工作地点哈尔滨，每周至少5天、实习3个月以上，本岗位不提供转正机会。",
+      "error": null,
+      "latency_ms": 11194,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-2",
+      "category": "lookup",
+      "k": 1,
+      "answer": "青梧智能「训练数据开发实习生」的投递截止日期是 **2026年11月27日**。\n\n依据：R-5（来源为群内转发，标题「【青梧智能内推】训练数据开发实习生，坐标深圳，急招！」），原文末尾写明\"投递截止2026年11月27日\"。\n\n补充说明：这条是内推转发帖，非官方渠道发布，且抓取时间为 2026-10-10 —— 如果现在距该日期较近，建议向发帖人再确认一次是否仍有效。另外，检索到的同岗位名称还有铁砧芯片（R-12，武汉）、鹿鸣医疗AI（R-19，成都）、星槎科技（R-26/R-56，北京），这几家与青梧智能无关，别混淆。",
+      "error": null,
+      "latency_ms": 9989,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-3",
+      "category": "lookup",
+      "k": 1,
+      "answer": "白榆机器人「AI Agent 工程实习生」的投递截止日期是 **2026年12月11日**。\n\n依据条目：**R-10**（【白榆机器人】诚招 AI Agent 工程实习生（内推帖）），原文写明\"投递截止2026年12月11日\"。\n\n补充几条同帖信息（同见 R-10）：地点北京，薪资 250-350元/天，要求实习 3 个月以上，并且明确**不提供转正机会**。",
+      "error": null,
+      "latency_ms": 8958,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "english-1",
+      "category": "english",
+      "k": 1,
+      "answer": "The application deadline is **2026-11-23** (\"Apply by 2026-11-23\"), per raw item **R-31**.",
+      "error": null,
+      "latency_ms": 9227,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "conflict-1",
+      "category": "conflict",
+      "k": 1,
+      "answer": "九衢互联「机器人交互实习生」的投递截止日期，两条原始条目给的不一致：\n\n- **R-42**（来源：synthetic:article，帖子 https://posts.example.com/s042）：投递截止 **2026年11月14日**\n- **R-51**（来源：synthetic:official，官方岗位页 https://jobs.example.com/s051）：投递截止 **2026年11月21日**\n\n两处都写明是「投递截止」，但日期差了一周，无法从原文判断哪个为准。如果需要确定日期，建议按官方岗位页（R-51，11月21日）投递前先确认一下——两边的岗位名称、公司、工作地点（北京）、每周到岗要求（至少4天）都是一致的。",
+      "error": null,
+      "latency_ms": 12885,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "conflict-2",
+      "category": "conflict",
+      "k": 1,
+      "answer": "两条原始条目都提到该岗位，但截止日期不一致：\n\n- **R-21**（松间金融科技官方推文，posts.example.com/s021）：投递截止 **2026年11月21日**，发布于2026年10月6日。\n- **R-53**（内推群转发，posts.example.com/s053）：投递截止 **2026年11月28日**，同样标注发布于2026年10月6日。\n\n两处说法冲突，原文里没有说明哪个为准。若需要确定日期，建议以官方推文（R-21，11月21日）为参考，或直接向岗位方核实。",
+      "error": null,
+      "latency_ms": 11902,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "irrelevant-1",
+      "category": "irrelevant",
+      "k": 1,
+      "answer": "Transformer 是一种基于自注意力（self-attention）机制、可并行处理序列数据的神经网络架构，最初用于机器翻译，后来成为大语言模型的基础。\n\n（这是通用知识问答，没有调用检索工具，也没有对应的原文条目编号。）",
+      "error": null,
+      "latency_ms": 3922,
+      "tools": [],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 0,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "abstain-1",
+      "category": "abstain",
+      "k": 1,
+      "answer": "**找不到。** 采集到的原文里没有「量子计算编译器实习生」这个岗位。\n\n依据：\n- 检索「量子计算 编译器 实习生」「量子计算 实习生」「编译器 实习生」都没有同时命中的条目；\n- 单独检索「量子」也是 0 条命中，说明采集范围里根本没出现量子计算相关的内容。\n\n顺带一提，唯一和「编译器 + 实习生」沾边的是 **R-21**（松间金融科技，招「大模型推理优化实习生」，工作涉及显卡、编译器和推理瓶颈），但那是大模型推理方向，和量子计算无关。",
+      "error": null,
+      "latency_ms": 15702,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "recovery-1",
+      "category": "recovery",
+      "k": 1,
+      "answer": "**九衢互联「AI Agent 工程实习生」的日薪（实习补贴）是 200–300 元/天。**\n\n依据条目：**R-3**（九衢互联 | AI Agent 工程实习生，来源 synthetic:official）。\n\n该条目中相关原文为任职要求第 3 条：「每周至少5天，实习4个月以上，实习补贴200-300元/天。」\n\n顺带一提，同条目还写明工作地点在武汉、本岗位不提供转正机会、投递截止 2026年12月17日（发布于 2026年10月7日）。",
+      "error": null,
+      "latency_ms": 12609,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "recovery-2",
+      "category": "recovery",
+      "k": 1,
+      "answer": "砚池数据「多模态算法实习生」的日薪是 **300–400 元/天**（原文表述为\"实习待遇：300-400元/天，表现优秀可转正\"）。\n\n依据条目：**R-6**。",
+      "error": null,
+      "latency_ms": 11695,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "salary-1",
+      "category": "lookup",
+      "k": 2,
+      "answer": "**200–300 元/天**（原文写作\"实习补贴\"）。\n\n依据条目 **R-3**（来源：synthetic:official，九衢互联 | AI Agent 工程实习生）任职要求第 3 条：\n\n> 每周至少5天，实习4个月以上，**实习补贴200-300元/天**。\n\n补充提醒：另有一条 **R-15** 也是九衢互联的实习岗，但岗位是\"大模型应用开发实习生\"（哈尔滨，200-400元/天），与你要找的「AI Agent 工程实习生」不是同一个岗位，别混淆。",
+      "error": null,
+      "latency_ms": 12145,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-2",
+      "category": "lookup",
+      "k": 2,
+      "answer": "砚池数据「多模态算法实习生」的日薪是 **300-400 元/天**（注明表现优秀可转正）。\n\n依据条目：**R-6**（来源 synthetic:official，标题「多模态算法实习生」，公司砚池数据，工作地点深圳）。",
+      "error": null,
+      "latency_ms": 8791,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-3",
+      "category": "lookup",
+      "k": 2,
+      "answer": "鹿鸣医疗AI「大模型推理优化实习生」的实习补贴是 **200–400 元/天**（不是固定日薪，而是区间）。\n\n依据原始条目：**R-7**（来源 synthetic:article，链接 https://posts.example.com/s007）。\n\n同一篇原文里还提到：工作地点北京，每周至少 3 天到岗，实习 6 个月以上，简历投递截止 2026 年 12 月 12 日。",
+      "error": null,
+      "latency_ms": 8934,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "salary-4",
+      "category": "lookup",
+      "k": 2,
+      "answer": "「LLM 应用工程实习生」的日薪是 **400–600 元/天**。\n\n依据条目：**R-8**（来源 synthetic:article，原文标题为浮光生物计算的招聘介绍，链接 https://posts.example.com/s008）。原文待遇一栏写明：「待遇 400-600元/天，每周至少5天，尽快入职。表现优秀可转正。」同一条目还提到工作地为哈尔滨，发布于 2026-09-27，投递截止 2026-11-09。",
+      "error": null,
+      "latency_ms": 13785,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 5,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-1",
+      "category": "lookup",
+      "k": 2,
+      "answer": "**投递截止日期：2026年12月26日**（依据 R-4）\n\nR-4 原文「实习说明」部分写明：\n- 每周至少5天，实习3个月以上；\n- 尽快入职；\n- 本岗位不提供转正机会；\n- **投递截止 2026年12月26日**。\n\n顺带一提，该条目另外两条可能相关的信息：工作地点在哈尔滨，且该岗位不提供转正机会。",
+      "error": null,
+      "latency_ms": 11906,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-2",
+      "category": "lookup",
+      "k": 2,
+      "answer": "**投递截止日期：2026年11月27日**（依据：R-5）\n\n该条目为「【青梧智能内推】训练数据开发实习生，坐标深圳，急招！」，原文中写明\"投递截止2026年11月27日\"。另外还提到实习时长3个月以上、尽快入职、表现优秀可转正。",
+      "error": null,
+      "latency_ms": 10564,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "deadline-3",
+      "category": "lookup",
+      "k": 2,
+      "answer": "白榆机器人的「AI Agent 工程实习生」投递截止日期是 **2026年12月11日**。\n\n依据条目：**R-10**（【白榆机器人】诚招 AI Agent 工程实习生（内推帖），原文写明\"投递截止2026年12月11日\"）。\n\n补充一点该帖的其他信息（同出自 R-10）：工作地点北京，薪资 250-350元/天，要求实习 3 个月以上，且**不提供转正机会**。",
+      "error": null,
+      "latency_ms": 11375,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "english-1",
+      "category": "english",
+      "k": 2,
+      "answer": "The application deadline is **2026-11-23** (\"Apply by 2026-11-23\").\n\nSource: **R-31** (Northwind Labs – AI Agent Engineering Intern, synthetic:ats, https://jobs.example.com/s031).\n\nA couple of related details from the same item: the posting date is 2026-10-02, it's a remote 3-month internship at USD 4000–4500/month, 5 days per week.",
+      "error": null,
+      "latency_ms": 10426,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "conflict-1",
+      "category": "conflict",
+      "k": 2,
+      "answer": "关于九衢互联「机器人交互实习生」的投递截止日期，原文里出现了**两个不一致**的说法：\n\n| 条目编号 | 来源 | 投递截止 |\n|---|---|---|\n| R-42 | synthetic:article（帖子） | **2026年11月14日** |\n| R-51 | synthetic:official（官方岗位页） | **2026年11月21日** |\n\n- R-42 原文：「感兴趣的话，投递截止2026年11月14日，请在此之前把简历发来」\n- R-51 原文：「投递截止2026年11月21日，欢迎对机器人交互感兴趣的同学加入九衢互联」\n\n两条对岗位名称、公司（九衢互联）、工作地点（北京）、每周至少4天到岗的描述一致，只有截止日期不同。R-51 属于官方岗位页，通常更新更权威；但工具返回的内容里没有任何说明哪个日期为最终版本的信息，所以无法替你判定该以哪天为准。建议按较早的 11月14日 准备投递，或直接向官方渠道确认。\n\n依据条目：R-42、R-51。",
+      "error": null,
+      "latency_ms": 13549,
+      "tools": [
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "conflict-2",
+      "category": "conflict",
+      "k": 2,
+      "answer": "关于松间金融科技「大模型推理优化实习生」的投递截止日期，两条原文给的时间**不一致**：\n\n- **R-21**（synthetic:article，公司发布的推文）：投递截止 **2026年11月21日**，发布于 2026年10月6日。\n- **R-53**（synthetic:group-forward，内推转发）：投递截止 **2026年11月28日**，同样写发布于 2026年10月6日。\n\n两者讲的岗位内容、地点（杭州）、入职时间（2026年11月）都一样，但截止日期差了 7 天。建议以公司官方发布（R-21，11月21日）为准，或向 R-53 的转发人确认一下，避免因为转发信息导致错过或误判截止时间。",
+      "error": null,
+      "latency_ms": 12393,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "irrelevant-1",
+      "category": "irrelevant",
+      "k": 2,
+      "answer": "Transformer 是一种基于自注意力机制（self-attention）的神经网络架构，最早用于机器翻译，现已成为大语言模型的主流基础结构。",
+      "error": null,
+      "latency_ms": 3175,
+      "tools": [],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 0,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "abstain-1",
+      "category": "abstain",
+      "k": 2,
+      "answer": "没有找到。\n\n- 搜「量子计算编译器实习生」「量子计算」「量子」都是 0 条命中。\n- 含「编译器 / 编译」的只有两个岗位，但都不是量子计算方向：\n  - R-21：松间金融科技「大模型推理优化实习生」（提到跟显卡、编译器、推理瓶颈打交道）\n  - R-43：浮光生物计算「芯片软件栈实习生」（base 杭州，涉及图编译、算子映射）\n\n所以采集到的原文里没有「量子计算编译器实习生」，最接近的只是 R-21、R-43 这类推理优化/编译相关的实习岗。",
+      "error": null,
+      "latency_ms": 19577,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 7,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "recovery-1",
+      "category": "recovery",
+      "k": 2,
+      "answer": "**九衢互联「AI Agent 工程实习生」的日薪是 200–300 元/天**（原文表述为\"实习补贴200-300元/天\"）。\n\n依据条目：**R-3**（九衢互联 | AI Agent 工程实习生，工作地点武汉）。\n\n补充几点同一条目里的相关信息：\n- 每周至少 5 天，实习 4 个月以上；\n- 本岗位不提供转正机会；\n- 投递截止 2026 年 12 月 17 日，发布于 2026 年 10 月 7 日。\n\n注意原文只写了\"实习补贴\"，未明确是税前/税后口径。",
+      "error": null,
+      "latency_ms": 19211,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "recovery-2",
+      "category": "recovery",
+      "k": 2,
+      "answer": "砚池数据「多模态算法实习生」的实习待遇为 **300-400 元/天**，表现优秀可转正（该岗位工作地点深圳）。\n\n依据条目：**R-6**（来源 synthetic:official，发布于 2026年10月2日，投递截止 2026年12月24日）。",
+      "error": null,
+      "latency_ms": 14317,
+      "tools": [
+        "raw_items_search",
+        "raw_items_search",
+        "raw_items_get",
+        "raw_items_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 1
+    }
+  ]
+}
