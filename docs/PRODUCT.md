@@ -1,6 +1,6 @@
 # 北极星：产品说明
 
-> 2026-10-11：项目介绍、对标产品（Meta Muse、OpenAI Dots）、每日流程和核心技术点见 `INTRO.md`。本文件保留功能清单（P0、P1、P2）和数据源；其中"Hermes 做外壳"等技术说法以 `STACK.md` 和 `PLAN.md` 为准。
+> 2026-10-11：项目介绍、对标产品（Meta Muse、OpenAI Dots）、每日流程和核心技术点见 `INTRO.md`。本文件保留功能清单（P0、P1、P2）；数据源以 `PLAN.md` 第 4 节为准（小红书和 Boss 为核心，只看风向标大厂，不用 Tavily 和外企招聘系统）；"Hermes 做外壳"等技术说法以 `STACK.md` 和 `PLAN.md` 为准。
 
 ## 1. 定位
 
