@@ -64,13 +64,22 @@ def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
     return envelope.get("data") or {}
 
 
-def logged_in() -> bool:
-    """boss-cli 能不能用：本地存的登录还有效，或者能从 Boss 专用的 Edge 窗口拿到新的。"""
+def logged_in(timeout: float = 60) -> bool:
+    """boss-cli 能不能用：本地存的登录还有效，或者能从 Boss 专用的 Edge 窗口拿到新的。
+
+    status 的输出没有其他命令那层 {ok, data}，直接是 {"authenticated": ..., "search_authenticated": ...}（10-11 实测）。
+    """
+    from polaris.browser import cdp_url
+
+    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "BOSS_CDP_URL": cdp_url("boss")}
     try:
-        run_boss(["status"], timeout=60)
-        return True
-    except (BossCallFailed, subprocess.TimeoutExpired):
+        p = subprocess.run([boss_bin(), "status", "--json"], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", env=env, timeout=timeout)
+        data = json.loads(p.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
         return False
+    data = data.get("data", data) if isinstance(data, dict) else {}
+    return bool(data.get("search_authenticated") or data.get("authenticated"))
 
 
 def slim_card(job: dict[str, Any]) -> dict[str, Any]:

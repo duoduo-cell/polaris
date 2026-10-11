@@ -80,7 +80,7 @@ def extract_post(llm: LLM, item: RawItem, run_id: int | None = None) -> dict[str
     f = r.value
     bigs = [c.name for c in (match(x) for x in [*f.companies, f.team or ""]) if c]
     note = (item.raw_json or {}).get("note") or {}
-    published = datetime.fromtimestamp(note["time"] / 1000, UTC) if note.get("time") else None
+    published = datetime.fromtimestamp(note["time"] / 1000, UTC) if note.get("time") else item.published_at
     return {"raw_item_id": item.id, "post_type": f.post_type, "companies": f.companies,
             "big_companies": list(dict.fromkeys(bigs)), "team": f.team, "roles": f.roles, "directions": f.directions,
             "city": f.city, "job_type": f.job_type, "grad_year": f.grad_year, "days_per_week": f.days_per_week,
@@ -112,6 +112,17 @@ def pending(kind: str, limit: int, source: str | None = None) -> list[RawItem]:
         return list(s.execute(stmt).scalars())
 
 
+def fit_columns(model: type, row: dict[str, Any]) -> dict[str, Any]:
+    """模型偶尔会给某个短字段写一大段（如毕业年份写成一句话），按列宽截断，免得整条存不进去（10-11 踩过）。"""
+    out = dict(row)
+    for col in model.__table__.columns:
+        limit = getattr(col.type, "length", None)
+        v = out.get(col.name)
+        if limit and isinstance(v, str) and len(v) > limit:
+            out[col.name] = v[: limit - 1] + "…"
+    return out
+
+
 def run_extract(kind: str, limit: int, run_id: int | None, concurrency: int, source: str | None = None,
                 llm: LLM | None = None) -> dict[str, int]:
     llm = llm or LLM()
@@ -119,8 +130,14 @@ def run_extract(kind: str, limit: int, run_id: int | None, concurrency: int, sou
     fn = extract_job if kind == "job" else extract_post
     model = Posting if kind == "job" else Post
     results = parallel_map(lambda it: fn(llm, it, run_id), items, concurrency)
-    rows = [r for r in results if isinstance(r, dict)]
-    with session_scope() as s:
-        s.add_all(model(**row) for row in rows)
-    return {"pending": len(items), "extracted": len(rows), "failed": len(items) - len(rows),
-            "big_company": sum(1 for r in rows if r.get("big_company") or r.get("big_companies"))}
+    rows = [fit_columns(model, r) for r in results if isinstance(r, dict)]
+    saved: list[dict[str, Any]] = []
+    for row in rows:  # 一条一条存：一条出错不连累整批
+        try:
+            with session_scope() as s:
+                s.add(model(**row))
+            saved.append(row)
+        except Exception:  # noqa: BLE001  存不进去的留在待抽里，下次重抽
+            pass
+    return {"pending": len(items), "extracted": len(saved), "failed": len(items) - len(saved),
+            "big_company": sum(1 for r in saved if r.get("big_company") or r.get("big_companies"))}

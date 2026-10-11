@@ -25,8 +25,9 @@ window = ["09:00", "22:00"]
 round_queries = 2
 
 [maimai]
-start = 80
-max = 300
+via = "browser"
+start = 150          # 10-11：一次页面加载就是 10 到 20 条职言全文，量大；用户要求必须采
+max = 400
 growth = 1.25
 pause = [6, 15]
 window = ["09:00", "22:00"]

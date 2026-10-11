@@ -66,3 +66,18 @@ def render(d: dict[str, Any]) -> str:
         lines.append("- 新发现的查询词：" + "、".join(d["discovered_queries"]))
     lines.append("- 被拦或提前停下：" + ("；".join(d["stops"]) if d["stops"] else "没有"))
     return "\n".join(lines)
+
+
+def latest(source: str, n: int = 5) -> list[tuple[str, str]]:
+    """某个来源最近采到的几条：（采到的时间，第一行）。B 档内容只在你本机的终端里显示。"""
+    with session_scope() as s:
+        rows = s.execute(select(RawItem.first_seen_at, RawItem.raw_text, RawItem.raw_json).where(RawItem.source == source)
+                         .order_by(RawItem.first_seen_at.desc()).limit(n)).all()
+    out = []
+    for when, text, raw in rows:
+        title = ((raw or {}).get("note") or {}).get("title") or ((raw or {}).get("card") or {}).get("jobName")
+        if not title:
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.startswith(("发布：", "点赞"))]
+            title = lines[0] if lines else ""
+        out.append((when.astimezone(BEIJING).strftime("%H:%M"), title[:40]))
+    return out

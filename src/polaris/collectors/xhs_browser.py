@@ -97,8 +97,16 @@ class BrowserCaller:
 
     def _apply_filters(self, pending: dict[str, str]) -> None:
         before = self.page.evaluate(STATE_FEED_IDS)
-        self.page.hover("div.filter")
-        self.page.wait_for_selector("div.filter-panel", timeout=8000)
+        for attempt in range(2):  # 悬停偶尔不出面板（10-11 见过两次），移开鼠标再悬停一次
+            self.page.hover("div.filter")
+            try:
+                self.page.wait_for_selector("div.filter-panel", timeout=8000)
+                break
+            except Exception:
+                if attempt:
+                    raise
+                self.page.mouse.move(10, 10)
+                self.sleep(random.uniform(0.8, 1.5))
         for label, option in pending.items():
             group = self.page.locator("div.filter-panel div.filters").filter(
                 has=self.page.locator(f":scope > span:text-is('{label}')"))

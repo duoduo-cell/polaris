@@ -13,14 +13,15 @@ from typing import Any
 from polaris.browser import attached, is_running, open_browser
 from polaris.collectors import budget
 from polaris.collectors.rounds import collect_round
-from polaris.config import get_settings
+from polaris.config import ROOT, get_settings
 from polaris.logins import logged_in, notify
 from polaris.report import BEIJING
 
+LOCK_FILE = ROOT / "data" / "daemon.lock"
+
 # Boss 走 boss-cli（调搜索和详情接口），登录从 Boss 专用的 Edge 窗口拿；我们的程序不接管那个窗口（browser.py）。
-# 脉脉采集器写好后加进来。
-IMPLEMENTED = ("xhs", "boss")
-POST_SOURCES = {"xhs": ("post", "xhs"), "boss": ("job", "boss")}
+IMPLEMENTED = ("xhs", "boss", "maimai")
+POST_SOURCES = {"xhs": ("post", "xhs"), "boss": ("job", "boss"), "maimai": ("post", "maimai")}
 
 
 def _xhs_collector(context: Any, cap_left: int, cfg: dict[str, Any]):
@@ -38,7 +39,14 @@ def _boss_collector(context: Any, cap_left: int, cfg: dict[str, Any]):
     return BossCollector(max_calls=cap_left, pause=tuple(cfg["pause"]))
 
 
-FACTORIES: dict[str, Callable[[Any, int, dict[str, Any]], Any]] = {"xhs": _xhs_collector, "boss": _boss_collector}
+def _maimai_collector(context: Any, cap_left: int, cfg: dict[str, Any]):
+    from polaris.collectors.maimai import MaimaiCollector
+
+    return MaimaiCollector(context, max_calls=cap_left, pause=tuple(cfg["pause"]))
+
+
+FACTORIES: dict[str, Callable[[Any, int, dict[str, Any]], Any]] = {
+    "xhs": _xhs_collector, "boss": _boss_collector, "maimai": _maimai_collector}
 
 
 def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[str], None] = print) -> dict[str, Any]:
@@ -46,7 +54,7 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
     from polaris.extract import run_extract
 
     cfg = budget.policy()[source]
-    per_query = 3 * 3 + 20 if source == "xhs" else 30
+    per_query = {"xhs": 3 * 3 + 20, "boss": 30, "maimai": 10}[source]
     left = min(cap - used, cfg["round_queries"] * per_query)
     collector = FACTORIES[source](context, left, cfg)
     r = collect_round(source, collector, cfg["round_queries"],
@@ -116,7 +124,31 @@ def keep_awake(on: bool) -> None:
     ctypes.windll.kernel32.SetThreadExecutionState(es_continuous | (es_system_required if on else 0))
 
 
+def single_instance() -> object | None:
+    """同一时间只跑一个常驻采集（开机自启的和手动开的不会撞车）。拿到锁返回文件句柄（要一直留着），拿不到返回 None。
+    用的是文件锁：进程退出（包括崩溃）时系统自动释放。"""
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    f = open(LOCK_FILE, "a+")  # noqa: SIM115  句柄要一直开着才占着锁
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    return f
+
+
 def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
+    lock = single_instance()
+    if lock is None:
+        echo("已经有一个常驻采集在跑了（可能是开机自启的），这个不再启动。看进度：polaris status")
+        return
     notified: set[str] = set()
     keep_awake(True)
     echo("常驻采集开始，电脑开着时不会自己睡着。按 Ctrl+C 停止。")

@@ -250,6 +250,49 @@ def seed(file: Path = typer.Option(FIXTURE, help="合成数据文件")) -> None:
 
 
 @app.command()
+def status(items: int = typer.Option(5, help="每个来源显示最近几条")) -> None:
+    """一眼看全：常驻采集在不在跑、两个采集窗口、各平台登录、今天的量、最近采到的内容。"""
+    from polaris.browser import is_running
+    from polaris.collectors import budget as b
+    from polaris.collectors.boss import logged_in as boss_logged_in
+    from polaris.daemon import single_instance
+    from polaris.report import daily, latest
+
+    lock = single_instance()
+    running = lock is None
+    if lock is not None:
+        lock.close()
+    typer.echo(f"常驻采集：{'在跑' if running else '没在跑（运行 polaris daemon，或等开机自启）'}")
+    for profile, name in (("collect", "小红书和脉脉的窗口"), ("boss", "Boss 的窗口")):
+        typer.echo(f"{name}：{'开着' if is_running(profile) else '没开（运行 polaris browser open）'}")
+    logins = {"boss": boss_logged_in()}
+    if is_running("collect"):
+        from polaris.browser import attached
+        from polaris.logins import logged_in
+
+        with attached() as ctx:
+            for src in ("xhs", "maimai"):
+                logins[src] = logged_in(ctx, src)
+    typer.echo("登录：" + "  ".join(f"{src} {'已登录' if ok else '没登录'}" for src, ok in logins.items()))
+    d = daily()
+    typer.echo("")
+    typer.echo("今天：")
+    for src in b.policy():
+        cap, why = b.today_cap(src)
+        raw = {"xhs": "xhs", "boss": "boss", "maimai": "maimai"}[src]
+        typer.echo(f"  {src}：上限 {cap}，已用 {b.used_today(src)} 次，新采到 {d['new'].get(raw, 0)} 条，"
+                   f"库里共 {d['total'].get(raw, 0)} 条（{why}）")
+    typer.echo("  被拦或提前停下：" + ("；".join(d["stops"]) if d["stops"] else "没有"))
+    for src in ("xhs", "maimai", "boss"):
+        rows = latest(src, items)
+        if rows:
+            typer.echo("")
+            typer.echo(f"最近采到的 {src}：")
+            for when, title in rows:
+                typer.echo(f"  {when}  {title}")
+
+
+@app.command()
 def daemon() -> None:
     """常驻采集：开着就行。按 config/collect.toml 的时间段和每天的量，轮流采小红书、Boss；被拦或掉登录会弹通知。"""
     from polaris.daemon import loop

@@ -45,6 +45,12 @@ def seed_queries(source: str) -> list[tuple[str, int]]:
         out += [(d, 2) for d in directions]
     elif source == "boss":
         out += [(f"{d} 实习", 2) for d in directions]
+    elif source == "maimai":  # 职言搜索：公司 × 实习、面经、内推；大厂名单里靠前的先搜
+        for company in load_companies():
+            name = short_name(company.name)
+            priority = 2 if name in top else 1
+            out += [(f"{name} {t}", priority) for t in ("实习", "面经", "内推")]
+        out += [(f"{d} 面经", 1) for d in directions[:3]]
     seen: set[str] = set()
     return [(q, p) for q, p in out if not (q in seen or seen.add(q))]
 
