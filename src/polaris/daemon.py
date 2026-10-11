@@ -73,6 +73,13 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
             echo(f"  [{source}] 抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
         except Exception as e:  # noqa: BLE001
             echo(f"  [{source}] 抽取或提词出错（采集继续）：{e}"[:200])
+        from polaris.search.index import refresh
+
+        k = refresh()  # 对齐、切块、向量、图谱跟上新数据（M4）；各步自己兜住错误
+        errors = {name: v["error"] for name, v in k.items() if isinstance(v, dict) and "error" in v}
+        chunks = k.get("chunks", {})
+        echo(f"  [{source}] 知识层：新块 {chunks.get('new', 0)}、改动 {chunks.get('changed', 0)}，"
+             f"算向量 {k.get('embed', {}).get('embedded', 0)}" + (f"；出错 {errors}"[:200] if errors else ""))
     return r
 
 

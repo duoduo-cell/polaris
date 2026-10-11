@@ -70,3 +70,26 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
     errors = [str(r)[:200] for r in results if isinstance(r, Exception)]
     return {"pending": len(rows), "embedded": sum(r for r in results if isinstance(r, int)), "failed_groups": len(errors),
             "errors": errors[:3]}
+
+
+def refresh(align: bool = True, graph: bool = True) -> dict[str, Any]:
+    """新数据进来后把知识层刷新一遍：对齐成岗位 → 切块 → 算新块的向量 → 重建图谱。每步都可以重复跑，没变的不动。
+    常驻采集每轮抽取完调一次；某一步出错只记下来，不影响后面的步骤和采集。"""
+    out: dict[str, Any] = {}
+    steps = []
+    if align:
+        from polaris.align.build import run_align
+        steps.append(("align", run_align))
+    steps += [("chunks", sync_chunks), ("embed", embed_pending)]
+    if graph:
+        from polaris.graph.client import enabled
+
+        if enabled():
+            from polaris.graph.build import rebuild
+            steps.append(("graph", rebuild))
+    for name, fn in steps:
+        try:
+            out[name] = fn()
+        except Exception as e:  # noqa: BLE001
+            out[name] = {"error": f"{type(e).__name__}: {e}"[:200]}
+    return out

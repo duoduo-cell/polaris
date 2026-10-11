@@ -178,9 +178,13 @@ Nano 在 Nebius 官方页有，在第三方目录镜像里没有，优先用 Lig
 | 小红书采集（M3 三轮） | 平均每次调用 36 秒；搜索偶尔报"context deadline exceeded"（13 次里 1 次），单次失败不影响整轮。一周内最新的搜索结果里，按"提到大厂或实习、内推、面经"的规则，约三分之一不值得打开 | 已实测 |
 | 小红书搬运帖 | 同一条米哈游补招信息一天内被 3 个账号几乎原样发出，正文字符三元组相似度 > 0.6；评论区留"44➕关"这类引流。去重和可信度要处理 | 已实测，M4 处理 |
 | boss-cli 实装 | v0.3.5，`uv tool install kabi-boss-cli` 装成独立命令。输出被管道接走时，Windows 默认 GBK 编码会在帮助文字的 emoji 上崩，要设 `PYTHONUTF8=1`。扫码登录在终端里画二维码，过一会儿过期要重来；从 Edge 读登录态在 Chromium 127 以后被加密拦住（README 说明），所以用扫码 | 已实测 |
-| ParadeDB 的中文分词（10-11 更正） | 之前在 `STACK.md` 写"官方文档里没找到中文分词器"，是查错了：`pg_search` 有 `chinese_lindera` 分词器，腾讯 WeKnora 的默认部署就用它在 Postgres 里做 BM25（`migrations/versioned/000002_embeddings.up.sql`）。北极星的关键词检索改用它，见 `TECH.md` | 已查实（WeKnora 源码） |
+| ParadeDB 的中文分词（10-11 更正） | 之前在 `STACK.md` 写"官方文档里没找到中文分词器"，是查错了：`pg_search` 有 `chinese_lindera` 分词器，腾讯 WeKnora 的默认部署就用它在 Postgres 里做 BM25（`migrations/versioned/000002_embeddings.up.sql`）。北极星实测后用的是同一扩展里的 jieba，见下面"pg_search 0.22.6 的中文分词" | 已查实（WeKnora 源码） |
 | Boss 的采集方式（10-11 改） | 社区里 Boss 爬虫的难点是反爬令牌 `__zp_stoken__`：直接调接口要自己生成它，常见做法是"补环境"（在 Node 里伪造浏览器环境跑它的脚本），Boss 一改脚本就失效。我们不做，改为用真实 Edge（单独资料夹、调试端口只绑本机）浏览，由页面自己请求 `/wapi/zpgeek/search/joblist.json`，采集器只读返回。DrissionPage 是这类教程最常用的工具，但条款限非营利并要求遵守 robots 协议，所以用 Playwright 的 `connect_over_cdp` | 已查实；实测等用户登录 |
 | 抽取准确率（开发期模型） | 真实岗位 50 条逐字段微平均 F1 0.99，合成岗位 60 条 0.99，每条约 9.5 秒（P95 17 秒）。小红书笔记 24 条：提示词 v1 0.96，错在把写字楼"阿里双子塔"当成阿里、把"bat"展开成三家公司；v2 加了规则后开发集 1.00；留出集 11 条（先标答案再看输出）也全对，样本小 | 已实测 |
+| pg_search 的安装（10-11） | Docker Hub 上的 `paradedb/paradedb:v0.22.6-pg17` 在本机两次卡在第一层（Docker Desktop 走代理）。改为在已有的 `pgvector/pgvector:pg17`（Debian 12、PG 17.11）上装 ParadeDB 在 GitHub Releases 发布的 `postgresql-17-pg-search_0.22.6-1PARADEDB-bookworm_amd64.deb`（62MB，sha256 和 GitHub 公布的一致），`dpkg -i` 后加 `shared_preload_libraries=pg_search`。同一个数据卷原地换镜像，数据不动；换前 `pg_dump` 备份 | 已实测 |
+| pg_search 的许可证 | ParadeDB 社区版是 AGPL-3.0。北极星只把它当数据库扩展用、不改它的代码，自己的代码仍是 Apache-2.0 | 已查实 |
+| pg_search 0.22.6 的中文分词（10-11） | 有 `pdb.jieba`、`pdb.lindera(chinese)`、`pdb.icu`、`pdb.chinese_compatible`。同一句话："字节跳动大模型算法实习生……多智能体评测；腾讯混元 Agent 面经"：jieba 切出"评测""面经""实习生"，把"字节跳动"切成"字节/跳动"（搜"字节"也能命中）；lindera 把"评测""面经"拆成单字；icu、chinese_compatible 基本是单字。选 jieba。0.22 的写法是 `USING bm25 (id, (content::pdb.jieba)) WITH (key_field='id')`，查询用 `content ||| '…'` 和 `pdb.score(id)`；0.25 起访问方法改名 `paradedb`，`bm25` 仍可用 | 已实测 |
+| 百炼重排（10-11） | `qwen3-rerank` 用 `https://dashscope.aliyuncs.com/compatible-api/v1/reranks`（OpenAI SDK 的通用 POST），和向量服务同一个 key；原生接口 `/api/v1/services/rerank/text-rerank/text-rerank` 也通。gte-rerank 官方已宣布下线。分数只在同一次请求内可比；在我们的检索标准答案上，不相关候选中位数 0.49、部分相关 0.65、完全相关 0.84 | 已实测 |
 
 ## 5. 主机
 

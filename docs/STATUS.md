@@ -1,22 +1,23 @@
 # 当前进度
 
-2026-10-11 中午更新。这份文件是给接手的人或 agent 看的：做到哪了，下一步做什么。每完成一个模块更新一次。
+2026-10-11 傍晚更新。这份文件是给接手的人或 agent 看的：做到哪了，下一步做什么。每完成一个模块更新一次。
 
 ## 现在的状态
 
-M0、M1、M2 已完成；M3 主体已完成（排期 10-13 到 10-15，提前），只差 Boss 第一轮（等用户扫码）。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
+M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分钟过期，要用户在 Boss 窗口里点一下）；M4 主体已完成（排期 10-16 到 10-19，提前）。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
 
 | 项 | 状态 |
 |---|---|
 | 方向、架构、模块顺序 | 已定，见 `PLAN.md`（10-11 重订） |
 | 项目介绍和核心技术点 | 已定，见 `INTRO.md`，每条附依据 |
-| 技术栈 | 已定，见 `STACK.md`：LangGraph 加 LangChain、Postgres 加 pgvector（含知识图谱和记忆）、Next.js 加 Vercel AI SDK、LangSmith 加自有追踪表 |
+| 技术栈 | 已定，见 `TECH.md`（唯一的技术方案，10-11 重写）：LangGraph 加 LangChain、Postgres 加 pgvector 加 pg_search、Neo4j（可关）、Next.js 加 Vercel AI SDK、自有追踪表 |
 | 岗位调研 | 字节 50 个、小红书 59 个，见 `research/`；阿里官网今天没有在招的校招和实习岗位 |
 | M0 冒烟 | 开发用的对话服务和阿里云的接口已测完 |
 | M1 骨架 | 完成。设计见 `design/M1.md`，指标见 `../eval/reports/M1.md` |
 | M2 工具层和 agent 底座 | 完成。设计见 `design/M2.md`，指标见 `../eval/reports/M2.md` |
 | M3 采集和抽取 | 主体完成。设计见 `design/M3.md`，指标见 `../eval/reports/M3.md`。库里：腾讯 139、字节 217、小红书官网 20 个岗位，小红书笔记 30 多条；Boss 已接好，等扫码 |
-| M4 到 M11 | 没开始 |
+| M4 对齐、图谱、检索 | 主体完成。设计见 `design/M4.md`，指标见 `../eval/reports/M4.md`。数据库换成 Postgres + pgvector + pg_search（BM25，jieba），Neo4j 知识图谱；常驻采集每轮后自动刷新 |
+| M5 到 M11 | 没开始 |
 | 本机环境 | Python 3.12（uv 管理）、git、Node 24、Docker Desktop、WSL2 |
 
 ## 每个模块留下的、HR 能核实的东西
@@ -26,13 +27,14 @@ M0、M1、M2 已完成；M3 主体已完成（排期 10-13 到 10-15，提前）
 | M1 | `docker compose up -d --build` 后打开 http://127.0.0.1:8000/docs；`uv run polaris seed`、`uv run polaris metrics m1`；`uv run pytest` | `eval/reports/M1.md`：追踪完整率 100%，合成数据事实核对 60/60，入库幂等，缓存命中 3/3 | 见 git log |
 | M2 | `uv run polaris agent ask "问题"`（可录制、回放）；MCP 服务在 `/mcp/`；`uv run polaris metrics m2`；`uv run pytest`（61 个，含 14 个不花钱的录像回放回归） | `eval/reports/M2.md`：工具调用套件 14 题 pass^3 14/14，参数一次合格率 100%，模型调用追踪 131/131，完整回放 14/14 一致。题目偏简单，验证的是底座 | 见 git log |
 | M3 | `uv run polaris collect all`（各来源侦察并行）或单个来源 `collect tencent|bytedance|xhs-careers|xhs|boss`；`uv run polaris extract job|post`；`uv run polaris metrics m3`（不调模型）、`metrics m3-tools`（调模型）；`uv run pytest`（90 多个，含 M3 官网题的录像回放） | `eval/reports/M3.md`：真实岗位 50 条标准答案逐字段 F1 0.99；小红书笔记开发集 v1 0.96 → v2 1.00，留出集 11 条全对（样本小）；真实数据工具调用套件 real-v1 14 题 pass^3 14/14，仍偏简单 | 见 git log |
+| M4 | `uv run polaris align`（对齐并评分）、`polaris index`（切块、向量、图谱）、`polaris search "问题"`、`polaris metrics m4`；`uv run pytest`（134 个） | `eval/reports/M4.md`：同岗识别测试集（规则冻结后才标）P=R=F1=0.93；合成冲突发现 10/10；出处可追溯 100%；检索 32 题 NDCG@10 从 BM25 0.73 到完整流水线 0.86 到 0.89，逐步消融 | 见 git log |
 
 ## 下一步
 
-0. **按 `PLAN.md` 第 0 节的最终计划 v4 做（10-11 下午）：项目主体是 agent 本身。** 采集已常驻后台（小红书、脉脉、Boss，系统计划任务「Polaris 常驻采集」，日志 `data/logs/daemon.log`，看进度 `scripts/status.ps1`）；下一步 M4 知识图谱、同岗合并、冲突裁决。
+0. **按 `PLAN.md` 第 0 节的最终计划 v4 做：项目主体是 agent 本身。** 采集常驻后台（小红书、脉脉、Boss，系统计划任务「Polaris 常驻采集」，日志 `data/logs/daemon.log`，看进度 `scripts/status.ps1`），每轮后自动对齐、切块、算向量、重建图谱。
 0.5. **M3.5 数据集（10-11 用户插入）：** 按 `DATASET.md` 第 7 节：原始层补字段、常驻采集进程、官网扩到 22 家、牛客、脉脉、小红书和 Boss 全天慢采并回补近半年、面试题表。采集之后在后台一直跑。
-1. **收尾 M3：** 用户用 Boss直聘 App 扫码登录（`boss login --qrcode`，二维码在终端里），跑第一轮 `polaris collect boss`。
-2. **M4 知识图谱、冲突和检索（10-16 到 10-19）：** 多来源合并成 `jobs`（同一岗位在官网、Boss、小红书各出现一次要认出来）、字段冲突裁决、搬运帖去重、混合检索；工具调用套件加难题（多跳对比、跨来源冲突、按时间筛）。
+1. **M4 收尾：** 工具调用套件加难题（多跳对比、跨来源冲突、按时间筛，用新的检索工具）；官网每天快照推断下架；Boss 岗位接进对齐后看真实的跨来源冲突；同岗识别下一轮（多语言 JD、部门名字面包含）改完要再标一份新测试集。
+2. **M5 记忆（自己实现）：** 双时间线事实表、新增 / 更新 / 作废 / 不变、待确认和抑制记录。
 
 ## 用户已经做的决定
 
