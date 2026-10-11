@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-11T03:29:03+00:00",
-  "git_commit": "f34b435-dirty",
+  "generated_at": "2026-10-11T03:35:16+00:00",
+  "git_commit": "2e45a07",
   "collection": {
     "xhs:careers": {
       "items": 20,
@@ -29,24 +29,24 @@
       "dup_items": 10
     },
     "xhs": {
-      "items": 31,
+      "items": 35,
       "runs": 3,
-      "runs_failed": 1,
-      "seen": 24,
-      "inserted": 24,
-      "failures": 1,
-      "calls": 28,
-      "seconds": 1017.9482035002438,
-      "feeds_seen": 59,
-      "opened": 24,
-      "skipped_known": 5,
-      "skipped_rule": 18,
+      "runs_failed": 0,
+      "seen": 35,
+      "inserted": 35,
+      "failures": 2,
+      "calls": 47,
+      "seconds": 1588.2464712001383,
+      "feeds_seen": 115,
+      "opened": 35,
+      "skipped_known": 11,
+      "skipped_rule": 29,
       "queries_total": 147,
-      "queries_searched": 4,
-      "extracted": 24,
-      "big": 10,
-      "dup_items": 2,
-      "dup_pairs": 2
+      "queries_searched": 6,
+      "extracted": 35,
+      "big": 15,
+      "dup_items": 3,
+      "dup_pairs": 4
     },
     "tencent:careers": {
       "items": 139,
@@ -458,6 +458,101 @@
           "hallucinated": 0
         }
       }
+    },
+    {
+      "name": "小红书笔记·留出集（改提示词时没见过），B 档答案只在本机",
+      "n": 11,
+      "private": true,
+      "extracted": 11,
+      "summary": {
+        "micro_f1": 1.0,
+        "macro_f1": 1.0,
+        "accuracy": 1.0,
+        "hallucinated": 0
+      },
+      "fields": {
+        "post_type": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "big_companies": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "city": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "job_type": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "has_referral": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "can_convert": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "interview_rounds": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "days_per_week": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "duration_months": {
+          "n": 11,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        }
+      }
     }
   ],
   "llm": {
@@ -473,14 +568,14 @@
       "cost_usd": "0"
     },
     "extract_post": {
-      "calls": 24,
-      "parsed_ok": 24,
+      "calls": 35,
+      "parsed_ok": 35,
       "retries": 0,
-      "latency_p50_ms": 14990,
+      "latency_p50_ms": 14227,
       "latency_p95_ms": 33445,
-      "prompt_tokens_avg": 1637,
-      "completion_tokens_avg": 884,
-      "reasoning_tokens_avg": 648,
+      "prompt_tokens_avg": 1614,
+      "completion_tokens_avg": 887,
+      "reasoning_tokens_avg": 647,
       "cost_usd": "0"
     }
   }

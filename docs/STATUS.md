@@ -4,7 +4,7 @@
 
 ## 现在的状态
 
-M0、M1、M2 已完成；M3 主体已完成（排期 10-13 到 10-15，提前），只差 Boss 第一轮（等用户扫码）和小红书笔记留出集。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
+M0、M1、M2 已完成；M3 主体已完成（排期 10-13 到 10-15，提前），只差 Boss 第一轮（等用户扫码）。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
 
 | 项 | 状态 |
 |---|---|
@@ -25,11 +25,11 @@ M0、M1、M2 已完成；M3 主体已完成（排期 10-13 到 10-15，提前）
 |---|---|---|---|
 | M1 | `docker compose up -d --build` 后打开 http://127.0.0.1:8000/docs；`uv run polaris seed`、`uv run polaris metrics m1`；`uv run pytest` | `eval/reports/M1.md`：追踪完整率 100%，合成数据事实核对 60/60，入库幂等，缓存命中 3/3 | 见 git log |
 | M2 | `uv run polaris agent ask "问题"`（可录制、回放）；MCP 服务在 `/mcp/`；`uv run polaris metrics m2`；`uv run pytest`（61 个，含 14 个不花钱的录像回放回归） | `eval/reports/M2.md`：工具调用套件 14 题 pass^3 14/14，参数一次合格率 100%，模型调用追踪 131/131，完整回放 14/14 一致。题目偏简单，验证的是底座 | 见 git log |
-| M3 | `uv run polaris collect all`（各来源侦察并行）或单个来源 `collect tencent|bytedance|xhs-careers|xhs|boss`；`uv run polaris extract job|post`；`uv run polaris metrics m3`（不调模型）、`metrics m3-tools`（调模型）；`uv run pytest`（90 多个，含 M3 官网题的录像回放） | `eval/reports/M3.md`：真实岗位 50 条标准答案逐字段 F1 0.99；小红书笔记开发集 v1 0.96 → v2 1.00（留出集待测）；真实数据工具调用套件 real-v1 14 题 pass^3 14/14，仍偏简单 | 见 git log |
+| M3 | `uv run polaris collect all`（各来源侦察并行）或单个来源 `collect tencent|bytedance|xhs-careers|xhs|boss`；`uv run polaris extract job|post`；`uv run polaris metrics m3`（不调模型）、`metrics m3-tools`（调模型）；`uv run pytest`（90 多个，含 M3 官网题的录像回放） | `eval/reports/M3.md`：真实岗位 50 条标准答案逐字段 F1 0.99；小红书笔记开发集 v1 0.96 → v2 1.00，留出集 11 条全对（样本小）；真实数据工具调用套件 real-v1 14 题 pass^3 14/14，仍偏简单 | 见 git log |
 
 ## 下一步
 
-1. **收尾 M3：** 用户用 Boss直聘 App 扫码登录（`boss login --qrcode`，二维码在终端里），跑第一轮 `polaris collect boss`；小红书第三轮采完后标留出集，验证笔记抽取提示词 v2。
+1. **收尾 M3：** 用户用 Boss直聘 App 扫码登录（`boss login --qrcode`，二维码在终端里），跑第一轮 `polaris collect boss`。
 2. **M4 知识图谱、冲突和检索（10-16 到 10-19）：** 多来源合并成 `jobs`（同一岗位在官网、Boss、小红书各出现一次要认出来）、字段冲突裁决、搬运帖去重、混合检索；工具调用套件加难题（多跳对比、跨来源冲突、按时间筛）。
 
 ## 用户已经做的决定
