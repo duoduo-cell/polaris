@@ -1,4 +1,5 @@
 """命令行：uv run polaris --help"""
+import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -356,6 +357,21 @@ def report() -> None:
     from polaris.report import daily, render
 
     typer.echo(render(daily()))
+
+
+@app.command()
+def align() -> None:
+    """多来源对齐：把所有 posting 归成岗位、裁决字段冲突，然后在三份标准答案上算同岗识别的成绩（不调模型）。"""
+    from polaris.align.build import run_align
+    from polaris.eval import alignment
+
+    typer.echo(json.dumps(run_align(), ensure_ascii=False))
+    for name, path in (("开发集", alignment.GOLD), ("留出集", alignment.HOLDOUT), ("测试集", alignment.TEST)):
+        r = alignment.pairwise(path)
+        typer.echo(f"{name} {r['pairs']} 对（同岗 {r['positives']}，拿不准 {r['unsure']}）："
+                   f"精确率 {r['precision']:.3f} 召回率 {r['recall']:.3f} F1 {r['f1']:.3f}")
+    c, p = alignment.conflict_detection(), alignment.provenance()
+    typer.echo(f"合成冲突发现 {c['found']}/{c['total']}；出处可追溯 {p['traceable']}/{p['fields']}")
 
 
 @metrics_app.command("m1")

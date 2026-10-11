@@ -1,0 +1,40 @@
+{"a": "bytedance:campus:7527210783693670663", "b": "bytedance:campus:7452241008958179592", "same": false, "note": "国际电商和搜索：不同部门", "jd_dist": 24}
+{"a": "bytedance:campus:7591467573617101061", "b": "bytedance:campus:7573346479014005045", "same": false, "note": "剪映用户增长团队和剪映研发团队：职责一样，团队介绍不同，是两个团队", "jd_dist": 17}
+{"a": "bytedance:campus:7638940096951568693", "b": "bytedance:campus:7662633924661414197", "same": false, "note": "财经业务和小荷健康", "jd_dist": 27}
+{"a": "bytedance:campus:7642222838862121269", "b": "bytedance:campus:7551727683090155783", "same": false, "note": "", "jd_dist": 31}
+{"a": "bytedance:campus:7642222838862121269", "b": "bytedance:campus:7540591954049321223", "same": false, "note": "", "jd_dist": 22}
+{"a": "bytedance:campus:7530474444566202642", "b": "bytedance:campus:7387675841738180902", "same": false, "note": "搜索和 Data", "jd_dist": 19}
+{"a": "bytedance:campus:7504260532972472583", "b": "bytedance:campus:7504259786281437447", "same": true, "note": "同一岗位杭州、上海各一条", "jd_dist": 1}
+{"a": "bytedance:campus:7642222838862121269", "b": "bytedance:campus:7387677017905400090", "same": false, "note": "", "jd_dist": 32}
+{"a": "bytedance:campus:7504254987566156039", "b": "bytedance:campus:7512058433576995090", "same": false, "note": "岗位名和部门完全一样，但职责一个是系统架构、一个是 CUDA 训练加速：Seed Model 下两个不同岗位", "jd_dist": 27}
+{"a": "bytedance:campus:7574643701982398773", "b": "bytedance:campus:7337644572929296690", "same": false, "note": "抖音和今日头条", "jd_dist": 23}
+{"a": "bytedance:campus:7638928878005979445", "b": "bytedance:campus:7638944003233499397", "same": false, "note": "同名同城两条，职责一个是金融业务架构、一个是金融助手：不同岗位", "jd_dist": 16}
+{"a": "bytedance:campus:7646379615653677365", "b": "bytedance:campus:7646346667644340485", "same": true, "note": "同一岗位上海、北京各一条", "jd_dist": 0}
+{"a": "bytedance:campus:7512053526639102216", "b": "bytedance:campus:7504259786281437447", "same": false, "note": "同 #8：Seed Model 两个同名岗位", "jd_dist": 27}
+{"a": "bytedance:campus:7215563256558537018", "b": "bytedance:campus:7215558558842390839", "same": true, "note": "同一岗位上海、深圳各一条", "jd_dist": 5}
+{"a": "tencent:careers:2037411502792798208", "b": "tencent:careers:2062097137205952512", "same": false, "note": "微信和微信搜索：部门名一个是另一个的前缀，但不是同一团队", "jd_dist": 25}
+{"a": "bytedance:campus:7454045168917203208", "b": "bytedance:campus:7385489382617614601", "same": false, "note": "", "jd_dist": 26}
+{"a": "bytedance:campus:7551632712671889672", "b": "bytedance:campus:7581762730342222133", "same": false, "note": "前端和后端", "jd_dist": 24}
+{"a": "bytedance:campus:7694556064675055925", "b": "bytedance:campus:7506794873661851912", "same": false, "note": "", "jd_dist": 32}
+{"a": "xhs:careers:22002", "b": "xhs:careers:22026", "same": false, "note": "企业智能和商业平台技术", "jd_dist": 25}
+{"a": "bytedance:campus:7681145793681737989", "b": "bytedance:campus:7646346667644340485", "same": false, "note": "火山方舟和 Seed", "jd_dist": 21}
+{"a": "xhs:careers:22476", "b": "xhs:careers:22026", "same": false, "note": "直播电商和商业平台技术", "jd_dist": 26}
+{"a": "tencent:careers:2077347119940939776", "b": "tencent:careers:2079868794368602112", "same": false, "note": "PCG 和 CDG", "jd_dist": 29}
+{"a": "bytedance:campus:7571311509964392709", "b": "bytedance:campus:7506794873661851912", "same": false, "note": "", "jd_dist": 25}
+{"a": "bytedance:campus:7595441600678873349", "b": "bytedance:campus:7672689057231391029", "same": false, "note": "", "jd_dist": 26}
+{"a": "bytedance:campus:7595441600678873349", "b": "bytedance:campus:7681145793681737989", "same": false, "note": "", "jd_dist": 25}
+{"a": "tencent:careers:2088450750270324736", "b": "tencent:careers:2047239002926510080", "same": false, "note": "", "jd_dist": 22}
+{"a": "bytedance:campus:7649280013948520709", "b": "bytedance:campus:7633863285795998005", "same": false, "note": "", "jd_dist": 26}
+{"a": "bytedance:campus:7652019433997453573", "b": "bytedance:campus:7681235827976161589", "same": false, "note": "", "jd_dist": 20}
+{"a": "bytedance:campus:7454045168917203208", "b": "bytedance:campus:7683750032898459909", "same": false, "note": "", "jd_dist": 27}
+{"a": "tencent:careers:2078016955226439680", "b": "tencent:careers:2079798622702190592", "same": true, "note": "同一岗位新加坡、首尔各一条；一条标题带中文译名", "jd_dist": 7}
+{"a": "bytedance:campus:7441531999322147090", "b": "bytedance:campus:7643783203779037493", "same": false, "note": "前端和后端", "jd_dist": 25}
+{"a": "bytedance:campus:7694556064675055925", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "", "jd_dist": 27}
+{"a": "bytedance:campus:7571311509964392709", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "", "jd_dist": 18}
+{"a": "bytedance:campus:7678675754548545845", "b": "bytedance:campus:7530572834612807954", "same": false, "note": "没写部门的通用岗位和 AI Platform", "jd_dist": 27}
+{"a": "bytedance:campus:7678675754548545845", "b": "bytedance:campus:7683750032898459909", "same": false, "note": "没写部门的通用岗位和 Commercial AI", "jd_dist": 21}
+{"a": "bytedance:campus:7671197903025998085", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "", "jd_dist": 26}
+{"a": "bytedance:campus:7549086585691818248", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "", "jd_dist": 33}
+{"a": "bytedance:campus:7671206494906829109", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "", "jd_dist": 23}
+{"a": "bytedance:campus:7678675754548545845", "b": "bytedance:campus:7454045168917203208", "same": false, "note": "", "jd_dist": 28}
+{"a": "bytedance:campus:7684175224719853829", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "", "jd_dist": 31}

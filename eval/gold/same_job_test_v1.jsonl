@@ -1,0 +1,40 @@
+{"a": "tencent:careers:2079798628515491840", "b": "tencent:careers:2079798622702190592", "same": true, "note": "同一岗位东京、首尔各一条，JD 一个日英双语、一个英中双语"}
+{"a": "bytedance:campus:7445252063821728008", "b": "bytedance:campus:7530572834612807954", "same": true, "note": ""}
+{"a": "bytedance:campus:7643711629389433141", "b": "bytedance:campus:7642278512848505093", "same": true, "note": "同城两条，职责措辞改写、内容相同：同一岗位重发"}
+{"a": "bytedance:campus:7643710529505495349", "b": "bytedance:campus:7642278512848505093", "same": true, "note": "同 #2，另一城市"}
+{"a": "bytedance:campus:7654855356902754565", "b": "bytedance:campus:7654855023058815285", "same": true, "note": "职责条目重排合并，内容相同"}
+{"a": "tencent:careers:2027658886831570944", "b": "tencent:careers:2027658888916140032", "same": true, "note": ""}
+{"a": "bytedance:campus:7638935517300918533", "b": "bytedance:campus:7638929182902470965", "same": false, "note": "财经业务两个同名岗位：金融助手和金融业务架构"}
+{"a": "bytedance:campus:7512058540225464584", "b": "bytedance:campus:7504259786281437447", "same": false, "note": "Seed Model 两个同名岗位：CUDA 训练加速和系统架构"}
+{"a": "bytedance:campus:7512058539952163090", "b": "bytedance:campus:7512057147221854472", "same": true, "note": ""}
+{"a": "bytedance:campus:7512055698047011079", "b": "bytedance:campus:7512058539952163090", "same": true, "note": ""}
+{"a": "bytedance:campus:7628941053346793733", "b": "bytedance:campus:7628900944781019445", "same": true, "note": ""}
+{"a": "bytedance:campus:7530572834612807954", "b": "bytedance:campus:7445255681667729671", "same": true, "note": ""}
+{"a": "bytedance:campus:7571311810654275893", "b": "bytedance:campus:7571311810634058037", "same": true, "note": ""}
+{"a": "bytedance:campus:7551632712671889672", "b": "bytedance:campus:7551632521432697096", "same": true, "note": ""}
+{"a": "bytedance:campus:7512058540225464584", "b": "bytedance:campus:7504260532972472583", "same": false, "note": "同 #7"}
+{"a": "bytedance:campus:7634111047519209781", "b": "bytedance:campus:7638944003233499397", "same": false, "note": "同 #6"}
+{"a": "bytedance:campus:7638935517300918533", "b": "bytedance:campus:7649011610473711877", "same": false, "note": "同 #6"}
+{"a": "tencent:careers:2104878897891033088", "b": "tencent:careers:2108502775083216896", "same": true, "note": "同城两个编号，正文相同：同一岗位多个名额"}
+{"a": "bytedance:campus:7512058433576995090", "b": "bytedance:campus:7504259786281437447", "same": false, "note": "同 #7"}
+{"a": "tencent:careers:2108125770894454784", "b": "tencent:careers:2108125773377486848", "same": true, "note": ""}
+{"a": "tencent:careers:2098332758412804096", "b": "tencent:careers:2098252450778759168", "same": false, "note": "通用 Harness 工程师和 WorkBuddy 算法工程师"}
+{"a": "tencent:careers:2062097072978575360", "b": "tencent:careers:2091788011841957888", "same": false, "note": ""}
+{"a": "bytedance:campus:7480382122965469447", "b": "bytedance:campus:7569834810790824245", "same": false, "note": ""}
+{"a": "tencent:careers:2070404304531013632", "b": "tencent:careers:2070404302299643904", "same": false, "note": "高级岗，经验要求不同"}
+{"a": "tencent:careers:2098332758412804096", "b": "tencent:careers:2098252452842352640", "same": false, "note": ""}
+{"a": "bytedance:campus:7656746281671330053", "b": "bytedance:campus:7656745923674229045", "same": true, "note": "岗位名差一个字（工程师/工程），职责条目合并改写，内容相同"}
+{"a": "tencent:careers:2070404306368118784", "b": "tencent:careers:2070404302299643904", "same": false, "note": "同 #23"}
+{"a": "bytedance:campus:7671197903025998085", "b": "bytedance:campus:7671206494906829109", "same": false, "note": "岗位名差「数据」，正文几乎一样：可能是同一岗位改了标题，也可能是两个岗位，拿不准", "unsure": true}
+{"a": "tencent:careers:2095441701685608448", "b": "tencent:careers:2099383903608553472", "same": false, "note": "游戏商务部和光子艺术部"}
+{"a": "tencent:careers:2098252452842352640", "b": "tencent:careers:2098252450778759168", "same": false, "note": "研发和算法，正文几乎一样"}
+{"a": "bytedance:campus:7547615325203876104", "b": "bytedance:campus:7678675754548545845", "same": false, "note": "标题没写部门，正文第一行是中国交易与广告"}
+{"a": "xhs:careers:22028", "b": "xhs:careers:21992", "same": false, "note": ""}
+{"a": "bytedance:campus:7591467573617101061", "b": "bytedance:campus:7573349767758219573", "same": false, "note": "剪映用户增长团队和剪映研发团队"}
+{"a": "bytedance:campus:7580251927444244741", "b": "bytedance:campus:7678675754548545845", "same": false, "note": ""}
+{"a": "bytedance:campus:7681005754049415429", "b": "bytedance:campus:7680818178675329285", "same": false, "note": "开发方向和对抗方向"}
+{"a": "bytedance:campus:7678675754548545845", "b": "bytedance:campus:7445255681667729671", "same": false, "note": ""}
+{"a": "bytedance:campus:7678675754548545845", "b": "bytedance:campus:7585467713146833205", "same": false, "note": ""}
+{"a": "tencent:careers:2037467994921271296", "b": "tencent:careers:2082043721595138048", "same": false, "note": ""}
+{"a": "bytedance:campus:7683452132151806213", "b": "bytedance:campus:7634045921584990517", "same": false, "note": "抖音研发中台和抖音研发：团队介绍不同，类别一个后端一个算法"}
+{"a": "bytedance:campus:7678675754548545845", "b": "bytedance:campus:7452241008958179592", "same": false, "note": ""}

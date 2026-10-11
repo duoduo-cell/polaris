@@ -33,3 +33,13 @@ def hamming(a: int, b: int) -> int:
 
 def near_duplicate(a: int, b: int, threshold: int = 10) -> bool:
     return hamming(a, b) <= threshold
+
+
+def shingle_set(text: str, n: int = 3) -> frozenset[str]:
+    """字符三元组集合，算 Jaccard 相似度用（Broder 1997 的 resemblance）。不截断：同名岗位的区别常在后半段的职责里。"""
+    t = NOISE.sub("", text)
+    return frozenset(t[i:i + n] for i in range(len(t) - n + 1))
+
+
+def jaccard(a: frozenset[str], b: frozenset[str]) -> float:
+    return len(a & b) / len(a | b) if a or b else 0.0

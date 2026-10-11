@@ -227,6 +227,13 @@ class Job(JobFields, Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    # 稳定编号：公司 | 最具体的部门 | 岗位名（align/match.py 的 job_key）。重建时编号不变，引用不失效
+    key: Mapped[str | None] = mapped_column(String(300), unique=True)
+    company: Mapped[str | None] = mapped_column(String(200))  # 归一后的公司（大厂名单里的规范名）
+    unit: Mapped[str | None] = mapped_column(String(200))  # 部门：事业群、业务线、团队
+    cities: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    posting_count: Mapped[int] = mapped_column(Integer, default=1)  # 合并了几条 posting
+    conflicts: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)  # 字段冲突和裁决
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"))
     field_sources: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
