@@ -160,6 +160,11 @@ def render_bench(b: dict[str, Any]) -> list[str]:
              "找不到、出错恢复。标准答案建题时从库里现算（`src/polaris/eval/suites/bench_v2.py`）。"
              f"模型 `{first['model']}`，生成于 {first['generated_at']}。对比两种配置："
              "**knowledge**（6 个工具，含 questions_search、kg_stats）和 **search**（M3 的 4 个工具）。", "",
+             "怎么来的：第一次跑（knowledge 提示词 v1）是 knowledge 50/54、search 42/54。查失败原因时发现两处评分问题：推荐题把回答里"
+             "\"J-345 是校招，不算实习，没推荐\"这种说明排除的编号也算成了推荐（误判 3 次），改为由评审模型抽出真正推荐的编号再核对，"
+             "重算后 knowledge 53/54。剩下那次是\"找不到\"的题反复换条件查、撞上步数上限报错：步数上限改为随模型调用上限，提示词 v2 加"
+             "\"放宽两三次还没有就停\"，knowledge 重跑。**所以这份题对 knowledge-v2 也算开发集**；而且已经满分，区分不出更好的版本，"
+             "下一版要加更难的题（多轮追问、跨工具的多跳、需要先问清条件的模糊问题）。search 没有改提示词，沿用第一次的回答重新评分。", "",
              "| 类别 | 题数 | " + " | ".join(f"{n} 单次成功 | {n} pass^{k}" for n in names) + " |",
              "|---|---|" + "---|---|" * len(names)]
     for cat in first["categories"]:
