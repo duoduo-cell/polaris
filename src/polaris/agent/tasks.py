@@ -28,7 +28,8 @@ class TaskConflict(ValueError):
 def task_dict(task: ChatTask) -> dict[str, Any]:
     return {"id": task.id, "thread_id": task.thread_id, "kind": task.kind, "state": task.state,
             "question": task.payload.get("message", ""),
-            "activities": task.activities, "result": task.result, "error": task.error,
+            "activities": task.activities, "live": task.live or {}, "cancel_requested": bool(task.cancel_requested),
+            "result": task.result, "error": task.error,
             "created_at": task.created_at.isoformat(),
             "started_at": task.started_at.isoformat() if task.started_at else None,
             "finished_at": task.finished_at.isoformat() if task.finished_at else None}
@@ -65,6 +66,21 @@ def submit(thread_id: str, kind: str, payload: dict[str, Any], request_key: str,
     if start:
         service().wake.set()
     return result
+
+
+def cancel(task_id: str) -> dict[str, Any]:
+    """用户点了停止：还在排队的直接取消；正在跑的打上标记，执行线程在下一个 token 或下一步时停下。"""
+    with session_scope() as s:
+        task = s.get(ChatTask, task_id)
+        if task is None:
+            raise LookupError("task not found")
+        lock_thread(s, task.thread_id)
+        if task.state == "queued":
+            task.state, task.finished_at = "cancelled", datetime.now(UTC)
+            task.error = "这条消息还没开始处理就停止了，原话已保留。"
+        elif task.state == "running":
+            task.cancel_requested = True
+        return task_dict(task)
 
 
 def snapshot(thread_id: str) -> dict[str, Any]:
@@ -113,6 +129,7 @@ class TaskService:
                 saved = checkpointer().get_tuple({"configurable": {"thread_id": task.thread_id, "checkpoint_ns": ""}})
                 approvals = checkpoint_approvals(saved) if saved else []
                 task.state = "waiting_approval" if approvals else "interrupted"
+                task.live = {}
                 task.error = None if approvals else "后端重启中断了这次执行，原话已保留。请重新发送需要继续的请求。"
                 task.finished_at = datetime.now(UTC)
                 s.get(ChatThread, task.thread_id).approvals = approvals
@@ -131,24 +148,56 @@ class TaskService:
         return None
 
     def _event(self, task_id: str, event: dict[str, Any]) -> None:
-        # 模型中间文字可能是工具调用前的套话或私有思考，不存进可见回复或活动。
-        if event.get("type") not in ("memory", "tool"):
+        # 活动（记忆、发起和返回的工具、压缩）留档；回答草稿和"正在压缩"只是临时状态，放 live，结束清空。
+        # 带工具调用那一步的中间文字不进草稿（LiveHandler 已过滤），最终回复只以完整结果为准。
+        kind = event.get("type")
+        if kind not in ("memory", "tool", "tool_done", "compact", "draft", "compacting"):
             return
         with session_scope(self.engine) as s:
             task = s.get(ChatTask, task_id)
-            if task and task.state == "running":
+            if not task or task.state != "running":
+                return
+            live = dict(task.live or {})
+            if kind == "draft":
+                live.update(draft=event.get("text", ""), seq=live.get("seq", 0) + 1)
+            elif kind == "compacting":
+                live.update(status="compacting", seq=live.get("seq", 0) + 1)
+            else:
                 task.activities = [*task.activities, event][-100:]
+                if kind in ("tool", "compact"):
+                    live.update(draft="", status=None, seq=live.get("seq", 0) + 1)
+            task.live = live
+
+    def _stopper(self, task_id: str):
+        """执行线程隔一会儿看一眼数据库里的停止标记（每个 token 都查库太重）。"""
+        import time
+
+        state = {"at": 0.0, "stop": False}
+
+        def should_stop() -> bool:
+            if state["stop"]:
+                return True
+            now = time.monotonic()
+            if now - state["at"] >= 0.5:
+                state["at"] = now
+                with session_scope(self.engine) as s:
+                    state["stop"] = bool(s.scalar(select(ChatTask.cancel_requested).where(ChatTask.id == task_id)))
+            return state["stop"]
+
+        return should_stop
 
     def _work(self, task_id: str) -> None:
-        from polaris.agent.main import chat, resume
+        from polaris.agent.main import STOPPED, chat, resume
 
         try:
             with session_scope(self.engine) as s:
                 task = s.get(ChatTask, task_id)
                 thread_id, kind, payload = task.thread_id, task.kind, task.payload
             event = lambda e: self._event(task_id, e)  # noqa: E731
-            turn = (chat(payload["message"], thread_id, on_event=event, record=False) if kind == "chat" else
-                    resume(thread_id, payload["approve"], payload.get("reason", ""), on_event=event, record=False))
+            stop = self._stopper(task_id)
+            turn = (chat(payload["message"], thread_id, on_event=event, record=False, should_stop=stop) if kind == "chat" else
+                    resume(thread_id, payload["approve"], payload.get("reason", ""), on_event=event, record=False,
+                           should_stop=stop))
             result = turn.to_dict()
             if kind == "chat":
                 result["question"] = payload["message"]
@@ -160,13 +209,15 @@ class TaskService:
             with session_scope(self.engine) as s:
                 task = s.get(ChatTask, task_id)
                 finish_turn(s, thread_id, task_id, result)
-                task.result, task.error, task.finished_at = result, turn.error, datetime.now(UTC)
-                task.state = "waiting_approval" if turn.approvals else ("failed" if turn.error and not turn.answer else "completed")
+                task.result, task.error, task.finished_at, task.live = result, turn.error, datetime.now(UTC), {}
+                task.state = ("cancelled" if turn.error == STOPPED and not turn.answer else
+                              "waiting_approval" if turn.approvals else ("failed" if turn.error and not turn.answer else "completed"))
         except Exception as e:  # noqa: BLE001  故障也必须持久化，重连才能看见
             log.exception("chat task failed: %s", task_id)
             with session_scope(self.engine) as s:
                 task = s.get(ChatTask, task_id)
                 task.state, task.error, task.finished_at = "failed", f"{type(e).__name__}: {e}"[:500], datetime.now(UTC)
+                task.live = {}
         finally:
             self.wake.set()
 

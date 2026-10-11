@@ -91,6 +91,18 @@ def task_status(task_id: str) -> dict[str, Any]:
         return task_dict(task)
 
 
+@router.post("/chat/tasks/{task_id}/cancel", summary="Stop a queued or running answer; the message itself is kept")
+def cancel_task(task_id: str) -> dict[str, Any]:
+    from polaris.agent.tasks import cancel, service
+
+    try:
+        out = cancel(task_id)
+    except LookupError as e:
+        raise HTTPException(404, "task not found") from e
+    service().wake.set()
+    return out
+
+
 def _task_events(task_id: str) -> Any:
     import time
 
@@ -335,6 +347,13 @@ def feedback_endpoint(notification_id: int, body: FeedbackIn) -> dict[str, Any]:
     return {"ok": True}
 
 
+@router.get("/agenda", summary="What Polaris is doing, needs from you, has scheduled and finished today")
+def agenda_endpoint() -> dict[str, Any]:
+    from polaris.agenda import agenda
+
+    return agenda()
+
+
 @router.get("/brief", summary="Today's brief (markdown)")
 def brief_endpoint(day: date | None = None) -> dict[str, Any]:
     from polaris.proactive.daily import BRIEFS
@@ -365,7 +384,24 @@ def tool_endpoint(name: str, body: ToolIn) -> dict[str, Any]:
         result: Any = runtime.results[len(runtime.calls) - 1] if len(runtime.calls) - 1 in runtime.results else json.loads(out)
     except ValueError:
         result = out
+    if call["ok"] and name in ("jobs_search", "jobs_get") and isinstance(result, dict):
+        result = _with_match(result)
     return {"ok": call["ok"], "error_kind": call["error_kind"], "result": result}
+
+
+def _with_match(result: dict[str, Any]) -> dict[str, Any]:
+    """网页直接查岗位时，每个岗位附上和你条件的匹配（模型看到的工具结果里没有这个）。"""
+    from polaris.match import matches
+
+    rows = result.get("items") if isinstance(result.get("items"), list) else [result]
+    ids = [int(r["id"][2:]) for r in rows if isinstance(r, dict) and str(r.get("id", "")).startswith("J-") and r["id"][2:].isdigit()]
+    with session_scope() as s:
+        fits = matches(s, ids)
+    if not fits:
+        return result
+    marked = [{**r, "match": fits[int(r["id"][2:])]} if isinstance(r, dict) and str(r.get("id", ""))[2:].isdigit()
+              and int(r["id"][2:]) in fits else r for r in rows]
+    return {**result, "items": marked} if "items" in result else marked[0]
 
 
 REPORTS = ("M1", "M2", "M3", "M4", "M5", "proactive", "injection", "market")

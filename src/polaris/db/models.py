@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -68,6 +69,9 @@ class ChatTask(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
     state: Mapped[str] = mapped_column(String(24), default="queued")
     activities: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    # 运行中的临时状态（正在生成的回答草稿、是否在压缩上下文），只给界面看，结束后清空
+    live: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at()

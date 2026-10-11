@@ -90,6 +90,8 @@ def visible_messages(s: Session, thread_id: str) -> list[dict[str, Any]]:
     out = []
     for m in rows:
         row = {"id": m.id, "role": m.role, "content": m.content}
+        if m.role == "user" and m.source_key.endswith(":user"):
+            row["task_id"] = m.source_key.removesuffix(":user")  # 网页据此把"已停止 / 出错"显示在这句话下面
         if m.turn:
             cards = [{**r, "followup": progress[r["id"]]} if r.get("kind") == "job" and r.get("id") in progress
                      else r for r in m.turn.get("results", [])]

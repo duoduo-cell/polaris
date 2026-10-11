@@ -38,6 +38,7 @@ class ToolRuntime:
         self.engine = engine
         self.calls: list[dict[str, Any]] = []  # 本次运行的调用，评测时直接读
         self.results: dict[int, Any] = {}  # 完整结构化结果给界面；不受模型文本长度限制影响
+        self.on_done: Any = None  # 每次调用结束后通知一下（网页显示"查到了多少"）；参数是调用记录和结构化结果
 
     def invoke(self, spec: ToolSpec, raw_args: dict[str, Any]) -> str:
         start = time.perf_counter()
@@ -87,6 +88,11 @@ class ToolRuntime:
         if self.record_db:
             with session_scope(self.engine) as s:
                 s.add(ToolCall(**row))
+        if self.on_done is not None:
+            try:
+                self.on_done(row, data)
+            except Exception:  # noqa: BLE001  显示进度出错不能影响工具结果
+                pass
         return output
 
     def as_langchain_tool(self, spec: ToolSpec) -> StructuredTool:

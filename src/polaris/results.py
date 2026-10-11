@@ -43,10 +43,14 @@ def entities(s: Session, references: list[str], *, detailed: bool = False) -> li
     found: dict[str, dict[str, Any]] = {}
     jobs = s.scalars(select(Job).where(Job.id.in_(ids["J"]))).all()
     sources = job_sources(s, [j.id for j in jobs])
+    from polaris.match import matches
+    fits = matches(s, [j.id for j in jobs]) if jobs else {}  # 和你的条件对得上多少，只给界面看
     for j in jobs:
         data = {**_job_row(j, True), "kind": "job", "sources": sources[j.id], "status": j.status,
                 "requirements": j.requirements or [], "directions": j.directions or [],
                 "conflicts": j.conflicts or [], "followup": followup(s, j.id, history=detailed)}
+        if j.id in fits:
+            data["match"] = fits[j.id]
         if detailed:
             data.update(jd_text=j.jd_text or "", field_sources=j.field_sources or {})
         found[data["id"]] = data
