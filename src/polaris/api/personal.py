@@ -120,3 +120,75 @@ def brief_endpoint(day: date | None = None) -> dict[str, Any]:
     day = day or date.today()
     path = BRIEFS / f"{day.isoformat()}.md"
     return {"day": day.isoformat(), "markdown": path.read_text(encoding="utf-8") if path.exists() else None}
+
+
+class ToolIn(BaseModel):
+    args: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/tools/{name}", summary="Run one read-only tool directly (the same tools the agent uses; traced the same way)")
+def tool_endpoint(name: str, body: ToolIn) -> dict[str, Any]:
+    import json
+
+    from polaris.tools import REGISTRY
+    from polaris.tools.runtime import ToolRuntime
+
+    spec = REGISTRY.get(name)
+    if spec is None or not spec.read_only:
+        raise HTTPException(404, f"no read-only tool named {name}")
+    runtime = ToolRuntime(agent="web")
+    out = runtime.invoke(spec, body.args)
+    call = runtime.calls[-1]
+    try:
+        result: Any = json.loads(out)
+    except ValueError:
+        result = out
+    return {"ok": call["ok"], "error_kind": call["error_kind"], "result": result}
+
+
+REPORTS = ("M1", "M2", "M3", "M4", "M5", "proactive", "injection", "market")
+
+
+@router.get("/reports", summary="Evaluation reports that can be shown")
+def reports_endpoint() -> list[dict[str, Any]]:
+    from polaris.config import ROOT
+
+    out = []
+    for name in REPORTS:
+        path = ROOT / "eval" / "reports" / f"{name}.md"
+        if path.exists():
+            text_ = path.read_text(encoding="utf-8")
+            title = next((line.lstrip("# ").strip() for line in text_.splitlines() if line.startswith("# ")), name)
+            out.append({"name": name, "title": title})
+    return out
+
+
+@router.get("/reports/{name}", summary="One evaluation report (markdown)")
+def report_endpoint(name: str) -> dict[str, Any]:
+    from polaris.config import ROOT
+
+    if name not in REPORTS:
+        raise HTTPException(404, "unknown report")
+    path = ROOT / "eval" / "reports" / f"{name}.md"
+    if not path.exists():
+        raise HTTPException(404, "report not generated yet")
+    return {"name": name, "markdown": path.read_text(encoding="utf-8")}
+
+
+@router.get("/chat/{thread_id}/messages", summary="The conversation so far (from the LangGraph checkpoint)")
+def messages_endpoint(thread_id: str) -> dict[str, Any]:
+    from polaris.agent.main import _interrupts, checkpointer
+    from polaris.agent.minimal import text_of
+
+    saved = checkpointer().get_tuple({"configurable": {"thread_id": thread_id}})
+    if saved is None:
+        return {"thread_id": thread_id, "messages": [], "approvals": []}
+    out = []
+    for m in saved.checkpoint["channel_values"].get("messages", []):
+        role = {"human": "user", "ai": "assistant"}.get(m.type)
+        content = text_of(m.content)
+        if role and content:
+            out.append({"role": role, "content": content})
+    # 等你批准的动作在检查点的 pending_writes 里：(任务编号, "__interrupt__", [Interrupt, ...])
+    waiting = [i for _, channel, value in saved.pending_writes or [] if channel == "__interrupt__" for i in value]
+    return {"thread_id": thread_id, "messages": out, "approvals": _interrupts({"__interrupt__": waiting})}

@@ -75,3 +75,25 @@ def test_thread_is_kept_between_turns(db):
     saved = checkpointer().get_tuple({"configurable": {"thread_id": tid}})
     texts = [m.content for m in saved.checkpoint["channel_values"]["messages"]]
     assert texts == ["你好", "你好！", "刚才我说了什么？", "你说了你好。"]
+
+
+def test_messages_endpoint_reads_the_thread(db):
+    from fastapi.testclient import TestClient
+
+    from polaris.api.app import app
+
+    tid = f"t-{uuid.uuid4().hex[:8]}"
+    chat("你好", tid, now=NOW, remember_fn=lambda *a, **k: {"events": [], "questions": []}, model=script(AIMessage(content="你好！")))
+    r = TestClient(app).get(f"/api/me/chat/{tid}/messages", headers={"Authorization": "Bearer test-owner-token"}).json()
+    assert r["messages"] == [{"role": "user", "content": "你好"}, {"role": "assistant", "content": "你好！"}]
+
+
+def test_messages_endpoint_shows_pending_approval(db):
+    from fastapi.testclient import TestClient
+
+    from polaris.api.app import app
+
+    tid = f"t-{uuid.uuid4().hex[:8]}"
+    chat("把我的学校忘掉", tid, now=NOW, remember_fn=fake_remember, model=script(call("memory_forget", {"attribute": "school"})))
+    r = TestClient(app).get(f"/api/me/chat/{tid}/messages", headers={"Authorization": "Bearer test-owner-token"}).json()
+    assert r["approvals"][0]["name"] == "memory_forget"

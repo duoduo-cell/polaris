@@ -57,3 +57,15 @@ def test_chat_goes_to_the_main_agent(db, monkeypatch):
     monkeypatch.setattr(main, "chat", lambda message, thread_id: main.Turn(thread_id=thread_id, answer=f"收到：{message}"))
     r = client.post("/api/me/chat", json={"message": "你好", "thread_id": "t1"}, headers=ME).json()
     assert r["answer"] == "收到：你好" and r["thread_id"] == "t1"
+
+
+def test_read_only_tools_and_reports(db):
+    remember("target_city", "北京")
+    r = client.post("/api/me/tools/memory_card", json={"args": {"on": "2026-10-12"}}, headers=ME).json()
+    assert r["ok"] and r["result"]["facts"][0]["value"] == "北京"
+    assert client.post("/api/me/tools/memory_forget", json={"args": {"attribute": "school"}}, headers=ME).status_code == 404
+    bad = client.post("/api/me/tools/jobs_get", json={"args": {"job_id": "第二个"}}, headers=ME).json()
+    assert not bad["ok"] and bad["error_kind"] in ("invalid_args", "tool_error")
+    names = [x["name"] for x in client.get("/api/me/reports", headers=ME).json()]
+    assert "M4" in names and client.get("/api/me/reports/M4", headers=ME).json()["markdown"].startswith("# M4")
+    assert client.get("/api/me/reports/secret", headers=ME).status_code == 404

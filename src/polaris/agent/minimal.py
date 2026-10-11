@@ -112,7 +112,7 @@ def ask(question: str, *, run_id: int | None = None, thread_id: str | None = Non
     try:
         state = agent.invoke({"messages": [{"role": "user", "content": question}]},
                              # 步数上限要大于"模型调用上限 × 2"：先到调用上限时能正常收尾，而不是撞上步数上限报错
-                             config={"callbacks": [tracer], "recursion_limit": 2 * profile.max_model_calls + 5})
+                             config={"callbacks": [tracer], "recursion_limit": 6 * profile.max_model_calls + 10})
         answer, error = text_of(state["messages"][-1].content), None
     except Exception as e:  # noqa: BLE001  评测要记下失败，而不是整批中断
         answer, error = "", f"{type(e).__name__}: {e}"

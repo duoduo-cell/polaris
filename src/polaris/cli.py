@@ -400,6 +400,14 @@ def _approve_loop(turn, thread: str):
 
 
 @app.command()
+def serve(port: int = typer.Option(8000), reload: bool = typer.Option(False, help="改代码后自动重启（开发用）")) -> None:
+    """在本机起 API（只绑 127.0.0.1）。和常驻采集同一个环境：能读 data/ 里的简报，能连本机的 Neo4j。"""
+    import uvicorn
+
+    uvicorn.run("polaris.api.app:app", host="127.0.0.1", port=port, reload=reload)
+
+
+@app.command()
 def say(message: str, thread: str = typer.Option("main", help="会话编号，同一个编号接着聊")) -> None:
     """和北极星说一句话（先过记忆，再回答）。要批准的动作会在这里问你。"""
     from polaris.agent.main import chat

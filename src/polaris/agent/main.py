@@ -139,7 +139,9 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
     agent = build(model or chat_model("chat"), tools, _system_prompt(now, questions))
     start = time.perf_counter()
     try:
-        state = agent.invoke(payload, config={"callbacks": [tracer], "recursion_limit": 2 * MAX_MODEL_CALLS + 5,
+        # 步数上限只是保险：真正限制循环的是模型调用上限（到了会正常收尾）。每一轮"模型 → 工具"在图里要走好几步
+        # （摘要、审批中间件各有自己的节点），10-11 网页实测按 2 倍算会先撞上步数上限报错，所以放宽到 8 倍
+        state = agent.invoke(payload, config={"callbacks": [tracer], "recursion_limit": 8 * MAX_MODEL_CALLS + 10,
                                               "configurable": {"thread_id": thread_id}})
         err = None
     except Exception as e:  # noqa: BLE001  对话出错要告诉用户，而不是整个服务挂掉
