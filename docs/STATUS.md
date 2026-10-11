@@ -4,7 +4,7 @@
 
 ## 现在的状态
 
-M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分钟过期，要用户在 Boss 窗口里点一下）；M4、M5 已完成；M6 主体已完成（主 agent、主动推送、可托付）。排期都提前。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
+M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分钟过期，要用户在 Boss 窗口里点一下）；M4、M5 已完成；M6 主体已完成（主 agent、主动推送、可托付）；M7 网页端第一版已完成。排期都提前。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
 
 | 项 | 状态 |
 |---|---|
@@ -19,7 +19,8 @@ M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分�
 | M4 对齐、图谱、检索 | 主体完成。设计见 `design/M4.md`，指标见 `../eval/reports/M4.md`。数据库换成 Postgres + pgvector + pg_search（BM25，jieba），Neo4j 知识图谱；常驻采集每轮后自动刷新 |
 | M5 记忆 | 完成。设计见 `design/M5.md`，指标见 `../eval/reports/M5.md`。双时间线事实表、规则决定的更新、待确认和抑制、记忆工具 |
 | M6 主 agent | 主体完成。设计见 `design/M6.md`：主 agent（先过记忆、卡片常驻、10 个工具、检查点、摘要压缩、人工审批）、每日主动推送（接进常驻采集）、外部内容不可信、`/api/me` 个人接口 |
-| M7 到 M11 | 没开始 |
+| M7 网页端 | 第一版完成（`web/`，Next.js 16）：今天、对话、记忆、岗位、图谱、评测六页；浏览器只调本站 /api/*，服务端代理加口令 |
+| M8 到 M11 | 没开始 |
 | 本机环境 | Python 3.12（uv 管理）、git、Node 24、Docker Desktop、WSL2 |
 
 ## 每个模块留下的、HR 能核实的东西
@@ -32,12 +33,15 @@ M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分�
 | M4 | `uv run polaris align`（对齐并评分）、`polaris index`（切块、向量、图谱）、`polaris search "问题"`、`polaris metrics m4`；`uv run pytest`（134 个） | `eval/reports/M4.md`：同岗识别测试集（规则冻结后才标）P=R=F1=0.93；合成冲突发现 10/10；出处可追溯 100%；检索 32 题 NDCG@10 从 BM25 0.73 到完整流水线 0.86 到 0.89，逐步消融 | 见 git log |
 | M5 | `uv run polaris metrics m5`（在单独的 polaris_memeval 库里跑，会调模型）；`uv run pytest tests/test_memory.py` | `eval/reports/M5.md`：留出集（规则改完才写）记忆操作 F1 0.92、问答 16/16；开发集第一次 0.90 → v2 0.93 | 见 git log |
 | M6 | `uv run polaris say "……"` / `polaris talk`（对话，要批准的动作当场问）；`polaris daily [--dry-run]`；`polaris metrics proactive`（不调模型）、`metrics m4-bench`、`metrics injection`（会调模型） | `eval/reports/proactive.md`：开发集 23、留出集 19 条全对（规则和标签同一作者）；Polaris-Bench v2 knowledge 54/54、search 42/54；提示注入 5 种攻击各 3 次被骗 0、外传 0（攻击偏弱）；记忆测试集 v2 操作 F1 0.97 | 见 git log |
+| M7 | `uv run polaris serve` + `npm --prefix web run dev`，打开 http://localhost:3000 | 网页实测（复制出来的库）：对话里记下新城市、查 9 次、给出 2 个上海岗位并写清哪里不完全符合；记忆页能看每条的原话和被取代的版本；图谱页统计正确 | 见 git log |
 
 ## 下一步
 
 0. **按 `PLAN.md` 第 0 节的最终计划 v4 做：项目主体是 agent 本身。** 采集常驻后台（小红书、脉脉、Boss，系统计划任务「Polaris 常驻采集」，日志 `data/logs/daemon.log`，看进度 `scripts/status.ps1`），每轮后自动对齐、切块、算向量、重建图谱。
 0.5. **M3.5 数据集（10-11 用户插入）：** 按 `DATASET.md` 第 7 节：原始层补字段、常驻采集进程、官网扩到 22 家、牛客、脉脉、小红书和 Boss 全天慢采并回补近半年、面试题表。采集之后在后台一直跑。
-1. **M7 前端（下一步）：** Next.js 页面：对话（带批准按钮）、今日简报和推送反馈、记忆时间线（能看、能删）、岗位和知识图谱浏览、评测和追踪页。接 `/api/me/*`（要先在 .env 里配 OWNER_TOKEN）。
+1. **怎么用网页端：** 先 `uv run polaris serve`（本机 API，8000 端口，用真实的库），再 `npm --prefix web run dev`（3000 端口），打开 http://localhost:3000 。口令 OWNER_TOKEN 已在 .env 里生成，网页服务端自己读。旧的 docker api 容器代码是旧的，已停用。
+   开发时验证用的是复制出来的 polaris_smoke 库（`D:/黑客松/.claude/launch.json` 的 polaris-api-smoke），不碰真实记忆。
+1.2 **M7 收尾：** 对话改成流式输出（现在要等十几秒到一分钟才一次性出来）；追踪页（每次对话调了哪些工具、花了多少）；移动端细调。
 1.5 **M6 收尾：** 摘要压缩的评测；对话里调主动程度；审批的授权范围和超时；`/api/raw-items` 等早期接口加口令（上云前必须做）。
 2. **评测的下一轮：** Polaris-Bench v2 已满分，要加更难的题（多轮追问、跨工具多跳、要先问清条件的模糊问题）；提示注入要加更隐蔽的攻击；记忆问答要加组合多条、带时间条件的题；同岗识别的两处错（多语言 JD、部门名字面包含）改完再标新测试集。每改一轮都再写新的测试集。
 3. **M4 收尾：** 官网每天快照推断下架；Boss 岗位接进对齐后看真实的跨来源冲突。
