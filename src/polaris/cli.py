@@ -91,9 +91,12 @@ def collect_xhs_day(max_calls: int = typer.Option(800, help="今天最多调用�
         total_new += len(r["new_ids"])
         stop = c.stats.stopped
         if r["new_ids"]:
-            out = run_extract("post", len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, "xhs")
-            added = discover_queries(r["new_ids"], r["run_id"])
-            typer.echo(f"  抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
+            try:  # 抽取或提词出错不影响继续采
+                out = run_extract("post", len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, "xhs")
+                added = discover_queries(r["new_ids"], r["run_id"])
+                typer.echo(f"  抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
+            except Exception as e:  # noqa: BLE001
+                typer.echo(f"  抽取或提词出错（采集继续，之后用 polaris extract post 补）：{e}"[:200])
         if c.stats.calls == 0 and stop is None:
             stop = "这一轮一次都没调用（查询词用完或预算为 0）"
     typer.echo(f"今天共 {rounds} 轮，调用 {used} 次，新采到 {total_new} 条笔记。")
@@ -214,6 +217,37 @@ def seed(file: Path = typer.Option(FIXTURE, help="合成数据文件")) -> None:
         result = seed_records(file, run_id)
         stats.update(result.model_dump(exclude={"ids"}))
     typer.echo(f"读到 {result.received} 条，新写入 {result.inserted} 条，已存在 {result.duplicates} 条。")
+
+
+@app.command()
+def backfill() -> None:
+    """给原始条目补上缺的字段（近似重复指纹、发布时间、采集方式），旧版本采集器写进来的也能补齐。"""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import or_, select, update
+
+    from polaris.db.models import RawItem
+    from polaris.db.session import session_scope
+    from polaris.dedup import simhash64
+
+    methods = {"xhs": "mcp", "tencent:careers": "api", "bytedance:campus": "browser", "xhs:careers": "browser", "boss": "cli"}
+    n = 0
+    with session_scope() as s:
+        rows = s.execute(select(RawItem).where(or_(RawItem.simhash.is_(None), RawItem.fetch_method.is_(None),
+                                                   RawItem.published_at.is_(None) & (RawItem.source == "xhs")))).scalars()
+        for r in rows:
+            values = {}
+            if r.simhash is None:
+                values["simhash"] = simhash64(r.raw_text)
+            if r.fetch_method is None:
+                values["fetch_method"] = methods.get(r.source, "synthetic" if r.is_synthetic else "manual")
+            note_time = ((r.raw_json or {}).get("note") or {}).get("time")
+            if r.published_at is None and r.source == "xhs" and note_time:
+                values["published_at"] = datetime.fromtimestamp(note_time / 1000, UTC)
+            if values:
+                s.execute(update(RawItem).where(RawItem.id == r.id).values(**values))
+                n += 1
+    typer.echo(f"补齐 {n} 条。")
 
 
 @app.command()
