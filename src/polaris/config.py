@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris"
     ingest_token: SecretStr | None = None
     mcp_token: SecretStr | None = None  # /mcp 的口令；不配就关闭 MCP
+    neo4j_uri: str = "bolt://127.0.0.1:7687"  # 知识图谱（M4）
+    neo4j_user: str = "neo4j"
+    neo4j_password: SecretStr | None = None
 
     def model_for(self, role: Role) -> str:
         return getattr(self, f"llm_model_{role}") or self.llm_model

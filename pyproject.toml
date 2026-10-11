@@ -24,6 +24,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.2",
     "langsmith>=0.14.7",
     "playwright>=1.63.0",
+    "neo4j>=6.4.0",
 ]
 
 [project.scripts]

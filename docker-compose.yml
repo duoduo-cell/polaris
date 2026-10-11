@@ -52,6 +52,27 @@ services:
     ports:
       - "127.0.0.1:18060:18060"
 
+  neo4j:
+    # 知识图谱（M4）：Neo4j 5.26 LTS 社区版，带 APOC；只绑本机端口；密码从 .env 读
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?在 .env 里设置 NEO4J_PASSWORD}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null || exit 1"]
+      interval: 10s
+      retries: 30
+    restart: unless-stopped
+
 volumes:
   pgdata:
   xhs-data:
+  neo4j-data:
