@@ -78,6 +78,8 @@ def decide(c: Candidate, slot: list[MemoryFact], suppressed: bool, now: datetime
             return Decision("suppressed", "你否认过同样的推断，不再提")
         if same:
             return Decision("noop", "已经记着，不用再推断")
+        if any(f.value_key == vk for f in waiting or []):  # 测试集 v2 跑完后加：同样的推断已经在等你确认，不再重复问
+            return Decision("noop", "同样的推断已经在等你确认")
         return Decision("pending", "是推断出来的，先等你确认", question=f"我理解的是：{c.statement}。对吗？")
     if same and waiting and not attr.multi and c.polarity == "assert":
         # 问你"以哪个为准"时你重申了原来的（"还是 5 天吧"）：待确认的新说法作废
