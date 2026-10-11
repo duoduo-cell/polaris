@@ -76,6 +76,19 @@ def entities(s: Session, references: list[str], *, detailed: bool = False) -> li
     return [found[r] for r in references if r in found]
 
 
+def titles(s: Session, references: list[str]) -> dict[str, str]:
+    """编号 → 给人看的名字（只查名字，不带来源和跟进），图谱的例子等地方用。"""
+    ids = {prefix: [int(r[2:]) for r in references if r.startswith(f"{prefix}-") and REF_RE.fullmatch(r)] for prefix in "JPQ"}
+    out: dict[str, str] = {}
+    for j in s.scalars(select(Job).where(Job.id.in_(ids["J"]))).all() if ids["J"] else []:
+        out[f"J-{j.id}"] = " · ".join(x for x in (j.company or j.company_name, j.title) if x)
+    for p in s.scalars(select(Post).where(Post.id.in_(ids["P"]))).all() if ids["P"] else []:
+        out[f"P-{p.id}"] = (p.summary or "帖子")[:40]
+    for q in s.scalars(select(InterviewQuestion).where(InterviewQuestion.id.in_(ids["Q"]))).all() if ids["Q"] else []:
+        out[f"Q-{q.id}"] = q.question[:40]
+    return out
+
+
 def presentation(s: Session, answer: str, calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
     allowed = set().union(*(refs_from_output(c.get("output", "")) for c in calls if c.get("ok")))
     selected = list(dict.fromkeys(r for r in REF_RE.findall(answer) if r in allowed))[:12]

@@ -26,6 +26,7 @@ const SECTIONS = [
   { title: "背景", keys: ["school", "degree", "major", "skill", "project"] },
   { title: "投递和面试", keys: ["applied", "interview_stage"] },
 ];
+const UNITS: Record<string, string> = { days_per_week: "天", duration_months: "个月" };
 const NEEDED: [string, string][] = [["target_role", "想找的方向"], ["target_city", "城市"], ["days_per_week", "每周能去几天"],
   ["duration_months", "能实习多久"], ["skill", "会的技术"]];
 const STATUS: Record<string, [string, "green" | "gray" | "amber" | "red"]> = {
@@ -72,7 +73,7 @@ export default function Memory() {
     if (!list?.length) return null;
     return list.map((f, i) => <span key={f.id}>{i > 0 && joiner}
       <button type="button" onClick={() => showHistory(f)}
-              className="mx-px rounded px-1 py-0.5 text-accent bg-accent-soft hover:underline underline-offset-2">{hideRefs(f.value)}</button>
+              className="mx-px rounded px-1 py-px leading-normal align-baseline text-accent bg-accent-soft hover:underline underline-offset-2">{hideRefs(f.value)}</button>
     </span>);
   };
   const missing = NEEDED.filter(([k]) => !by.has(k)).map(([, label]) => label);
@@ -137,7 +138,7 @@ export default function Memory() {
                 {s.keys.flatMap((k) => by.get(k) ?? []).map((f) => (
                   <li key={f.id} className="group flex items-center gap-3 py-2 text-sm">
                     <span className="w-28 shrink-0 text-muted">{f.attribute.replace("（月）", "")}{f.for ? <span className="block text-xs text-faint truncate">{hideRefs(f.scope_label ?? f.for)}</span> : null}</span>
-                    <span className="flex-1 min-w-0 break-words">{hideRefs(f.value)}
+                    <span className="flex-1 min-w-0 break-words">{hideRefs(f.value)}{UNITS[ATTRS[f.attribute]] && /^\d+$/.test(f.value) ? ` ${UNITS[ATTRS[f.attribute]]}` : ""}
                       {f.valid_from && <span className="text-xs text-muted">（{f.valid_from} 起）</span>}</span>
                     <span className="flex gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" icon={History} label="来历" title="看来历" onClick={() => showHistory(f)} className="!px-1.5 !py-1" />

@@ -89,7 +89,7 @@ export default function Chat() {
           </select>
           <ChevronDown size={14} className="absolute right-1 text-muted pointer-events-none" aria-hidden />
         </label>
-        <Button variant="ghost" icon={Plus} onClick={newThread} disabled={submitting || loading}>新对话</Button>
+        <Button variant="ghost" icon={Plus} onClick={newThread} disabled={submitting || loading} className="whitespace-nowrap shrink-0">新对话</Button>
       </div>
 
       <div ref={scroller} data-testid="chat-transcript" className="flex-1 overflow-y-auto -mx-4 px-4"

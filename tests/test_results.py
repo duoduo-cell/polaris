@@ -208,3 +208,21 @@ def test_tool_cards_are_persisted_in_actual_chat_transcript(db):
         assert cards[f"J-{ids[0]}"]["followup"]["status"] == "applied"
         assert cards[f"J-{ids[1]}"]["followup"]["status"] == "untracked"
         assert refreshed[-1]["content"] == answer
+
+
+def test_company_level_progress_is_kept_while_asking_which_job(db):
+    """只说了公司、没说哪个岗位：先记在公司这一层并追问，不能因为用户没回答追问就整条丢掉（10-12 探针）。"""
+    from types import SimpleNamespace
+
+    from polaris.memory.extract import Extraction, FactCandidate, remember
+
+    seed()
+    facts = [FactCandidate(attribute="interview_stage", qualifier="字节", value="一面已过，等二面",
+                           statement="用户字节一面已过，在等二面", kind="stated")]
+    llm = SimpleNamespace(extract=lambda *a, **k: SimpleNamespace(ok=True, value=Extraction(facts=facts), error=None))
+    out = remember("我投过字节的 Agent 研发实习，现在一面过了在等二面", llm=llm, now=NOW)
+    assert any("哪个岗位" in q for q in out["questions"])
+    assert out["events"][0]["scope_label"] == "字节跳动（具体岗位待确认）"
+    with session_scope() as s:
+        assert slot_facts(s, "interview_stage", "字节跳动")[0].value == "一面已过，等二面"
+        assert s.scalars(select(JobFollowupEvent)).all() == []  # 不猜具体岗位，岗位进度不动

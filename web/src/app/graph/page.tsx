@@ -4,10 +4,11 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { BarChart3, Search, Sparkles } from "lucide-react";
 import { Button, Card, EmptyState, ErrorNote, PageHeader, Skeleton } from "@/components/markdown";
+import { ResultPanel } from "@/components/result-cards";
 import { tool } from "@/lib/client";
 
 type Group = { group: string; count: number; examples: string[] };
-type Stats = { of: string; matched: number; filters: Record<string, string>; groups: Group[]; hint?: string };
+type Stats = { of: string; matched: number; filters: Record<string, string>; groups: Group[]; hint?: string; names?: Record<string, string> };
 
 const PRESETS = [
   { label: "哪些公司的岗位要求 LangGraph", args: { of: "jobs", group_by: "company", skill: "LangGraph" } },
@@ -23,6 +24,7 @@ export default function Graph() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(null);
 
   async function run(a: Record<string, string>) {
     setBusy(true); setError(null);
@@ -98,7 +100,15 @@ export default function Graph() {
                                   transition={{ duration: 0.6, delay: i * 0.04, ease: "easeOut" }} />
                     </div>
                     <span className="text-right tabular-nums">{g.count}</span>
-                    <span className="hidden sm:block text-muted truncate text-xs" title={g.examples.join(" ")}>{g.examples.join(" ")}</span>
+                    <span className="hidden sm:block truncate text-xs">
+                      {g.examples[0] && stats.names?.[g.examples[0]] ? <>
+                        <button type="button" onClick={() => setOpened(g.examples[0])} className="text-muted hover:text-accent hover:underline"
+                                title={g.examples.map((r) => stats.names?.[r]).filter(Boolean).join("；")}>
+                          例：{stats.names[g.examples[0]]}
+                        </button>
+                        {g.examples.length > 1 && <span className="text-faint"> 等 {g.examples.length} 个</span>}
+                      </> : null}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -106,6 +116,7 @@ export default function Graph() {
           </motion.div>
         )}
       </AnimatePresence>
+      {opened && <ResultPanel key={opened} reference={opened} close={() => setOpened(null)} />}
     </div>
   );
 }

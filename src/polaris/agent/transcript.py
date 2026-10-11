@@ -22,6 +22,7 @@ def checkpoint_approvals(saved: Any) -> list[dict[str, Any]]:
 
 
 def ensure_thread(s: Session, thread_id: str) -> ChatThread:
+    """调用方要先调过 main.ready()：这里在事务里，第一次建检查点表会自己等自己。"""
     from polaris.agent.main import checkpointer
 
     lock_thread(s, thread_id)
@@ -56,6 +57,9 @@ def ensure_thread(s: Session, thread_id: str) -> ChatThread:
 
 
 def begin_turn(thread_id: str, message: str) -> str:
+    from polaris.agent.main import ready
+
+    ready()  # 登记会话前先在事务外建好检查点表（见 main.ready）
     key = str(uuid4())
     with session_scope() as s:
         ensure_thread(s, thread_id)

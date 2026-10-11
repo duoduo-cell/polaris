@@ -119,7 +119,7 @@ def test_tool_results_are_reported_and_turn_knows_context_size(db):
 
 def test_compaction_is_reported_with_a_chinese_summary(db, monkeypatch):
     monkeypatch.setattr(main, "SUMMARY_TRIGGER_TOKENS", 40)
-    monkeypatch.setattr(main, "SUMMARY_KEEP_MESSAGES", 2)
+    monkeypatch.setattr(main, "SUMMARY_KEEP", ("messages", 2))
     thread = tid()
     main.chat("我想找北京的 Agent 开发实习，" * 12, thread, model=script(AIMessage(content="好的")), **NO_MEMORY)
     events = []
@@ -170,3 +170,21 @@ def test_agenda_only_reports_recorded_facts(db):
     out = client.get("/api/me/agenda", headers=AUTH).json()
     assert out["doing"] == [] and out["done"] == []
     assert out["needs_you"][0]["kind"] == "profile"  # 还不知道你想找什么，先请你说
+
+
+def test_first_chat_on_a_fresh_database_does_not_deadlock(db):
+    """新库还没有检查点表时，第一句话会触发建表和 CREATE INDEX CONCURRENTLY；不能发生在登记会话的事务里（10-12 实测卡死）。"""
+    import threading
+
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints", "checkpoint_migrations"):
+            conn.execute(text(f"drop table if exists {table} cascade"))
+    main.checkpointer.cache_clear()
+    done: dict = {}
+    worker = threading.Thread(target=lambda: done.update(turn=main.chat("你好", tid(), model=script(AIMessage(content="你好")),
+                                                                        **NO_MEMORY)), daemon=True)
+    worker.start()
+    worker.join(30)
+    assert "turn" in done and done["turn"].answer == "你好"

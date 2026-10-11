@@ -1,4 +1,5 @@
 """jobs_* / posts_*：按字段筛、大厂叫法归一、只看大厂、编号出错给改法；M4 起查合并后的岗位，有 query 时按检索的相关度排。"""
+import json
 from datetime import UTC, date, datetime
 
 from sqlalchemy import select
@@ -51,7 +52,8 @@ def test_jobs_search_filters_and_aliases(db):
     assert ids["bd"] == ids["bd_bj"]  # 同一岗位两个城市挂牌，合并成一个
     rt = ToolRuntime()
     out = rt.invoke(REGISTRY["jobs_search"], {"company": "TikTok", "city": "杭州"})
-    assert f"J-{ids['bd']}" in out and "腾讯" not in out and '"listings": 2' in out
+    items = json.loads(out)["items"]
+    assert f"J-{ids['bd']}" in out and all("腾讯" not in i["company"] for i in items) and '"listings": 2' in out
     out = rt.invoke(REGISTRY["jobs_search"], {"city": "北京"})
     assert f"J-{ids['bd']}" in out  # 合并后城市取并集
     out = rt.invoke(REGISTRY["jobs_search"], {"city": "杭州"})

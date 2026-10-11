@@ -92,6 +92,31 @@ def job_sources(s, ids: list[int]) -> dict[int, list[dict[str, Any]]]:
     return sources
 
 
+def library_note(kind: str, dated: bool = False) -> dict[str, Any]:
+    """告诉模型查的是什么：本地库里的采集副本，最近一次采到是什么时候（10-12 探针里模型把查本地库说成了"搜了小红书"）。"""
+    from sqlalchemy import func
+
+    from polaris.report import BEIJING
+
+    with session_scope() as s:
+        latest = s.scalar(select(func.max(RawItem.fetched_at)).where(RawItem.kind == kind))
+        from polaris.sources import label
+
+        counts = dict(s.execute(select(RawItem.source, func.count()).where(RawItem.kind == kind, ~RawItem.source.like("synthetic%"))
+                                .group_by(RawItem.source)).all())
+        have = "、".join(f"{label(src)} {n}" for src, n in sorted(counts.items(), key=lambda x: -x[1]))
+        missing = [label(src) for src in (("boss",) if kind == "job" else ("xhs", "maimai", "nowcoder")) if src not in counts]
+        out: dict[str, Any] = {"scope": "本地库：常驻采集存下的副本，不是刚刚去网站或平台现搜的",
+                               "latest_fetch": latest.astimezone(BEIJING).strftime("%Y-%m-%d %H:%M") if latest else None,
+                               "by_source": have + (f"；{'、'.join(missing)}还没有采到" if missing else "")}
+        if dated:
+            total = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active"))
+            known = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active",
+                                                                          Job.posted_at.is_not(None)))
+            out["dated"] = f"在库岗位里写了发布日期的只有 {known}/{total} 个，按时间筛只能看这些"
+    return out
+
+
 def jobs_search(args: JobsSearchArgs) -> dict:
     order = ranked_ids(args.query, "jobs", args.company) if args.query else None
     with session_scope() as s:
@@ -125,7 +150,8 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             item["followup"] = progress[j.id]
     has_more = len(rows) > args.limit
     result: dict = {"returned": len(items), "items": items, "offset": args.offset,
-                    "next_offset": args.offset + args.limit if has_more else None}
+                    "next_offset": args.offset + args.limit if has_more else None,
+                    "library": library_note("job", dated=bool(args.since_days))}
     if not items:
         result["hint"] = ("没有符合条件的岗位。可以去掉一两个条件（比如城市、类型）、换个说法，"
                           "或者库里确实还没采到这家公司的岗位——那就如实告诉用户。")
@@ -234,7 +260,7 @@ def posts_search(args: PostsSearchArgs) -> dict:
         items = all_items[args.offset:args.offset + args.limit]
     has_more = len(all_items) > args.offset + args.limit
     result: dict = {"returned": len(items), "items": items, "offset": args.offset,
-                    "next_offset": args.offset + args.limit if has_more else None}
+                    "next_offset": args.offset + args.limit if has_more else None, "library": library_note("post")}
     if not items:
         result["hint"] = "没有符合条件的帖子。可以去掉类型或公司条件、换个说法；确实没有就如实告诉用户。"
     return result

@@ -75,8 +75,8 @@ def agenda(now: datetime | None = None) -> dict[str, Any]:
                                   "text": f"跟进 {name}（你定的日期）"})
         for f in s.scalars(select(MemoryFact).where(MemoryFact.status == "active", MemoryFact.valid_from > today)
                            .order_by(MemoryFact.valid_from).limit(10)):
-            scheduled.append({"kind": "memory", "when": f.valid_from.isoformat(),
-                              "text": f"起：{ATTRIBUTES[f.attribute].label} {f.value}" if f.attribute in ATTRIBUTES else f.statement})
+            scheduled.append({"kind": "memory", "when": f.valid_from.isoformat(), "detail": "到时自动生效",
+                              "text": f"{ATTRIBUTES[f.attribute].label}：{f.value}" if f.attribute in ATTRIBUTES else f.statement})
         brief_today = (BRIEFS / f"{today.isoformat()}.md").exists()
         if not brief_today:
             scheduled.insert(0, {"kind": "brief", "when": "08:30", "text": "出今日简报（有你的条件时）"})

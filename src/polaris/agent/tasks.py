@@ -36,6 +36,9 @@ def task_dict(task: ChatTask) -> dict[str, Any]:
 
 
 def submit(thread_id: str, kind: str, payload: dict[str, Any], request_key: str, *, start: bool = True) -> dict[str, Any]:
+    from polaris.agent.main import ready
+
+    ready()  # 登记会话前先在事务外建好检查点表（见 main.ready）
     with session_scope() as s:
         lock_thread(s, f"request:{request_key}")
         old = s.scalar(select(ChatTask).where(ChatTask.request_key == request_key))
@@ -84,6 +87,9 @@ def cancel(task_id: str) -> dict[str, Any]:
 
 
 def snapshot(thread_id: str) -> dict[str, Any]:
+    from polaris.agent.main import ready
+
+    ready()
     with session_scope() as s:
         thread = ensure_thread(s, thread_id)
         tasks = s.scalars(select(ChatTask).where(ChatTask.thread_id == thread_id)
@@ -108,6 +114,9 @@ def thread_list() -> list[dict[str, Any]]:
 
 class TaskService:
     def __init__(self, engine: Engine):
+        from polaris.agent.main import ready
+
+        ready()  # 先在事务外建好检查点表，否则登记会话时第一次建索引会卡死
         self.engine = engine
         self.wake = threading.Event()
         self.stopping = threading.Event()

@@ -386,6 +386,12 @@ def tool_endpoint(name: str, body: ToolIn) -> dict[str, Any]:
         result = out
     if call["ok"] and name in ("jobs_search", "jobs_get") and isinstance(result, dict):
         result = _with_match(result)
+    if call["ok"] and name == "kg_stats" and isinstance(result, dict):
+        from polaris.results import titles
+
+        refs = [r for g in result.get("groups", []) for r in g.get("examples", []) if isinstance(r, str)]
+        with session_scope() as s:
+            result = {**result, "names": titles(s, refs)}  # 网页只显示名字，不露编号
     return {"ok": call["ok"], "error_kind": call["error_kind"], "result": result}
 
 
