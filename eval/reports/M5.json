@@ -1,0 +1,2928 @@
+{
+  "dev": {
+    "generated_at": "2026-10-11T20:33:56+08:00",
+    "git_commit": "247a914-dirty",
+    "suite": "memory-v1",
+    "k": 1,
+    "model": "deepseek-v4.1-flash",
+    "turns": 28,
+    "turns_exact": 21,
+    "turn_errors": 0,
+    "ops": {
+      "tp": 50,
+      "fp": 6,
+      "fn": 2,
+      "precision": 0.8928571428571429,
+      "recall": 0.9615384615384616,
+      "f1": 0.9259259259259259
+    },
+    "by_op": {
+      "add": {
+        "tp": 39,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.975,
+        "recall": 1.0,
+        "f1": 0.9873417721518987
+      },
+      "ask": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "confirm": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6666666666666666
+      },
+      "invalidate": {
+        "tp": 2,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "pending": {
+        "tp": 2,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "reject": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "schedule": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "suppressed": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null,
+        "f1": null
+      },
+      "update": {
+        "tp": 4,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      }
+    },
+    "questions": 23,
+    "answers_ok": 23,
+    "answers": 23,
+    "pass_k": 23,
+    "abilities": {
+      "IE": {
+        "questions": 6,
+        "runs": 6,
+        "ok": 6,
+        "pass_k": 6
+      },
+      "MR": {
+        "questions": 3,
+        "runs": 3,
+        "ok": 3,
+        "pass_k": 3
+      },
+      "KU": {
+        "questions": 6,
+        "runs": 6,
+        "ok": 6,
+        "pass_k": 6
+      },
+      "TR": {
+        "questions": 4,
+        "runs": 4,
+        "ok": 4,
+        "pass_k": 4
+      },
+      "ABS": {
+        "questions": 4,
+        "runs": 4,
+        "ok": 4,
+        "pass_k": 4
+      }
+    },
+    "turn_details": [
+      {
+        "persona": "lin",
+        "session": 0,
+        "turn": 0,
+        "user": "你好，我是浙大计算机研二的学生，2027 年毕业，想找 Agent 开发方向的日常实习。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "school",
+            "qualifier": null,
+            "value": "浙江大学",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "major",
+            "qualifier": null,
+            "value": "计算机",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "硕士在读",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2027",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "Agent 开发",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "日常实习",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "school",
+            "value": [
+              "浙大",
+              "浙江大学"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "研二",
+              "硕士",
+              "研究生"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "grad_year",
+            "value": [
+              "2027"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "agent"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "job_type",
+            "value": [
+              "日常实习",
+              "实习"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 0,
+        "turn": 1,
+        "user": "城市的话北京或者杭州都行，每周能去 4 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "北京",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "杭州",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "北京"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "杭州"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "days_per_week",
+            "value": [
+              "4"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 1,
+        "turn": 0,
+        "user": "我会 LangGraph 和 RAG，做过一个基于 LangGraph 的面试助手项目。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "skill",
+            "qualifier": null,
+            "value": "LangGraph",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "skill",
+            "qualifier": null,
+            "value": "RAG",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "project",
+            "qualifier": null,
+            "value": "基于 LangGraph 的面试助手",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "skill",
+            "value": [
+              "langgraph"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "skill",
+            "value": [
+              "rag"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "project",
+            "value": [
+              "面试助手"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 1,
+        "turn": 1,
+        "user": "最早 11 月 1 号能开始实习。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "available_from",
+            "qualifier": null,
+            "value": "2026-11-01",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "available_from",
+            "value": [
+              "11-01",
+              "11月1",
+              "1101",
+              "11.1"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 2,
+        "turn": 0,
+        "user": "字节那边约了我下周一面。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "字节跳动",
+            "value": "一面已约",
+            "reason": "新信息"
+          },
+          {
+            "op": "pending",
+            "attribute": "applied",
+            "qualifier": "字节跳动",
+            "value": "投递过",
+            "reason": "是推断出来的，先等你确认"
+          }
+        ],
+        "questions": [
+          "我理解的是：用户投递过字节跳动的岗位。对吗？"
+        ],
+        "tp": [
+          {
+            "op": "pending",
+            "attr": "applied",
+            "q": "字节跳动",
+            "value": [
+              ""
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "interview_stage",
+            "q": "字节跳动",
+            "value": [
+              "一面"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 2,
+        "turn": 1,
+        "user": "对，我投的是字节的 Agent 开发实习。",
+        "error": null,
+        "events": [
+          {
+            "op": "confirm",
+            "attribute": "applied",
+            "qualifier": "字节跳动",
+            "value": "Agent 开发实习",
+            "reason": "你确认了"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "confirm",
+            "attr": "applied",
+            "q": "字节跳动",
+            "value": [
+              "agent"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 3,
+        "turn": 0,
+        "user": "字节一面过了，下周二面。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "interview_stage",
+            "qualifier": "字节跳动",
+            "value": "一面已过",
+            "reason": "面试进度往前走了"
+          },
+          {
+            "op": "update",
+            "attribute": "interview_stage",
+            "qualifier": "字节跳动",
+            "value": "二面已约",
+            "reason": "面试进度往前走了"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "update",
+            "attr": "interview_stage",
+            "q": "字节跳动",
+            "value": [
+              "二面"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [
+          {
+            "op": "update",
+            "attribute": "interview_stage",
+            "qualifier": "字节跳动",
+            "value": "一面已过",
+            "reason": "面试进度往前走了",
+            "fact_id": 16,
+            "old_fact_id": 14
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "lin",
+        "session": 3,
+        "turn": 1,
+        "user": "另外现在每周只能去 3 天了，课比较多。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "3",
+            "reason": "你明确说改了"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "update",
+            "attr": "days_per_week",
+            "value": [
+              "3"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 3,
+        "turn": 2,
+        "user": "杭州就不考虑了。",
+        "error": null,
+        "events": [
+          {
+            "op": "invalidate",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "杭州",
+            "reason": "你说这条不再成立"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "invalidate",
+            "attr": "target_city",
+            "value": [
+              "杭州"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "lin",
+        "session": 4,
+        "turn": 0,
+        "user": "帮我看看北京有哪些 Agent 实习？",
+        "error": null,
+        "events": [],
+        "questions": [],
+        "tp": [],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zhou",
+        "session": 0,
+        "turn": 0,
+        "user": "我是北邮本科大四，27 届，找上海的大模型应用开发实习，每周能去 5 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "school",
+            "qualifier": null,
+            "value": "北京邮电大学",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "本科在读",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2027",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "上海",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "大模型应用开发",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "实习",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "5",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "school",
+            "value": [
+              "北邮",
+              "北京邮电"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "本科"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "grad_year",
+            "value": [
+              "2027",
+              "27"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "上海"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "大模型应用"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "days_per_week",
+            "value": [
+              "5"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zhou",
+        "session": 0,
+        "turn": 1,
+        "user": "比较想去腾讯和小红书。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "company_like",
+            "qualifier": null,
+            "value": "腾讯",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "company_like",
+            "qualifier": null,
+            "value": "小红书",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "company_like",
+            "value": [
+              "腾讯"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "company_like",
+            "value": [
+              "小红书"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zhou",
+        "session": 1,
+        "turn": 0,
+        "user": "我每周能去 4 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "你明确说改了"
+          }
+        ],
+        "questions": [],
+        "tp": [],
+        "fn": [
+          {
+            "op": "ask",
+            "attr": "days_per_week",
+            "value": [
+              "4"
+            ]
+          }
+        ],
+        "fp": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "你明确说改了",
+            "fact_id": 10,
+            "old_fact_id": 7
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "zhou",
+        "session": 1,
+        "turn": 1,
+        "user": "对，以 4 天为准。",
+        "error": null,
+        "events": [
+          {
+            "op": "noop",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "和记着的一样"
+          }
+        ],
+        "questions": [],
+        "tp": [],
+        "fn": [
+          {
+            "op": "confirm",
+            "attr": "days_per_week",
+            "value": [
+              "4"
+            ]
+          }
+        ],
+        "fp": [],
+        "exact": false
+      },
+      {
+        "persona": "zhou",
+        "session": 2,
+        "turn": 0,
+        "user": "小红书算了，听说那个组很卷。",
+        "error": null,
+        "events": [
+          {
+            "op": "invalidate",
+            "attribute": "company_like",
+            "qualifier": null,
+            "value": "小红书",
+            "reason": "你说这条不再成立"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "invalidate",
+            "attr": "company_like",
+            "value": [
+              "小红书"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zhou",
+        "session": 2,
+        "turn": 1,
+        "user": "日薪最好 300 以上。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "salary_expect",
+            "qualifier": null,
+            "value": "日薪 300 以上",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "salary_expect",
+            "value": [
+              "300"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zhou",
+        "session": 3,
+        "turn": 0,
+        "user": "我也开始投字节了，投的是大模型应用开发实习。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "字节跳动",
+            "value": "大模型应用开发实习",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "applied",
+            "q": "字节跳动",
+            "value": [
+              "大模型应用"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "chen",
+        "session": 0,
+        "turn": 0,
+        "user": "我是北大软微的硕士，2028 年毕业，想找推荐算法或者大模型算法的实习，能实习 6 个月。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "school",
+            "qualifier": null,
+            "value": "北京大学",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "硕士在读",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2028",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "推荐算法",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "大模型算法",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "duration_months",
+            "qualifier": null,
+            "value": "6",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "school",
+            "value": [
+              "北大",
+              "北京大学"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "硕士"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "grad_year",
+            "value": [
+              "2028"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "推荐"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "大模型"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "duration_months",
+            "value": [
+              "6"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "chen",
+        "session": 0,
+        "turn": 1,
+        "user": "现在每周能去 3 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "3",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "days_per_week",
+            "value": [
+              "3"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "chen",
+        "session": 1,
+        "turn": 0,
+        "user": "最近在准备腾讯的面试，刷了好多八股。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "腾讯",
+            "value": "准备面试",
+            "reason": "新信息"
+          },
+          {
+            "op": "pending",
+            "attribute": "applied",
+            "qualifier": "腾讯",
+            "value": "投递过",
+            "reason": "是推断出来的，先等你确认"
+          }
+        ],
+        "questions": [
+          "我理解的是：用户投递过腾讯（因此进入面试准备阶段）。对吗？"
+        ],
+        "tp": [
+          {
+            "op": "pending",
+            "attr": "applied",
+            "q": "腾讯",
+            "value": [
+              ""
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "腾讯",
+            "value": "准备面试",
+            "reason": "新信息",
+            "fact_id": 8,
+            "old_fact_id": null
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "chen",
+        "session": 1,
+        "turn": 1,
+        "user": "不是，我没投腾讯，只是拿腾讯的面经练手。",
+        "error": null,
+        "events": [
+          {
+            "op": "reject",
+            "attribute": "applied",
+            "qualifier": "腾讯",
+            "value": "投递过",
+            "reason": "你说不对"
+          },
+          {
+            "op": "invalidate",
+            "attribute": "interview_stage",
+            "qualifier": "腾讯",
+            "value": "准备面试",
+            "reason": "你说这条不再成立"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "reject",
+            "attr": "applied",
+            "q": "腾讯",
+            "value": [
+              ""
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [
+          {
+            "op": "invalidate",
+            "attribute": "interview_stage",
+            "qualifier": "腾讯",
+            "value": "准备面试",
+            "reason": "你说这条不再成立",
+            "fact_id": null,
+            "old_fact_id": 8
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "chen",
+        "session": 2,
+        "turn": 0,
+        "user": "12 月开始课少了，每周能去 5 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "schedule",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "5",
+            "reason": "从 2026-12-01 起按新的，之前仍按旧的"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "schedule",
+            "attr": "days_per_week",
+            "value": [
+              "5"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "chen",
+        "session": 2,
+        "turn": 1,
+        "user": "我又在看腾讯的面经了。",
+        "error": null,
+        "events": [
+          {
+            "op": "suppressed",
+            "attribute": "interview_stage",
+            "qualifier": "腾讯",
+            "value": "准备面试",
+            "reason": "你否认过同样的推断，不再提"
+          },
+          {
+            "op": "suppressed",
+            "attribute": "applied",
+            "qualifier": "腾讯",
+            "value": "投递过",
+            "reason": "你否认过同样的推断，不再提"
+          }
+        ],
+        "questions": [],
+        "tp": [],
+        "fn": [],
+        "fp": [
+          {
+            "op": "suppressed",
+            "attribute": "interview_stage",
+            "qualifier": "腾讯",
+            "value": "准备面试",
+            "reason": "你否认过同样的推断，不再提",
+            "fact_id": null,
+            "old_fact_id": null
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "wu",
+        "session": 0,
+        "turn": 0,
+        "user": "我是 26 届硕士，在找 Agent 方向的实习，base 深圳。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2026",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "硕士",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "Agent",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "深圳",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "实习",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "grad_year",
+            "value": [
+              "2026",
+              "26"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "硕士"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "agent"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "深圳"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "wu",
+        "session": 0,
+        "turn": 1,
+        "user": "字节跳动有 Agent 实习吗？",
+        "error": null,
+        "events": [],
+        "questions": [],
+        "tp": [],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "wu",
+        "session": 1,
+        "turn": 0,
+        "user": "我投了美团、快手和腾讯的 Agent 实习。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "美团",
+            "value": "Agent 实习",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "快手",
+            "value": "Agent 实习",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "腾讯",
+            "value": "Agent 实习",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "applied",
+            "q": "美团",
+            "value": [
+              "agent"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "applied",
+            "q": "快手",
+            "value": [
+              "agent"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "applied",
+            "q": "腾讯",
+            "value": [
+              "agent"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "wu",
+        "session": 2,
+        "turn": 0,
+        "user": "美团约了一面，快手已经二面了。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "美团",
+            "value": "一面已约",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "快手",
+            "value": "二面",
+            "reason": "新信息"
+          },
+          {
+            "op": "pending",
+            "attribute": "applied",
+            "qualifier": "快手",
+            "value": "投递过",
+            "reason": "是推断出来的，先等你确认"
+          }
+        ],
+        "questions": [
+          "我理解的是：用户投递过快手的岗位。对吗？"
+        ],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "interview_stage",
+            "q": "美团",
+            "value": [
+              "一面"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "interview_stage",
+            "q": "快手",
+            "value": [
+              "二面"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [
+          {
+            "op": "pending",
+            "attribute": "applied",
+            "qualifier": "快手",
+            "value": "投递过",
+            "reason": "是推断出来的，先等你确认",
+            "fact_id": 11,
+            "old_fact_id": null
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "wu",
+        "session": 3,
+        "turn": 0,
+        "user": "快手挂了，美团一面过了等二面。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "interview_stage",
+            "qualifier": "快手",
+            "value": "挂了",
+            "reason": "面试进度往前走了"
+          },
+          {
+            "op": "update",
+            "attribute": "interview_stage",
+            "qualifier": "美团",
+            "value": "一面已过，等二面",
+            "reason": "面试进度往前走了"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "update",
+            "attr": "interview_stage",
+            "q": "快手",
+            "value": [
+              "挂",
+              "未通过",
+              "没过",
+              "失败"
+            ]
+          },
+          {
+            "op": "update",
+            "attr": "interview_stage",
+            "q": "美团",
+            "value": [
+              "二面"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      }
+    ],
+    "answer_details": [
+      {
+        "persona": "lin",
+        "id": "lin-ie-school",
+        "ability": "IE",
+        "k": 0,
+        "question": "我是哪个学校、哪年毕业的？",
+        "answer": "浙江大学（M-1），2027 年毕业（M-4）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "lin",
+        "id": "lin-ku-days",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在每周能去几天？",
+        "answer": "每周能到岗 **3 天**，从 2026-10-05 起（M-18）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "lin",
+        "id": "lin-tr-days",
+        "ability": "TR",
+        "k": 0,
+        "question": "我 9 月底的时候说的是每周能去几天？",
+        "answer": "9 月底你说是 **每周能去 4 天**（M-9，2026-09-15 记下，原话\"城市的话北京或者杭州都行，每周能去 4 天\"）。\n\n10-05 起你改了口径，现在是**每周 3 天**（M-18，\"课比较多\"）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_known_at",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "lin",
+        "id": "lin-ku-city",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在考虑哪些城市？",
+        "answer": "目前只考虑 **北京** 一个城市（M-7）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "lin",
+        "id": "lin-mr-stage",
+        "ability": "MR",
+        "k": 0,
+        "question": "我投的那家公司现在面到第几轮了？",
+        "answer": "你投的是字节跳动（Agent 开发实习，M-15），现在进度是**二面已约**（M-17）——一面已过。\n\n过程：9-28 记的是\"一面已约\"（M-14），10-05 更新为\"一面已过\"（M-16），同一天又记为\"二面已约\"（M-17）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "lin",
+        "id": "lin-tr-start",
+        "ability": "TR",
+        "k": 0,
+        "question": "我最早什么时候能开始实习？",
+        "answer": "你最早能开始实习的时间是 **2026-11-01**（M-13，你在 2026-09-22 提到\"最早 11 月 1 号能开始实习\"）。\n\n另外补充一条相关的：每周能到岗 3 天，从 2026-10-05 起生效（M-18）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "lin",
+        "id": "lin-abs-salary",
+        "ability": "ABS",
+        "k": 0,
+        "question": "我说过期望薪资是多少吗？",
+        "answer": "你没跟我说过期望薪资，我这边没有相关记录。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "zhou",
+        "id": "zhou-ku-days",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在每周能去几天？",
+        "answer": "每周能到岗 4 天（M-10）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "zhou",
+        "id": "zhou-ie-city",
+        "ability": "IE",
+        "k": 0,
+        "question": "我想找哪个城市的实习？",
+        "answer": "上海（M-4）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "zhou",
+        "id": "zhou-ku-company",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在最想去哪家公司？",
+        "answer": "腾讯（M-8）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "zhou",
+        "id": "zhou-tr-days",
+        "ability": "TR",
+        "k": 0,
+        "question": "9 月 20 号那天，我说的是每周能去几天？",
+        "answer": "9 月 20 号那天记的是**每周 5 天**（M-7），是 9 月 18 号你说的。9 月 21 号改成了 4 天（M-10，现在仍有效）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_known_at",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "zhou",
+        "id": "zhou-ie-salary",
+        "ability": "IE",
+        "k": 0,
+        "question": "我期望的日薪是多少？",
+        "answer": "你的期望薪资是**日薪 300 以上**（M-11）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "zhou",
+        "id": "zhou-abs-skill",
+        "ability": "ABS",
+        "k": 0,
+        "question": "我跟你说过我会哪些技术吗？",
+        "answer": "你没跟我说过你会哪些技术。我这边只有你的方向、城市、类型、毕业年份这些信息，没有技能记录。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "chen",
+        "id": "chen-ku-days",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在每周能去几天？",
+        "answer": "每周 3 天（M-7）。这条到 2026-12-01 有效。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "chen",
+        "id": "chen-tr-dec",
+        "ability": "TR",
+        "k": 0,
+        "question": "到了 12 月，我每周能去几天？",
+        "answer": "到 12 月是每周 **5 天**。\n\n依据：你 10 月 6 日说过\"12 月开始课少了，每周能去 5 天\"（M-10），从 2026-12-01 起生效；之前的\"3 天\"（M-7）到 12 月 1 日就失效了。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "chen",
+        "id": "chen-ie-duration",
+        "ability": "IE",
+        "k": 0,
+        "question": "我能实习多久？",
+        "answer": "你能实习 **6 个月**（M-6）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "chen",
+        "id": "chen-ie-roles",
+        "ability": "IE",
+        "k": 0,
+        "question": "我想找哪些方向的实习？",
+        "answer": "你记着两个方向：推荐算法（M-4）和大模型算法（M-5）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "chen",
+        "id": "chen-abs-tencent",
+        "ability": "ABS",
+        "k": 0,
+        "question": "我投过腾讯吗？",
+        "answer": "严格说现在没有这条记录：\n\n- 9/25 我曾根据你那句\"最近在准备腾讯的面试，刷了好多八股\"推断\"投递过腾讯\"（M-9，推断的），当天就被撤掉了；同一句话里的面试进度\"准备面试\"（M-8）也在 9/25 撤回。\n- 今天卡片里已经没有腾讯的投递或面试记录（只剩方向 M-4/M-5、到岗 M-7、时长 M-6、毕业年 M-3、学校 M-1、学历 M-2）。\n\n所以：你确实提过腾讯的面试，但\"投过腾讯\"是你自己说的还是我的推断，现在已经没有有效记录了。要我把现状记上吗？",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card",
+          "memory_history",
+          "memory_known_at"
+        ]
+      },
+      {
+        "persona": "wu",
+        "id": "wu-mr-applied",
+        "ability": "MR",
+        "k": 0,
+        "question": "我投了几家公司？分别是哪几家？",
+        "answer": "你投了 3 家，都是 Agent 实习：\n\n- 快手（M-7）—— 面试挂了（M-12）\n- 美团（M-6）—— 一面已过，等二面（M-13）\n- 腾讯（M-8）—— 暂无面试进度记录",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "wu",
+        "id": "wu-mr-active",
+        "ability": "MR",
+        "k": 0,
+        "question": "哪家公司我还在面试流程里，在等哪一轮？",
+        "answer": "**美团**——一面已过，在等二面（M-13）。\n\n其余：快手已挂（M-12）；腾讯虽然投过 Agent 实习（M-8），但你没有跟我说过它的面试进度。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "wu",
+        "id": "wu-ku-kuaishou",
+        "ability": "KU",
+        "k": 0,
+        "question": "快手现在是什么状态？",
+        "answer": "快手这边：投的是 Agent 实习（M-7），面试进度是**挂了**（M-12）。\n\n要不要顺便看看美团？那边是一面已过、等二面（M-13）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "wu",
+        "id": "wu-ie-city",
+        "ability": "IE",
+        "k": 0,
+        "question": "我想在哪个城市实习？",
+        "answer": "深圳。（M-4）",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "wu",
+        "id": "wu-abs-tencent",
+        "ability": "ABS",
+        "k": 0,
+        "question": "腾讯那边面试到哪一步了？",
+        "answer": "腾讯这边你只跟我说过投递了 Agent 实习（M-8），面试进度**没跟我提过**，我这儿没有记录（快手是挂了 M-12，美团一面已过、等二面 M-13）。面试完记得回来说一声。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      }
+    ]
+  },
+  "holdout": {
+    "generated_at": "2026-10-11T20:39:22+08:00",
+    "git_commit": "247a914-dirty",
+    "suite": "memory-holdout-v1",
+    "k": 1,
+    "model": "deepseek-v4.1-flash",
+    "turns": 16,
+    "turns_exact": 12,
+    "turn_errors": 0,
+    "ops": {
+      "tp": 36,
+      "fp": 4,
+      "fn": 2,
+      "precision": 0.9,
+      "recall": 0.9473684210526315,
+      "f1": 0.9230769230769231
+    },
+    "by_op": {
+      "add": {
+        "tp": 31,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "ask": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "invalidate": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1": 0.6666666666666666
+      },
+      "pending": {
+        "tp": 2,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "reject": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "schedule": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "update": {
+        "tp": 1,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.3333333333333333,
+        "recall": 1.0,
+        "f1": 0.5
+      }
+    },
+    "questions": 16,
+    "answers_ok": 16,
+    "answers": 16,
+    "pass_k": 16,
+    "abilities": {
+      "IE": {
+        "questions": 4,
+        "runs": 4,
+        "ok": 4,
+        "pass_k": 4
+      },
+      "MR": {
+        "questions": 3,
+        "runs": 3,
+        "ok": 3,
+        "pass_k": 3
+      },
+      "KU": {
+        "questions": 4,
+        "runs": 4,
+        "ok": 4,
+        "pass_k": 4
+      },
+      "TR": {
+        "questions": 2,
+        "runs": 2,
+        "ok": 2,
+        "pass_k": 2
+      },
+      "ABS": {
+        "questions": 3,
+        "runs": 3,
+        "ok": 3,
+        "pass_k": 3
+      }
+    },
+    "turn_details": [
+      {
+        "persona": "yang",
+        "session": 0,
+        "turn": 0,
+        "user": "我在南大读大三，软件工程专业，想找个大模型应用方向的暑期实习，base 南京或者上海都可以。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "school",
+            "qualifier": null,
+            "value": "南京大学",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "本科在读",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "major",
+            "qualifier": null,
+            "value": "软件工程",
+            "reason": "新信息"
+          },
+          {
+            "op": "pending",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2028",
+            "reason": "是推断出来的，先等你确认"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "大模型应用",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "暑期实习",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "南京",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "上海",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [
+          "我理解的是：用户预计 2028 年毕业。对吗？"
+        ],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "school",
+            "value": [
+              "南大",
+              "南京大学"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "本科",
+              "大三"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "major",
+            "value": [
+              "软件工程"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "大模型应用"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "job_type",
+            "value": [
+              "暑期实习",
+              "实习"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "南京"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "上海"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [
+          {
+            "op": "pending",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2028",
+            "reason": "是推断出来的，先等你确认",
+            "fact_id": 4,
+            "old_fact_id": null
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "yang",
+        "session": 0,
+        "turn": 1,
+        "user": "我会 Python 和 LangChain。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "skill",
+            "qualifier": null,
+            "value": "Python",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "skill",
+            "qualifier": null,
+            "value": "LangChain",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "skill",
+            "value": [
+              "python"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "skill",
+            "value": [
+              "langchain"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "yang",
+        "session": 1,
+        "turn": 0,
+        "user": "其实我改主意了，想找日常实习，暑期太晚了。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "日常实习",
+            "reason": "你明确说改了"
+          },
+          {
+            "op": "invalidate",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "暑期实习",
+            "reason": "你说这条不再成立"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "update",
+            "attr": "job_type",
+            "value": [
+              "日常实习"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [
+          {
+            "op": "invalidate",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "暑期实习",
+            "reason": "你说这条不再成立",
+            "fact_id": null,
+            "old_fact_id": 11
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "yang",
+        "session": 1,
+        "turn": 1,
+        "user": "阿里也不考虑了，我更想去字节。",
+        "error": null,
+        "events": [
+          {
+            "op": "noop",
+            "attribute": "company_like",
+            "qualifier": null,
+            "value": "阿里巴巴",
+            "reason": "要作废的说法本来就不在记忆里"
+          },
+          {
+            "op": "add",
+            "attribute": "company_like",
+            "qualifier": null,
+            "value": "字节跳动",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "company_like",
+            "value": [
+              "字节"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "yang",
+        "session": 2,
+        "turn": 0,
+        "user": "字节的面试官刚约了我后天一面。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "字节跳动",
+            "value": "一面已约",
+            "reason": "新信息"
+          },
+          {
+            "op": "pending",
+            "attribute": "applied",
+            "qualifier": "字节跳动",
+            "value": "投递过",
+            "reason": "是推断出来的，先等你确认"
+          }
+        ],
+        "questions": [
+          "我理解的是：用户投递过字节跳动。对吗？"
+        ],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "interview_stage",
+            "q": "字节跳动",
+            "value": [
+              "一面"
+            ]
+          },
+          {
+            "op": "pending",
+            "attr": "applied",
+            "q": "字节跳动",
+            "value": [
+              ""
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zheng",
+        "session": 0,
+        "turn": 0,
+        "user": "我是华科硕士二年级，27 年毕业，每周可以去 5 天，想做 RAG 或者搜索相关的。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "school",
+            "qualifier": null,
+            "value": "华中科技大学",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "硕士在读",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2027",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "5",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "RAG",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "搜索",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "school",
+            "value": [
+              "华科",
+              "华中科技"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "硕士"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "grad_year",
+            "value": [
+              "2027",
+              "27"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "days_per_week",
+            "value": [
+              "5"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "rag"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "搜索"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zheng",
+        "session": 1,
+        "turn": 0,
+        "user": "每周大概能去 4 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "你明确说改了"
+          }
+        ],
+        "questions": [],
+        "tp": [],
+        "fn": [
+          {
+            "op": "ask",
+            "attr": "days_per_week",
+            "value": [
+              "4"
+            ]
+          }
+        ],
+        "fp": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "你明确说改了",
+            "fact_id": 7,
+            "old_fact_id": 4
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "zheng",
+        "session": 1,
+        "turn": 1,
+        "user": "还是 5 天吧，刚才说错了。",
+        "error": null,
+        "events": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "5",
+            "reason": "你明确说改了"
+          }
+        ],
+        "questions": [],
+        "tp": [],
+        "fn": [
+          {
+            "op": "reject",
+            "attr": "days_per_week",
+            "value": [
+              "4"
+            ]
+          }
+        ],
+        "fp": [
+          {
+            "op": "update",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "5",
+            "reason": "你明确说改了",
+            "fact_id": 8,
+            "old_fact_id": 7
+          }
+        ],
+        "exact": false
+      },
+      {
+        "persona": "zheng",
+        "session": 2,
+        "turn": 0,
+        "user": "下周一（10 月 12 号）开始就能入职了。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "available_from",
+            "qualifier": null,
+            "value": "2026-10-12",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "available_from",
+            "value": [
+              "10-12",
+              "1012",
+              "10月12"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "zheng",
+        "session": 2,
+        "turn": 1,
+        "user": "我投了腾讯的搜索算法实习和美团的 RAG 实习。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "腾讯",
+            "value": "搜索算法实习",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "美团",
+            "value": "RAG 实习",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "applied",
+            "q": "腾讯",
+            "value": [
+              "搜索"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "applied",
+            "q": "美团",
+            "value": [
+              "rag"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "sun",
+        "session": 0,
+        "turn": 0,
+        "user": "我是西电的研究生，做过一个多 Agent 协作的论文助手项目，还有一个 RAG 知识库问答。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "school",
+            "qualifier": null,
+            "value": "西安电子科技大学",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "degree",
+            "qualifier": null,
+            "value": "硕士在读",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "project",
+            "qualifier": null,
+            "value": "多 Agent 协作的论文助手",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "project",
+            "qualifier": null,
+            "value": "RAG 知识库问答",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "school",
+            "value": [
+              "西电",
+              "西安电子"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "degree",
+            "value": [
+              "研究生",
+              "硕士"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "project",
+            "value": [
+              "论文助手"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "project",
+            "value": [
+              "知识库"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "sun",
+        "session": 0,
+        "turn": 1,
+        "user": "不想去外包，也不接受单休。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "constraint",
+            "qualifier": null,
+            "value": "不接受外包",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "constraint",
+            "qualifier": null,
+            "value": "不接受单休",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "constraint",
+            "value": [
+              "外包"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "constraint",
+            "value": [
+              "单休"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "sun",
+        "session": 1,
+        "turn": 0,
+        "user": "那个论文助手的项目别记了，太水了。",
+        "error": null,
+        "events": [
+          {
+            "op": "invalidate",
+            "attribute": "project",
+            "qualifier": null,
+            "value": "多 Agent 协作的论文助手",
+            "reason": "你说这条不再成立"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "invalidate",
+            "attr": "project",
+            "value": [
+              "论文助手"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "xu",
+        "session": 0,
+        "turn": 0,
+        "user": "我现在每周只能去 2 天，从 11 月 15 号开始每周能去 4 天。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "2",
+            "reason": "新信息"
+          },
+          {
+            "op": "schedule",
+            "attribute": "days_per_week",
+            "qualifier": null,
+            "value": "4",
+            "reason": "从 2026-11-15 起按新的，之前仍按旧的"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "days_per_week",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "op": "schedule",
+            "attr": "days_per_week",
+            "value": [
+              "4"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "xu",
+        "session": 0,
+        "turn": 1,
+        "user": "能实习 4 个月左右，想找北京的 Agent 评测岗。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "duration_months",
+            "qualifier": null,
+            "value": "4",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_city",
+            "qualifier": null,
+            "value": "北京",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "Agent 评测",
+            "reason": "新信息"
+          }
+        ],
+        "questions": [],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "duration_months",
+            "value": [
+              "4"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_city",
+            "value": [
+              "北京"
+            ]
+          },
+          {
+            "op": "add",
+            "attr": "target_role",
+            "value": [
+              "评测"
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      },
+      {
+        "persona": "xu",
+        "session": 1,
+        "turn": 0,
+        "user": "快手的评测实习一面过了，在等二面。",
+        "error": null,
+        "events": [
+          {
+            "op": "add",
+            "attribute": "interview_stage",
+            "qualifier": "快手",
+            "value": "一面已过，等二面",
+            "reason": "新信息"
+          },
+          {
+            "op": "pending",
+            "attribute": "applied",
+            "qualifier": "快手",
+            "value": "评测实习",
+            "reason": "是推断出来的，先等你确认"
+          }
+        ],
+        "questions": [
+          "我理解的是：用户投递过快手的评测实习岗位。对吗？"
+        ],
+        "tp": [
+          {
+            "op": "add",
+            "attr": "interview_stage",
+            "q": "快手",
+            "value": [
+              "二面"
+            ]
+          },
+          {
+            "op": "pending",
+            "attr": "applied",
+            "q": "快手",
+            "value": [
+              ""
+            ]
+          }
+        ],
+        "fn": [],
+        "fp": [],
+        "exact": true
+      }
+    ],
+    "answer_details": [
+      {
+        "persona": "yang",
+        "id": "yang-ku-type",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在找的是暑期实习还是日常实习？",
+        "answer": "现在没有生效的说法——你之前两次说的都被作废了：\n\n- 2026-09-14 说想找**暑期实习**（M-6，2026-09-26 被取代）\n- 2026-09-26 改口说想找**日常实习**（M-11，但同一天被撤回）\n\n所以目前卡片里没有\"找什么类型\"这条，我也就不替你猜。要不要现在定一个？",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "yang",
+        "id": "yang-ie-cities",
+        "ability": "IE",
+        "k": 0,
+        "question": "我考虑哪些城市？",
+        "answer": "你在考虑两个城市：**南京**（M-7）和**上海**（M-8）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "yang",
+        "id": "yang-mr-bytedance",
+        "ability": "MR",
+        "k": 0,
+        "question": "我最想去的那家公司，现在面试到哪一步了？",
+        "answer": "你想去的公司是字节跳动（M-12），面试进度：一面已约，2026-10-11 起（M-13）。\n\n按你之前说的\"后天一面\"，这一面应该就是今天。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "yang",
+        "id": "yang-tr-type",
+        "ability": "TR",
+        "k": 0,
+        "question": "9 月中旬的时候，我说的是找哪种实习？",
+        "answer": "9 月中旬你说的是**暑期实习**（M-6，记于 2026-09-14）。\n\n后来 9 月 26 日你改口说想找**日常实习**（M-11），不过这条后来也被撤销了。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_known_at"
+        ]
+      },
+      {
+        "persona": "yang",
+        "id": "yang-abs-days",
+        "ability": "ABS",
+        "k": 0,
+        "question": "我说过每周能去几天吗？",
+        "answer": "你没跟我说过每周能到岗几天——这条我这边没有记录（卡片 M- 里也没有，历史里也没记过）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "zheng",
+        "id": "zheng-ku-days",
+        "ability": "KU",
+        "k": 0,
+        "question": "我每周能去几天？",
+        "answer": "每周能到岗 5 天（M-8）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "zheng",
+        "id": "zheng-ie-start",
+        "ability": "IE",
+        "k": 0,
+        "question": "我什么时候能入职？",
+        "answer": "你登记的最早入职时间是 **2026-10-12（周一）**，按你 10 月 2 号的说法\"下周一（10 月 12 号）开始就能入职了\"（M-9）。这条从明天起才生效，所以今天卡片上还没显示；每周可到岗 5 天（M-8）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "zheng",
+        "id": "zheng-mr-applied",
+        "ability": "MR",
+        "k": 0,
+        "question": "我投了哪几家，各是什么岗位？",
+        "answer": "两家：\n\n- 腾讯：搜索算法实习（M-10）\n- 美团：RAG 实习（M-11）\n\n都是 10-02 记下的。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "zheng",
+        "id": "zheng-abs-stage",
+        "ability": "ABS",
+        "k": 0,
+        "question": "美团那边约面试了吗？",
+        "answer": "没记录到美团约面试的消息——面试进度这块你没跟我说过。\n\n我这边只有一条：你在美团投过 RAG 实习（M-11）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_history",
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "sun",
+        "id": "sun-ku-projects",
+        "ability": "KU",
+        "k": 0,
+        "question": "你记着我做过哪些项目？",
+        "answer": "你跟我说过的项目只有一个：**RAG 知识库问答**（M-4）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "sun",
+        "id": "sun-ie-constraints",
+        "ability": "IE",
+        "k": 0,
+        "question": "我找工作有什么硬性条件？",
+        "answer": "你跟我说过两条硬性条件：\n\n- 不接受外包（M-5）\n- 不接受单休（M-6）",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "sun",
+        "id": "sun-abs-city",
+        "ability": "ABS",
+        "k": 0,
+        "question": "我想去哪个城市？",
+        "answer": "你没跟我说过想去哪个城市（target_city 没有记录）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "xu",
+        "id": "xu-ku-days",
+        "ability": "KU",
+        "k": 0,
+        "question": "我现在每周能去几天？",
+        "answer": "每周能到岗 **2 天**（M-1）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "xu",
+        "id": "xu-tr-later",
+        "ability": "TR",
+        "k": 0,
+        "question": "11 月下旬我每周能去几天？",
+        "answer": "4 天（M-2）。你说过 11 月 15 号起从每周 2 天增加到 4 天（M-1 是之前的值）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card",
+          "memory_history"
+        ]
+      },
+      {
+        "persona": "xu",
+        "id": "xu-mr-stage",
+        "ability": "MR",
+        "k": 0,
+        "question": "我在面的那家公司在等第几轮？",
+        "answer": "你在面的是快手，一面已经过了，现在在等**二面**（M-6）。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "xu",
+        "id": "xu-ie-duration",
+        "ability": "IE",
+        "k": 0,
+        "question": "我能实习多久？",
+        "answer": "你能实习 **4 个月**（M-3）。",
+        "ok": true,
+        "error": null,
+        "tools": []
+      }
+    ]
+  }
+}
