@@ -54,7 +54,7 @@ def test_notification_feedback(db):
 def test_chat_goes_to_the_main_agent(db, monkeypatch):
     from polaris.agent import main
 
-    monkeypatch.setattr(main, "chat", lambda message, thread_id: main.Turn(thread_id=thread_id, answer=f"收到：{message}"))
+    monkeypatch.setattr(main, "chat", lambda message, thread_id, **kw: main.Turn(thread_id=thread_id, answer=f"收到：{message}"))
     r = client.post("/api/me/chat", json={"message": "你好", "thread_id": "t1"}, headers=ME).json()
     assert r["answer"] == "收到：你好" and r["thread_id"] == "t1"
 

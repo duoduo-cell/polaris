@@ -24,8 +24,14 @@ mcp_app = mcp.streamable_http_app()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    from polaris.agent.tasks import service, shutdown
+
+    service()
     async with mcp.session_manager.run():
-        yield
+        try:
+            yield
+        finally:
+            shutdown()
 
 
 app = FastAPI(

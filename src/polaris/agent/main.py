@@ -2,7 +2,7 @@
 
 1. 新消息先过记忆：`memory/extract.remember` 抽候选事实、按规则改记忆；需要和你确认的，记下来在回答末尾顺带问一句。
 2. 需要查的就调工具：岗位、帖子、面试题、知识图谱、记忆；卡片（北极星记着的关于你的事）放在系统提示里常驻。
-3. 对话长了由摘要中间件压缩，原始对话留在检查点里。
+3. 对话长了由摘要中间件压缩；真实聊天记录单独保存，不从压缩上下文生成。
 
 有副作用的工具（`read_only=False`，目前是 memory_forget）一律停下来等你批准：LangChain 的人工审批中间件在调用前中断，
 `resume()` 带着你的决定（批准 / 拒绝）继续。对外的事（投递、发消息）北极星不做，只帮你起草。
@@ -106,7 +106,7 @@ Event = Callable[[dict[str, Any]], None]
 def approval_policy() -> dict[str, Any]:
     """有副作用的工具都要批准（策略表见 TECH.md 第 5 节）；只能批准或拒绝，不让改参数后执行。"""
     return {name: {"allowed_decisions": ["approve", "reject"],
-                   "description": f"北极星想执行「{name}」，这会改动你的数据，需要你批准"}
+                   "description": "北极星想忘掉下列记忆，请确认是否同意"}
             for name in TOOLS if not REGISTRY[name].read_only}
 
 
@@ -144,21 +144,19 @@ def _interrupts(state: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _stream(agent: Any, payload: Any, config: dict[str, Any], on_event: Event) -> dict[str, Any]:
-    """边跑边把进度交出去：模型吐出的字（只取模型节点的，摘要中间件自己调模型的不算）、发起的工具调用。
-    跑完从检查点读最终状态（含等你批准的动作）。"""
-    for mode, data in agent.stream(payload, config=config, stream_mode=["messages", "updates"]):
-        if mode == "messages":
-            chunk, meta = data
-            if meta.get("langgraph_node") == "model":
-                text = text_of(getattr(chunk, "content", ""))
-                if text:
-                    on_event({"type": "token", "text": text})
-        else:
-            for node, update in (data or {}).items():
-                if node == "model" and isinstance(update, dict):
-                    for m in update.get("messages", []):
-                        for tc in getattr(m, "tool_calls", None) or []:
-                            on_event({"type": "tool", "tool": tc["name"], "args": tc["args"]})
+    """工具是活动，只有确认没有工具调用的模型输出才是正式回复。
+
+    必须等一条模型消息完成后判断；直接展示 token 会泄露调用工具前的中间文字。
+    """
+    for data in agent.stream(payload, config=config, stream_mode="updates"):
+        for node, update in (data or {}).items():
+            if node == "model" and isinstance(update, dict):
+                for m in update.get("messages", []):
+                    calls = getattr(m, "tool_calls", None) or []
+                    for tc in calls:
+                        on_event({"type": "tool", "tool": tc["name"], "args": tc["args"]})
+                    if not calls and (text := text_of(m.content)):
+                        on_event({"type": "token", "text": text})
     snap = agent.get_state(config)
     return {"messages": snap.values.get("messages", []), "__interrupt__": list(snap.interrupts)}
 
@@ -187,12 +185,14 @@ MEMORY_WAIT_SECONDS = 90
 
 def chat(message: str, thread_id: str, *, now: datetime | None = None, model: BaseChatModel | None = None,
          remember_fn: Callable[..., dict[str, Any]] | None = None, run_id: int | None = None,
-         on_event: Event | None = None, memory_first: bool = False) -> Turn:
+         on_event: Event | None = None, memory_first: bool = False, record: bool = True) -> Turn:
     """你说一句话：记忆抽取和回答同时进行（10-11 实测记忆抽取要 5 到 34 秒，先做完再回答会让每句话都多等这么久）。
     回答时这句话本身就在对话里，agent 看得到；记忆要问你的（矛盾、推断）等回答完再接在后面。
     memory_first=True 时按原来的顺序：先改完记忆再回答（测试里需要确定的顺序时用）。"""
+    from polaris.agent.transcript import begin_turn, finish_turn
     from polaris.memory.extract import remember
 
+    key = begin_turn(thread_id, message) if record else None
     now = now or datetime.now(UTC)
     box: dict[str, Any] = {}
 
@@ -217,18 +217,35 @@ def chat(message: str, thread_id: str, *, now: datetime | None = None, model: Ba
     if not memory_first and mem["questions"] and turn.answer and not turn.approvals:
         extra = "\n\n---\n顺便确认一下：" + "；".join(mem["questions"])
         turn.answer += extra
+        # 网页展示的追问也必须进入模型上下文，用户下一句“是的”才有明确的指代。
+        if state and state["messages"] and state["messages"][-1].type == "ai":
+            final = state["messages"][-1].model_copy(update={"content": turn.answer})
+            build(model or chat_model("chat"), [], "").update_state(
+                {"configurable": {"thread_id": thread_id}}, {"messages": [final]}, as_node="model")
         if on_event:
             on_event({"type": "token", "text": extra})
+    if key:
+        with session_scope() as s:
+            finish_turn(s, thread_id, key, turn.to_dict())
     return turn
 
 
 def resume(thread_id: str, approve: bool, reason: str = "", *, now: datetime | None = None,
-           model: BaseChatModel | None = None, run_id: int | None = None, on_event: Event | None = None) -> Turn:
+           model: BaseChatModel | None = None, run_id: int | None = None, on_event: Event | None = None,
+           record: bool = True) -> Turn:
     """你对等批准的动作做了决定：批准就执行，拒绝就告诉 agent 你不同意（它会换个做法或直接回答）。"""
     decision: dict[str, Any] = {"type": "approve"} if approve else {"type": "reject", "message": reason or "用户没有批准"}
     state, runtime, tracer, err, ms = _run(Command(resume={"decisions": [decision]}), thread_id, now or datetime.now(UTC),
                                            [], model, run_id, "chat:resume", on_event)
-    return _turn(thread_id, state, runtime, tracer, err, ms, {"events": [], "questions": []})
+    turn = _turn(thread_id, state, runtime, tracer, err, ms, {"events": [], "questions": []})
+    if record:
+        from uuid import uuid4
+
+        from polaris.agent.transcript import finish_turn
+
+        with session_scope() as s:
+            finish_turn(s, thread_id, str(uuid4()), turn.to_dict())
+    return turn
 
 
 def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tracer: PolarisTracer, err: str | None,

@@ -1,4 +1,8 @@
 // 浏览器里调后端：都走本站的 /api/*（Next.js 服务端代理加口令）。
+export class ApiError extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
+
 export async function api<T = unknown>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const res = await fetch(`/api/${path}`, {
     method: init?.method ?? (init?.body !== undefined ? "POST" : "GET"),
@@ -7,7 +11,10 @@ export async function api<T = unknown>(path: string, init?: { method?: string; b
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { detail?: string }).detail ?? `出错了（${res.status}）`);
+  if (!res.ok) {
+    const detail = (data as { detail?: unknown }).detail;
+    throw new ApiError(typeof detail === "string" ? detail : `出错了（${res.status}）`, res.status);
+  }
   return data as T;
 }
 

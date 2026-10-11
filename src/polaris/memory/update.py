@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
 
 from polaris.db.models import MemoryEvent, MemoryFact, MemorySuppression
@@ -30,6 +30,11 @@ from polaris.memory.schema import ATTRIBUTES, qualifier_key, value_key
 STALE_DAYS = 30
 # 按公司分的属性互相牵连：你否认投过某公司时，这家的"面试进度"推断也一并作废（面试意味着投过）
 LINKED = {"applied": ("interview_stage",), "interview_stage": ("applied",)}
+
+
+def _lock_writer(s: Session) -> None:
+    # 不同聊天可并行抽取和检索，但共享的个人记忆只能有一个事务写入。
+    s.execute(text("select pg_advisory_xact_lock(739514623)"))
 
 
 @dataclass
@@ -165,6 +170,7 @@ def apply(ctx: Context, c: Candidate) -> tuple[dict[str, Any], str | None]:
     if c.attribute not in ATTRIBUTES:
         return {"op": "skip", "attribute": c.attribute, "reason": "不在属性表里"}, None
     s, now = ctx.session, ctx.now
+    _lock_writer(s)
     q = qualifier_key(c.qualifier)
     slot = slot_facts(s, c.attribute, q)
     if not ATTRIBUTES[c.attribute].multi:  # 单值槽：只看"现在或将来还成立"的那几条
@@ -217,8 +223,9 @@ def apply(ctx: Context, c: Candidate) -> tuple[dict[str, Any], str | None]:
 
 def confirm(s: Session, fact_id: int, accept: bool, now: datetime | None = None, source_text: str = "") -> dict[str, Any]:
     """你回答了"对吗""以哪个为准"：确认就生效（顶掉同槽的旧值），否认就作废；否认的是推断时记一条抑制。"""
+    _lock_writer(s)
     now = now or datetime.now(UTC)
-    f = s.get(MemoryFact, fact_id)
+    f = s.get(MemoryFact, fact_id, populate_existing=True)
     if f is None or f.status != "pending":
         raise ValueError(f"没有待确认的记忆 #{fact_id}")
     ctx = Context(s, now, source_text or f.source_text, f.thread_id)
@@ -242,6 +249,7 @@ def confirm(s: Session, fact_id: int, accept: bool, now: datetime | None = None,
 def forget(s: Session, attribute: str, qualifier: str | None = None, value: str | None = None,
            now: datetime | None = None, source_text: str = "") -> list[dict[str, Any]]:
     """你要求忘掉：作废匹配的事实（含待确认的），并记抑制，以后不再推断出同样的内容。"""
+    _lock_writer(s)
     now = now or datetime.now(UTC)
     facts = slot_facts(s, attribute, qualifier, ("active", "pending")) if qualifier or ATTRIBUTES[attribute].qualified \
         else list(s.execute(select(MemoryFact).where(MemoryFact.attribute == attribute,

@@ -33,8 +33,8 @@ from polaris.db.session import get_engine  # noqa: E402
 get_settings.cache_clear()
 get_engine.cache_clear()
 
-TABLES = ["notifications", "memory_events", "memory_facts", "memory_suppressions", "posts", "postings", "jobs", "raw_items", "companies",
-          "search_queries", "tool_calls", "llm_calls", "runs"]
+TABLES = ["chat_tasks", "chat_messages", "chat_threads", "notifications", "memory_events", "memory_facts", "memory_suppressions",
+          "posts", "postings", "jobs", "raw_items", "companies", "search_queries", "tool_calls", "llm_calls", "runs"]
 
 
 def _ensure_test_database() -> None:
@@ -68,4 +68,7 @@ def db(engine):
     """每个用到数据库的测试开始前清空所有表。"""
     with engine.begin() as conn:
         conn.execute(text(f"truncate {', '.join(TABLES)} restart identity cascade"))
-    return engine
+    yield engine
+    from polaris.agent.tasks import shutdown
+
+    shutdown()

@@ -85,7 +85,7 @@ def test_messages_endpoint_reads_the_thread(db):
     tid = f"t-{uuid.uuid4().hex[:8]}"
     chat("你好", tid, now=NOW, remember_fn=lambda *a, **k: {"events": [], "questions": []}, model=script(AIMessage(content="你好！")))
     r = TestClient(app).get(f"/api/me/chat/{tid}/messages", headers={"Authorization": "Bearer test-owner-token"}).json()
-    assert r["messages"] == [{"role": "user", "content": "你好"}, {"role": "assistant", "content": "你好！"}]
+    assert [(m["role"], m["content"]) for m in r["messages"]] == [("user", "你好"), ("assistant", "你好！")]
 
 
 def test_messages_endpoint_shows_pending_approval(db):
@@ -120,8 +120,8 @@ def test_streamed_turn_emits_memory_tool_tokens_then_done(db):
     from polaris.agent import main
 
     real_chat = main.chat
-    main.chat = lambda message, thread_id, on_event=None: real_chat(  # noqa: E731
-        message, thread_id, now=NOW, remember_fn=fake_remember, model=script(AIMessage(content="好的")), on_event=on_event)
+    main.chat = lambda message, thread_id, on_event=None, **kw: real_chat(  # noqa: E731
+        message, thread_id, now=NOW, remember_fn=fake_remember, model=script(AIMessage(content="好的")), on_event=on_event, **kw)
     try:
         r = TestClient(app).post("/api/me/chat/stream", json={"message": "你好", "thread_id": tid2},
                                  headers={"Authorization": "Bearer test-owner-token"})
@@ -144,3 +144,5 @@ def test_memory_runs_alongside_the_answer_and_questions_are_appended(db):
     turn = chat("每周 3 天", tid, now=NOW, remember_fn=slow_remember, model=script(AIMessage(content="好的。")))
     assert turn.answer.startswith("好的。") and "以 4 天还是 3 天为准？" in turn.answer
     assert turn.memory_events[0]["op"] == "ask" and time.perf_counter() - t0 < 5
+    saved = checkpointer().get_tuple({"configurable": {"thread_id": tid}})
+    assert saved.checkpoint["channel_values"]["messages"][-1].content == turn.answer

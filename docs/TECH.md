@@ -90,6 +90,29 @@
 
 ## 5. Agent 规则
 
+### 已实现的聊天、上下文和任务分离（10-11）
+
+- **展示记录**：`chat_messages` 仅保存用户原话和正式回复（包括最终的记忆确认追问），不从 LangGraph 最新检查点生成；
+  `chat_threads` 保存导入标记和待审批状态。旧会话首次打开时遍历保留的历史检查点，以消息 ID 去重，过滤摘要标记和带工具调用的 AI 消息。
+  已被清理的旧检查点无法恢复；之后的上下文压缩不会改写展示记录。
+- **模型上下文**：仍使用 LangGraph Postgres 检查点、LangChain 摘要中间件、记忆卡片和检索结果。内部摘要只供模型使用。
+- **任务与活动**：`chat_tasks` 持久保存输入、队列状态、工具/记忆活动、结果、错误和时间。网页提交后获得任务 ID，
+  每秒查询进行中的任务，空闲时每五秒同步；刷新、关页、网络断开不取消执行。
+- 调度器通过 PostgreSQL 会话锁选出一个执行者，最多同时处理四个不同会话；同一会话串行，最多排队 20 条。
+  共享记忆通过事务锁保证单次写入，避免并行对话写出重复事实。请求 UUID 幂等，审批决定也只能生效一次。
+- 后端意外重启：运行中的任务标记中断，不自动重放；已进入审批检查点的恢复为待审批，排队任务继续。
+  当前是本机后端持续运行期间的后台任务，没有承诺断电后的模型调用能无缝续跑。
+- 网页保留现有外观，只显示自然语言进度和正式回复，记忆/工具参数放进默认收起的活动记录。
+  为避免工具调用前的套话混入正式回复，确认模型消息不含工具调用后才发布其文字。
+- 新接口：`POST /api/me/chat/tasks`、`POST /api/me/chat/{thread}/resume/tasks`（均需 `request_id`），
+  `GET /api/me/chat/tasks/{id}`、`GET /api/me/chat/threads`、`GET /api/me/chat/{thread}/messages`。
+  全部沿用 OWNER_TOKEN；旧同步/SSE 接口也通过持久化队列执行。
+
+依据：本机安装的 LangChain `SummarizationMiddleware._build_new_messages` 用带 `lc_source=summarization` 的 HumanMessage 替换旧上下文，
+因此其角色不能等同于用户发言。产品层的后台任务、长对话和折叠活动参考
+[Muse 的设计说明](https://introducing.muse.ai/)、
+[Dots 任务与记忆](https://learn.chatgpt.com/docs/dots/tasks-and-memory)；具体保证由本项目的断连、压缩、审批和并发回归验证。
+
 参考 WeKnora `07-agent.md`、`08-mcp.md`：
 - 一轮里多个工具调用：只读工具并行，有副作用的串行。
 - 单个工具 60 秒超时；到轮数上限时带着已有结果、**不带工具**再调一次模型收尾。

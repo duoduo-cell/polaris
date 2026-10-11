@@ -461,10 +461,15 @@ def sandbox(keep_memory: bool = typer.Option(False, help="连记忆一起复制�
     run("psql", "-U", "polaris", "-d", "postgres", "-qc", f"create database {SANDBOX}")
     typer.echo("恢复到沙盒库……")
     run("pg_restore", "-U", "polaris", "-d", SANDBOX, "--no-owner", "/tmp/sandbox.dump")
+    # 克隆业务数据不应复制可执行的聊天队列，否则打开沙盒会自动重跑真实库里的待办。
+    run("psql", "-U", "polaris", "-d", SANDBOX, "-qc",
+        "DO $$ DECLARE t text; BEGIN FOREACH t IN ARRAY ARRAY['chat_tasks','chat_messages','chat_threads',"
+        "'checkpoint_writes','checkpoint_blobs','checkpoints'] LOOP IF to_regclass(t) IS NOT NULL THEN "
+        "EXECUTE format('TRUNCATE %I RESTART IDENTITY CASCADE', t); END IF; END LOOP; END $$")
     if not keep_memory:
         run("psql", "-U", "polaris", "-d", SANDBOX, "-qc",
             "truncate notifications, memory_events, memory_facts, memory_suppressions restart identity cascade")
-    typer.echo(f"好了：{SANDBOX}（岗位、帖子、向量都有；记忆{'保留' if keep_memory else '是空的'}）。"
+    typer.echo(f"好了：{SANDBOX}（岗位、帖子、向量都有；聊天和任务已清空；记忆{'保留' if keep_memory else '是空的'}）。"
                "用它：.\\scripts\\start.ps1 -Sandbox")
 
 

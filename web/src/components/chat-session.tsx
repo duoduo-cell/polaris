@@ -1,163 +1,182 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { api, stream } from "@/lib/client";
+import { api, ApiError } from "@/lib/client";
 
 export type Approval = { name: string; args: Record<string, unknown>; description: string };
 export type MemoryEvent = { op: string; attribute: string; value: string | null; reason: string };
 export type Turn = {
-  answer: string;
-  memory_events: MemoryEvent[];
-  memory_questions: string[];
-  approvals: Approval[];
+  answer: string; memory_events: MemoryEvent[]; memory_questions: string[]; approvals: Approval[];
   tool_calls: { tool: string; args: Record<string, unknown>; ok: boolean }[];
-  latency_ms: number;
-  error: string | null;
+  latency_ms: number; error: string | null; question?: string;
 };
-export type Message = { role: "user" | "assistant"; content: string; turn?: Turn; verdict?: "good" | "bad" };
-type Live = { memory: MemoryEvent[] | null; steps: { tool: string; done: boolean }[]; text: string };
+export type Message = { id?: number; role: "user" | "assistant"; content: string; turn?: Turn; verdict?: "good" | "bad" };
+export type Activity = { type: "tool" | "memory"; tool?: string; args?: Record<string, unknown>; events?: MemoryEvent[] };
+export type Task = {
+  id: string; state: string; kind: string; question?: string; activities: Activity[]; result: Turn | null; error: string | null;
+  created_at: string; started_at: string | null;
+};
+type Thread = { id: string; title: string; active: boolean; waiting_approval: boolean };
+type Snapshot = { messages: Message[]; approvals: Approval[]; tasks: Task[] };
+type Outbox = { request_id: string; thread_id: string; message?: string; approve?: boolean; reason?: string };
+type Live = { status: string; memory: MemoryEvent[] | null; steps: { tool: string; done: boolean }[]; text: string };
 type Session = {
-  thread: string;
-  messages: Message[];
-  approvals: Approval[];
-  input: string;
-  busy: boolean;
-  loading: boolean;
-  live: Live | null;
-  elapsed: number;
-  error: string | null;
-  setInput: (text: string) => void;
-  newThread: () => void;
-  send: (text?: string) => Promise<void>;
-  decide: (approve: boolean) => Promise<void>;
+  thread: string; threads: Thread[]; messages: Message[]; approvals: Approval[]; tasks: Task[];
+  input: string; busy: boolean; submitting: boolean; loading: boolean; live: Live | null; elapsed: number; error: string | null;
+  setInput: (text: string) => void; newThread: () => void; switchThread: (id: string) => void;
+  send: (text?: string) => Promise<void>; decide: (approve: boolean) => Promise<void>;
   mark: (index: number, verdict: "good" | "bad", note: string) => Promise<void>;
 };
-
 const ChatContext = createContext<Session | null>(null);
+const ACTIVE = new Set(["queued", "running"]);
+function stored(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
+function store(key: string, value: string | null) {
+  try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* 禁用存储 */ }
+}
+function pending(id: string): Outbox | null {
+  try { return JSON.parse(stored(`polaris-outbox-${id}`) ?? "null"); } catch { return null; }
+}
+async function post(out: Outbox) {
+  return api<Task>(out.message !== undefined ? "chat/tasks" : `chat/${encodeURIComponent(out.thread_id)}/resume/tasks`, { body: out });
+}
 
-// 挂在根 layout、位于会重新挂载的 template 外面：导航只换页面，流式连接和会话继续保留。
+// 根 layout 保留草稿；数据库拥有任务、进度和正式记录。刷新/关闭网页后重新查询即可恢复。
 export function ChatSessionProvider({ children }: { children: React.ReactNode }) {
   const [thread, setThread] = useState("main");
+  const [ready, setReady] = useState(false);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [input, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
-  const [live, setLive] = useState<Live | null>(null);
-  const [elapsed, setElapsed] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const running = useRef(false); // 同一轮渲染内的连续点击也不能重复提交
-  const revision = useRef(0);
+  const [clock, setClock] = useState(0);
+  const sending = useRef(false);
+  const actionError = useRef<string | null>(null);
+  const operation = useRef(0);
+  const refresh = useRef<() => Promise<void>>(async () => {});
+  const generation = useRef(0);
 
   useEffect(() => {
-    let active = true;
-    const request = ++revision.current;
-    let id = "main";
-    try { id = localStorage.getItem("polaris-thread") ?? "main"; } catch { /* 浏览器禁用存储 */ }
-    api<{ messages: Message[]; approvals: Approval[] }>(`chat/${id}/messages`)
-      .then((r) => {
-        if (active && revision.current === request) {
-          setMessages(r.messages);
-          setApprovals(r.approvals);
-        }
-      })
-      .catch((e) => { if (active && revision.current === request) setError(e.message); })
-      .finally(() => {
-        if (active && revision.current === request) {
-          setThread(id);
-          setLoading(false);
-        }
-      });
-    return () => { active = false; };
+    const timer = setTimeout(() => {
+      const id = stored("polaris-thread") ?? "main";
+      setThread(id); setDraft(stored(`polaris-draft-${id}`) ?? ""); setReady(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const version = ++generation.current;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    let fetching = false;
+    let rerun = false;
+    actionError.current = null;
+    const current = () => active && version === generation.current;
+    async function load() {
+      if (!current()) return;
+      if (fetching || sending.current) { rerun = true; return; }
+      fetching = true;
+      const startedOperation = operation.current;
+      let wait = 5000;
+      try {
+        const out = pending(thread);
+        if (out) {
+          setSubmitting(true);
+          try { await post(out); store(`polaris-outbox-${thread}`, null); }
+          catch (e) {
+            if (e instanceof ApiError && e.status >= 400 && e.status < 500) {
+              store(`polaris-outbox-${thread}`, null);
+              if (out.message && current()) { setDraft(out.message); store(`polaris-draft-${thread}`, out.message); }
+            }
+            throw e;
+          }
+          finally { if (current()) setSubmitting(false); }
+        }
+        const result = await api<Snapshot>(`chat/${encodeURIComponent(thread)}/messages`);
+        const recent = await api<Thread[]>("chat/threads");
+        if (!current() || startedOperation !== operation.current) { rerun = true; return; }
+        setMessages((old) => result.messages.map((m) => ({ ...m, verdict: old.find((p) => p.id === m.id)?.verdict })));
+        setApprovals(result.approvals); setTasks(result.tasks ?? []); setThreads(recent);
+        setError(actionError.current);
+        setClock(Date.now());
+        if (result.tasks?.some((t) => ACTIVE.has(t.state))) wait = 1000;
+      } catch (e) {
+        if (current()) setError(`${(e as Error).message}。正在重连，后端已接收的任务会继续。`);
+        wait = 1000;
+      } finally {
+        fetching = false;
+        if (current()) { setLoading(false); clearTimeout(timer); timer = setTimeout(load, rerun ? 0 : wait); rerun = false; }
+      }
+    }
+    refresh.current = load;
+    const focus = () => { clearTimeout(timer); void load(); };
+    window.addEventListener("focus", focus);
+    void load();
+    return () => { active = false; clearTimeout(timer); window.removeEventListener("focus", focus); };
+  }, [thread, ready]);
 
-  function newThread() {
-    if (running.current || loading) return;
-    ++revision.current;
-    const id = `t-${crypto.randomUUID()}`;
-    try { localStorage.setItem("polaris-thread", id); } catch { /* 浏览器禁用存储 */ }
-    setThread(id);
-    setMessages([]);
-    setApprovals([]);
-    setInput("");
-    setError(null);
-    setElapsed(0);
+  function setInput(text: string) { setDraft(text); store(`polaris-draft-${thread}`, text); }
+  function switchThread(id: string) {
+    if (sending.current || submitting || loading || id === thread) return;
+    ++generation.current;
+    store("polaris-thread", id); setLoading(true); setError(null); setMessages([]); setApprovals([]); setTasks([]);
+    setDraft(stored(`polaris-draft-${id}`) ?? ""); setThread(id);
   }
+  function newThread() { switchThread(`t-${crypto.randomUUID()}`); }
 
+  async function submit(out: Outbox) {
+    if (sending.current || submitting || loading) return;
+    sending.current = true; ++operation.current; actionError.current = null; setSubmitting(true); setError(null);
+    store(`polaris-outbox-${thread}`, JSON.stringify(out));
+    try { await post(out); store(`polaris-outbox-${thread}`, null); }
+    catch (e) {
+      if (e instanceof ApiError && e.status >= 400 && e.status < 500) {
+        store(`polaris-outbox-${thread}`, null);
+        if (out.message) setInput(out.message);
+        actionError.current = (e as Error).message;
+      }
+      setError(`${(e as Error).message}。正在确认发送状态，请勿重复发送。`);
+    } finally {
+      sending.current = false; setSubmitting(false); await refresh.current();
+    }
+  }
+  async function send(text?: string) {
+    const message = text ?? input;
+    if (!message.trim() || loading || sending.current || submitting || pending(thread) || approvals.length) return;
+    setInput("");
+    await submit({ request_id: crypto.randomUUID(), thread_id: thread, message });
+  }
+  async function decide(approve: boolean) {
+    if (!approvals.length || pending(thread)) return;
+    await submit({ request_id: crypto.randomUUID(), thread_id: thread, approve, reason: approve ? "" : "我没有批准" });
+  }
   async function mark(index: number, verdict: "good" | "bad", note: string) {
     const target = messages[index];
     if (!target) return;
-    const request = revision.current;
-    const question = [...messages.slice(0, index)].reverse().find((m) => m.role === "user")?.content ?? "";
+    const version = generation.current;
+    const question = target.turn?.question ?? [...messages.slice(0, index)].reverse().find((m) => m.role === "user")?.content ?? "";
     try {
       await api("feedback", { body: { thread_id: thread, question, answer: target.content, verdict, note } });
-      setMessages((ms) => ms.map((m) => (m === target ? { ...m, verdict } : m)));
-    } catch (e) {
-      if (revision.current === request) setError((e as Error).message);
-    }
+      if (generation.current === version) setMessages((ms) => ms.map((m) => m.id === target.id ? { ...m, verdict } : m));
+    } catch (e) { if (generation.current === version) setError((e as Error).message); }
   }
 
-  function take(turn: Turn) {
-    if (turn.error) setError(turn.error);
-    setApprovals(turn.approvals);
-    if (turn.answer || turn.memory_events.length || turn.tool_calls.length) {
-      setMessages((ms) => [...ms, { role: "assistant", content: turn.answer, turn }]);
-    }
-  }
-
-  async function run(path: string, body: unknown) {
-    running.current = true;
-    ++revision.current;
-    setBusy(true);
-    setError(null);
-    setElapsed(0);
-    setLive({ memory: null, steps: [], text: "" });
-    const started = Date.now();
-    const timer = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 500);
-    let finished = false;
-    try {
-      await stream(path, body, (e) => {
-        if (finished) return;
-        if (e.type === "memory") setLive((l) => l && { ...l, memory: e.events as MemoryEvent[] });
-        else if (e.type === "tool") setLive((l) => l && {
-          ...l, text: "", steps: [...l.steps.map((s) => ({ ...s, done: true })), { tool: e.tool as string, done: false }],
-        });
-        else if (e.type === "token") setLive((l) => l && {
-          ...l, text: l.text + (e.text as string), steps: l.steps.map((s) => ({ ...s, done: true })),
-        });
-        else if (e.type === "done") { finished = true; take(e.turn as Turn); }
-        else if (e.type === "error") { finished = true; setError(e.message as string); }
-      });
-      if (!finished) setError("连接提前结束，没有收到完整结果。请检查后端状态。");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      clearInterval(timer);
-      setLive(null);
-      setBusy(false);
-      running.current = false;
-    }
-  }
-
-  async function send(text?: string) {
-    const message = (text ?? input).trim();
-    if (!message || loading || running.current || approvals.length > 0) return;
-    setInput("");
-    setMessages((ms) => [...ms, { role: "user", content: message }]);
-    await run("chat/stream", { message, thread_id: thread });
-  }
-
-  async function decide(approve: boolean) {
-    if (loading || running.current || approvals.length === 0) return;
-    await run(`chat/${thread}/resume/stream`, { approve, reason: approve ? "" : "我没有批准" });
-  }
-
-  return (
-    <ChatContext.Provider value={{ thread, messages, approvals, input, busy, loading, live, elapsed, error,
-                                  setInput, newThread, send, decide, mark }}>
-      {children}
-    </ChatContext.Provider>
-  );
+  const running = tasks.find((t) => t.state === "running") ?? tasks.find((t) => t.state === "queued");
+  const busy = !!running;
+  const elapsed = running ? Math.max(0, Math.round((clock - Date.parse(running.started_at ?? running.created_at)) / 1000)) : 0;
+  const lastTool = running?.activities.filter((a) => a.type === "tool").at(-1);
+  const queued = tasks.filter((t) => t.state === "queued").length;
+  const live: Live | null = running ? {
+    status: running.state === "queued" ? "消息已收到，正在排队" : lastTool ? "正在查找与你的问题相关的资料" : "正在处理你的请求",
+    memory: running.activities.find((a) => a.type === "memory")?.events ?? null,
+    steps: running.activities.filter((a) => a.type === "tool").map((a) => ({ tool: a.tool ?? "", done: false })), text: "",
+  } : null;
+  if (live && queued && running?.state === "running") live.status += ` · 还有 ${queued} 条消息在排队`;
+  return <ChatContext.Provider value={{ thread, threads, messages, approvals, tasks, input, busy, submitting, loading,
+    live, elapsed, error, setInput, newThread, switchThread, send, decide, mark }}>{children}</ChatContext.Provider>;
 }
 
 export function useChatSession() {

@@ -5,9 +5,10 @@
 import hmac
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from polaris.config import get_settings
@@ -29,7 +30,14 @@ router = APIRouter(prefix="/api/me", tags=["personal"], dependencies=[Depends(re
 
 class ChatIn(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
-    thread_id: str = Field("main", max_length=64)
+    thread_id: str = Field("main", min_length=1, max_length=64)
+
+    @field_validator("message")
+    @classmethod
+    def not_blank(cls, message: str) -> str:
+        if not message.strip():
+            raise ValueError("消息不能为空")
+        return message
 
 
 class ResumeIn(BaseModel):
@@ -37,8 +45,78 @@ class ResumeIn(BaseModel):
     reason: str = Field("", max_length=500)
 
 
-def _turn(t: Any) -> dict[str, Any]:
-    return t.to_dict()
+class TaskIn(ChatIn):
+    request_id: UUID
+
+
+class ResumeTaskIn(ResumeIn):
+    request_id: UUID
+
+
+def _submit(thread_id: str, kind: str, payload: dict[str, Any], request_id: UUID) -> dict[str, Any]:
+    from polaris.agent.tasks import TaskConflict, submit
+
+    try:
+        return submit(thread_id, kind, payload, str(request_id))
+    except TaskConflict as e:
+        raise HTTPException(409, str(e)) from e
+
+
+@router.post("/chat/tasks", status_code=202, summary="Persist a message and start an independent background task")
+def submit_chat(body: TaskIn) -> dict[str, Any]:
+    return _submit(body.thread_id, "chat", {"message": body.message}, body.request_id)
+
+
+@router.post("/chat/{thread_id}/resume/tasks", status_code=202, summary="Persist an approval decision (idempotent)")
+def submit_resume(thread_id: str, body: ResumeTaskIn) -> dict[str, Any]:
+    return _submit(thread_id, "resume", {"approve": body.approve, "reason": body.reason}, body.request_id)
+
+
+@router.get("/chat/threads", summary="Recent conversations, including background work and pending approvals")
+def chat_threads() -> list[dict[str, Any]]:
+    from polaris.agent.tasks import thread_list
+
+    return thread_list()
+
+
+@router.get("/chat/tasks/{task_id}", summary="Durable progress and result, available after reconnecting")
+def task_status(task_id: str) -> dict[str, Any]:
+    from polaris.agent.tasks import task_dict
+    from polaris.db.models import ChatTask
+
+    with session_scope() as s:
+        task = s.get(ChatTask, task_id)
+        if not task:
+            raise HTTPException(404, "task not found")
+        return task_dict(task)
+
+
+def _task_events(task_id: str) -> Any:
+    import time
+
+    seen = 0
+    while True:
+        task = task_status(task_id)
+        yield from task["activities"][seen:]
+        seen = len(task["activities"])
+        if task["state"] not in ("queued", "running"):
+            if task["result"]:
+                if task["result"]["answer"]:
+                    yield {"type": "token", "text": task["result"]["answer"]}
+                yield {"type": "done", "turn": task["result"]}
+            else:
+                yield {"type": "error", "message": task["error"] or "任务已中断"}
+            return
+        time.sleep(0.2)
+
+
+def _wait_task(task_id: str) -> dict[str, Any]:
+    for event in _task_events(task_id):
+        if event["type"] == "done":
+            return event["turn"]
+        if event["type"] == "error":
+            raise HTTPException(502, event["message"])
+    raise HTTPException(502, "任务没有返回结果")
 
 
 def _sse(events: Any) -> Any:
@@ -55,30 +133,26 @@ def _sse(events: Any) -> Any:
 
 @router.post("/chat", summary="Say something to Polaris (memory first, then the agent answers)")
 def chat_endpoint(body: ChatIn) -> dict[str, Any]:
-    from polaris.agent.main import chat
-
-    return _turn(chat(body.message, body.thread_id))
+    task = _submit(body.thread_id, "chat", {"message": body.message}, uuid4())
+    return _wait_task(task["id"])
 
 
 @router.post("/chat/{thread_id}/resume", summary="Approve or reject the action Polaris is waiting on")
 def resume_endpoint(thread_id: str, body: ResumeIn) -> dict[str, Any]:
-    from polaris.agent.main import resume
-
-    return _turn(resume(thread_id, body.approve, body.reason))
+    task = _submit(thread_id, "resume", {"approve": body.approve, "reason": body.reason}, uuid4())
+    return _wait_task(task["id"])
 
 
 @router.post("/chat/stream", summary="Same as /chat, streamed as server-sent events: memory, tool, token, done")
 def chat_stream_endpoint(body: ChatIn) -> Any:
-    from polaris.agent.main import chat, streamed
-
-    return _sse(streamed(chat, body.message, body.thread_id))
+    task = _submit(body.thread_id, "chat", {"message": body.message}, uuid4())
+    return _sse(_task_events(task["id"]))
 
 
 @router.post("/chat/{thread_id}/resume/stream", summary="Same as /resume, streamed")
 def resume_stream_endpoint(thread_id: str, body: ResumeIn) -> Any:
-    from polaris.agent.main import resume, streamed
-
-    return _sse(streamed(resume, thread_id, body.approve, body.reason))
+    task = _submit(thread_id, "resume", {"approve": body.approve, "reason": body.reason}, uuid4())
+    return _sse(_task_events(task["id"]))
 
 
 @router.get("/memory", summary="What Polaris remembers about you (on a given day), plus what it is waiting to confirm")
@@ -199,23 +273,11 @@ def report_endpoint(name: str) -> dict[str, Any]:
     return {"name": name, "markdown": path.read_text(encoding="utf-8")}
 
 
-@router.get("/chat/{thread_id}/messages", summary="The conversation so far (from the LangGraph checkpoint)")
+@router.get("/chat/{thread_id}/messages", summary="Actual transcript and recoverable tasks; never the model context")
 def messages_endpoint(thread_id: str) -> dict[str, Any]:
-    from polaris.agent.main import _interrupts, checkpointer
-    from polaris.agent.minimal import text_of
+    from polaris.agent.tasks import snapshot
 
-    saved = checkpointer().get_tuple({"configurable": {"thread_id": thread_id}})
-    if saved is None:
-        return {"thread_id": thread_id, "messages": [], "approvals": []}
-    out = []
-    for m in saved.checkpoint["channel_values"].get("messages", []):
-        role = {"human": "user", "ai": "assistant"}.get(m.type)
-        content = text_of(m.content)
-        if role and content:
-            out.append({"role": role, "content": content})
-    # 等你批准的动作在检查点的 pending_writes 里：(任务编号, "__interrupt__", [Interrupt, ...])
-    waiting = [i for _, channel, value in saved.pending_writes or [] if channel == "__interrupt__" for i in value]
-    return {"thread_id": thread_id, "messages": out, "approvals": _interrupts({"__interrupt__": waiting})}
+    return snapshot(thread_id)
 
 
 class AnswerFeedbackIn(BaseModel):

@@ -32,6 +32,49 @@ def created_at() -> Mapped[datetime]:
     return mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class ChatThread(Base):
+    """展示记录的入口；模型上下文仍由 LangGraph 独立管理。"""
+
+    __tablename__ = "chat_threads"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    history_imported: Mapped[bool] = mapped_column(Boolean, default=False)
+    approvals: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = created_at()
+
+
+class ChatMessage(Base):
+    """用户原话和正式回复。摘要、工具调用及系统提示永远不写入这里。"""
+
+    __tablename__ = "chat_messages"
+    __table_args__ = (UniqueConstraint("thread_id", "source_key"), Index("ix_chat_messages_thread", "thread_id", "id"))
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    thread_id: Mapped[str] = mapped_column(ForeignKey("chat_threads.id", ondelete="CASCADE"))
+    source_key: Mapped[str] = mapped_column(String(192))
+    role: Mapped[str] = mapped_column(String(16))
+    content: Mapped[str] = mapped_column(Text)
+    turn: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = created_at()
+
+
+class ChatTask(Base):
+    """持久化任务；浏览器只提交和观察，不拥有执行线程。"""
+
+    __tablename__ = "chat_tasks"
+    __table_args__ = (Index("ix_chat_tasks_thread", "thread_id", "created_at"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    request_key: Mapped[str] = mapped_column(String(64), unique=True)
+    thread_id: Mapped[str] = mapped_column(ForeignKey("chat_threads.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(16))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    state: Mapped[str] = mapped_column(String(24), default="queued")
+    activities: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at()
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Run(Base):
     """一次采集、抽取、评测、入库或生成。stats 里放这次的指标，git_commit 记当时的代码版本。"""
 
