@@ -1,0 +1,98 @@
+{
+  "version": "proactive-holdout-v1",
+  "about": "主动决策评测留出集：开发集调完规则之后才写，换了一个人（算法方向、上海杭州、正在面阿里）、换了情况（不想去的公司、不接受单休、名额不够时的取舍、清早的免打扰、按方向的疲劳）。标签按\"一个体贴的助手该怎么做\"写，写完才跑。",
+  "profile": {
+    "roles": ["大模型算法", "推荐算法"],
+    "cities": ["上海", "杭州"],
+    "job_type": "实习",
+    "days_per_week": 3,
+    "duration_months": null,
+    "companies_like": [],
+    "companies_avoid": ["拼多多"],
+    "constraints": ["不接受单休"],
+    "skills": ["PyTorch"],
+    "interviewing": ["阿里巴巴"]
+  },
+  "scenarios": [
+    {
+      "id": "HA-daytime",
+      "about": "白天、主动程度 normal（每天 3 条），今天已经推过 1 条",
+      "now": "2026-10-11T14:00:00+08:00",
+      "level": "normal",
+      "history": [
+        {"key": "h0", "company": "百度", "directions": ["大模型"], "sent_at": "2026-10-11T09:00:00+08:00"},
+        {"key": "job:阿里巴巴|淘天|推荐算法实习生", "company": "阿里巴巴", "directions": ["推荐搜索"], "sent_at": "2026-10-08T10:00:00+08:00"}
+      ],
+      "items": [
+        {"key": "job:阿里巴巴|通义|推荐算法实习生", "kind": "job", "title": "推荐算法实习生-通义", "company": "阿里巴巴", "cities": ["杭州"], "job_type": "intern", "directions": ["推荐搜索", "算法"], "text": "PyTorch", "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "brief", "why": "对口也新，但今天只剩两个名额，给更急的两条；它不急，放简报"},
+        {"key": "job:拼多多|推荐算法实习生", "kind": "job", "title": "推荐算法实习生", "company": "拼多多", "cities": ["上海"], "job_type": "intern", "directions": ["推荐搜索"], "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "drop", "why": "你说过不想去拼多多"},
+        {"key": "job:字节跳动|data|大模型算法实习生", "kind": "job", "title": "大模型算法实习生-Data", "company": "字节跳动", "cities": ["上海"], "job_type": "intern", "directions": ["大模型", "算法"], "deadline": "2026-10-14", "first_seen": "2026-10-10T12:00:00+08:00",
+         "gold": "push", "why": "对口，三天后截止"},
+        {"key": "job:腾讯|推荐算法实习生", "kind": "job", "title": "推荐算法实习生", "company": "腾讯", "cities": ["深圳"], "job_type": "intern", "directions": ["推荐搜索"], "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "drop", "why": "在深圳"},
+        {"key": "post:xhs:ali-mianjing", "kind": "post", "title": "阿里大模型算法一面面经", "company": "阿里巴巴", "directions": ["大模型", "算法"], "post_type": "面经", "first_seen": "2026-10-11T13:00:00+08:00",
+         "gold": "push", "why": "你正在面阿里"},
+        {"key": "job:美团|大模型算法实习生", "kind": "job", "title": "大模型算法实习生", "company": "美团", "cities": ["上海"], "job_type": "intern", "directions": ["大模型"], "text": "大小周，单休", "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "drop", "why": "单休，你说过不接受"},
+        {"key": "job:快手|推荐算法实习生", "kind": "job", "title": "推荐算法实习生", "company": "快手", "cities": ["杭州"], "job_type": "intern", "directions": ["推荐搜索"], "days_per_week": 5, "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "brief", "why": "要每周 5 天，你说 3 天，你自己看"},
+        {"key": "job:小红书|前端开发实习生", "kind": "job", "title": "前端开发实习生", "company": "小红书", "cities": ["上海"], "job_type": "intern", "directions": ["前端"], "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "drop", "why": "前端，不是你的方向"},
+        {"key": "job:字节跳动|抖音|推荐算法实习生", "kind": "job", "title": "推荐算法实习生-抖音", "company": "字节跳动", "cities": ["上海"], "job_type": "intern", "directions": ["推荐搜索"], "first_seen": "2026-10-01T12:00:00+08:00",
+         "gold": "brief", "why": "对口，但十天前就出了，不急"},
+        {"key": "job:阿里巴巴|淘天|推荐算法实习生", "kind": "job", "title": "推荐算法实习生-淘天", "company": "阿里巴巴", "cities": ["杭州"], "job_type": "intern", "directions": ["推荐搜索"], "first_seen": "2026-10-07T12:00:00+08:00",
+         "gold": "drop", "why": "前几天推过"},
+        {"key": "post:xhs:fe-referral", "kind": "post", "title": "字节前端实习内推（上海）", "company": "字节跳动", "cities": ["上海"], "directions": ["前端"], "post_type": "内推", "has_referral": true, "first_seen": "2026-10-11T13:00:00+08:00",
+         "gold": "drop", "why": "前端，不是你的方向"},
+        {"key": "post:xhs:tx-rec-mianjing", "kind": "post", "title": "腾讯推荐算法实习面经", "company": "腾讯", "directions": ["推荐搜索", "算法"], "post_type": "面经", "first_seen": "2026-10-11T13:00:00+08:00",
+         "gold": "brief", "why": "有用的备考材料，你没在面腾讯"},
+        {"key": "job:百度|大模型算法实习生", "kind": "job", "title": "大模型算法实习生", "company": "百度", "cities": ["上海"], "job_type": "intern", "directions": ["大模型"], "deadline": "2026-10-09", "first_seen": "2026-10-01T12:00:00+08:00",
+         "gold": "drop", "why": "已经截止"},
+        {"key": "job:网易|大模型算法工程师", "kind": "job", "title": "大模型算法工程师（2027校招）", "company": "网易", "cities": ["杭州"], "job_type": "campus", "directions": ["大模型"], "first_seen": "2026-10-11T12:00:00+08:00",
+         "gold": "drop", "why": "校招，你找实习"}
+      ]
+    },
+    {
+      "id": "HB-early",
+      "about": "清早 7:30、主动程度 high：还没到 8 点，不推",
+      "now": "2026-10-11T07:30:00+08:00",
+      "level": "high",
+      "history": [],
+      "items": [
+        {"key": "job:字节跳动|seed|大模型算法实习生", "kind": "job", "title": "大模型算法实习生-Seed", "company": "字节跳动", "cities": ["上海"], "job_type": "intern", "directions": ["大模型"], "first_seen": "2026-10-11T06:00:00+08:00",
+         "gold": "brief", "why": "对口，但还没到 8 点"}
+      ]
+    },
+    {
+      "id": "HC-low",
+      "about": "白天、主动程度 low（每天 1 条）：两条都对口，只推更急的那条",
+      "now": "2026-10-11T11:00:00+08:00",
+      "level": "low",
+      "history": [],
+      "items": [
+        {"key": "job:字节跳动|tiktok|大模型算法实习生", "kind": "job", "title": "大模型算法实习生-TikTok", "company": "字节跳动", "cities": ["上海"], "job_type": "intern", "directions": ["大模型"], "deadline": "2026-10-12", "first_seen": "2026-10-10T12:00:00+08:00",
+         "gold": "push", "why": "明天截止"},
+        {"key": "job:阿里巴巴|达摩院|大模型算法实习生", "kind": "job", "title": "大模型算法实习生-达摩院", "company": "阿里巴巴", "cities": ["杭州"], "job_type": "intern", "directions": ["大模型"], "first_seen": "2026-10-11T09:00:00+08:00",
+         "gold": "brief", "why": "对口但不急，今天只推一条"}
+      ]
+    },
+    {
+      "id": "HD-fatigue",
+      "about": "白天、主动程度 normal；最近两周你关掉了两条推荐方向的推送（不同公司）",
+      "now": "2026-10-11T10:00:00+08:00",
+      "level": "normal",
+      "history": [
+        {"key": "r1", "company": "京东", "directions": ["推荐搜索"], "sent_at": "2026-10-02T10:00:00+08:00", "feedback": "dismissed"},
+        {"key": "r2", "company": "美团", "directions": ["推荐搜索"], "sent_at": "2026-10-05T10:00:00+08:00", "feedback": "dismissed"}
+      ],
+      "items": [
+        {"key": "job:字节跳动|推荐算法实习生hd", "kind": "job", "title": "推荐算法实习生-电商", "company": "字节跳动", "cities": ["上海"], "job_type": "intern", "directions": ["推荐搜索"], "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "brief", "why": "你最近连着关掉推荐方向的推送，放简报"},
+        {"key": "job:字节跳动|大模型算法实习生hd", "kind": "job", "title": "大模型算法实习生-豆包", "company": "字节跳动", "cities": ["上海"], "job_type": "intern", "directions": ["大模型"], "text": "PyTorch", "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "push", "why": "对口、新出"}
+      ]
+    }
+  ]
+}

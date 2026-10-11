@@ -475,6 +475,14 @@ def metrics_m5(k: int = typer.Option(1, help="每个问题问几次")) -> None:
     typer.echo((memory_eval.REPORT_DIR / "M5.md").read_text(encoding="utf-8"))
 
 
+@metrics_app.command("proactive")
+def metrics_proactive() -> None:
+    """主动决策：开发集和留出集场景上，推 / 简报 / 不提的准确率、打扰率、漏报率（不调模型）。"""
+    from polaris.eval import proactive_eval
+
+    typer.echo(proactive_eval.write_report())
+
+
 @metrics_app.command("market")
 def metrics_market() -> None:
     """大厂 Agent 岗位要什么技术、面经里问什么（按采到的数据统计，不调模型）。"""

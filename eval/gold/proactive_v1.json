@@ -1,0 +1,119 @@
+{
+  "version": "proactive-v1",
+  "about": "主动决策评测（开发集）：同一个虚构求职者的卡片，五个场景，每条候选标出应当的去向（push 现在推 / brief 进简报 / drop 不提）和理由。标签按\"一个体贴的助手该怎么做\"写，写的时候还没在这批题上跑过规则。参照 PersonaMem-v3 对主动性和克制的区分：该推的漏推是漏报，不该推的推了是打扰。",
+  "profile": {
+    "roles": ["Agent 开发", "Agent"],
+    "cities": ["北京"],
+    "job_type": "日常实习",
+    "days_per_week": 4,
+    "duration_months": 6,
+    "companies_like": ["字节"],
+    "companies_avoid": [],
+    "constraints": ["不接受外包"],
+    "skills": ["LangGraph", "RAG"],
+    "interviewing": ["美团"]
+  },
+  "scenarios": [
+    {
+      "id": "A-daytime",
+      "about": "白天、主动程度 high（每天最多 6 条），今天还没推过",
+      "now": "2026-10-11T10:00:00+08:00",
+      "level": "high",
+      "history": [
+        {"key": "job:字节跳动|泛抖音|agent开发实习生", "company": "字节跳动", "directions": ["Agent"], "sent_at": "2026-10-10T11:00:00+08:00"},
+        {"key": "post:xhs:old-referral", "company": "小红书", "directions": ["Agent"], "sent_at": "2026-10-09T11:00:00+08:00", "simhash": 1234567}
+      ],
+      "items": [
+        {"key": "job:字节跳动|app infra|ai agent开发实习生", "kind": "job", "title": "AI Agent开发实习生-App Infra", "company": "字节跳动", "cities": ["北京", "上海"], "job_type": "intern", "directions": ["Agent"], "text": "熟悉 LangGraph、RAG", "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "push", "why": "方向、城市、类型都对，还是想去的公司，今天新出"},
+        {"key": "job:字节跳动|泛抖音杭州|agent开发实习生", "kind": "job", "title": "Agent开发实习生", "company": "字节跳动", "cities": ["杭州"], "job_type": "intern", "directions": ["Agent"], "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "drop", "why": "只在杭州，你只要北京"},
+        {"key": "job:腾讯|csig|agent研发实习生", "kind": "job", "title": "Agent研发实习生", "company": "腾讯", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "deadline": "2026-10-13", "first_seen": "2026-10-10T08:00:00+08:00",
+         "gold": "push", "why": "对得上，后天截止"},
+        {"key": "job:腾讯|csig|agent研发工程师", "kind": "job", "title": "Agent 研发工程师", "company": "腾讯", "cities": ["北京"], "job_type": "social", "directions": ["Agent"], "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "drop", "why": "社招，你找实习"},
+        {"key": "job:某某科技|agent实习", "kind": "job", "title": "Agent 开发实习生（外包驻场）", "company": "某某科技", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "text": "外包岗位，驻场字节", "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "drop", "why": "外包，你说过不接受"},
+        {"key": "post:xhs:meituan-mianjing", "kind": "post", "title": "美团 Agent 开发一面面经", "company": "美团", "directions": ["Agent"], "post_type": "面经", "first_seen": "2026-10-11T09:00:00+08:00",
+         "gold": "push", "why": "你正在面美团，新面经正好能准备"},
+        {"key": "post:xhs:xhs-referral", "kind": "post", "title": "小红书 Agent 开发实习内推（北京）", "company": "小红书", "cities": ["北京"], "directions": ["Agent"], "post_type": "内推", "has_referral": true, "first_seen": "2026-10-11T07:00:00+08:00", "simhash": 99999999999,
+         "gold": "push", "why": "方向城市对得上的内推，名额走得快"},
+        {"key": "job:字节跳动|泛抖音|agent开发实习生", "kind": "job", "title": "Agent开发实习生 - 泛抖音", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "first_seen": "2026-10-09T08:00:00+08:00",
+         "gold": "drop", "why": "昨天推过"},
+        {"key": "post:xhs:repost-referral", "kind": "post", "title": "小红书内推（转）", "company": "小红书", "cities": ["北京"], "directions": ["Agent"], "post_type": "内推", "has_referral": true, "first_seen": "2026-10-11T07:00:00+08:00", "simhash": 1234568,
+         "gold": "drop", "why": "前天推过的内推帖被人搬运了一遍"},
+        {"key": "job:快手|大模型算法实习生", "kind": "job", "title": "大模型算法实习生", "company": "快手", "cities": ["北京"], "job_type": "intern", "directions": ["算法", "大模型"], "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "drop", "why": "算法岗，不是你要的 Agent 开发"},
+        {"key": "job:字节跳动|抖音|agent开发实习生5天", "kind": "job", "title": "Agent开发实习生-抖音", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "days_per_week": 5, "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "brief", "why": "别的都对，但要每周 5 天，你只能 4 天，让你自己判断"},
+        {"key": "job:阿里巴巴|agent实习", "kind": "job", "title": "Agent 应用开发实习生", "company": "阿里巴巴", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "first_seen": "2026-10-05T08:00:00+08:00",
+         "gold": "brief", "why": "对得上，但不新也不急"},
+        {"key": "job:京东|agent实习", "kind": "job", "title": "Agent 开发实习生", "company": "京东", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "deadline": "2026-10-08", "first_seen": "2026-10-01T08:00:00+08:00",
+         "gold": "drop", "why": "已经截止"},
+        {"key": "post:xhs:bytedance-mianjing", "kind": "post", "title": "字节 Agent 开发二面面经", "company": "字节跳动", "directions": ["Agent"], "post_type": "面经", "first_seen": "2026-10-11T06:00:00+08:00",
+         "gold": "brief", "why": "有用的备考材料，但你没在面字节，不急"},
+        {"key": "post:xhs:sales", "kind": "post", "title": "某公司销售实习招聘", "company": "某公司", "cities": ["北京"], "directions": [], "post_type": "招聘", "first_seen": "2026-10-11T06:00:00+08:00",
+         "gold": "drop", "why": "和你的方向无关"},
+        {"key": "post:xhs:baidu-sh", "kind": "post", "title": "百度 Agent 实习招聘（上海）", "company": "百度", "cities": ["上海"], "directions": ["Agent"], "post_type": "招聘", "first_seen": "2026-10-11T06:00:00+08:00",
+         "gold": "drop", "why": "在上海"},
+        {"key": "job:字节跳动|seed|agent开发实习生8个月", "kind": "job", "title": "Agent开发实习生-Seed", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "duration_months": 8, "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "brief", "why": "别的都对，但要实习 8 个月，你说 6 个月"}
+      ]
+    },
+    {
+      "id": "B-night",
+      "about": "夜里 23:30、主动程度 normal：再好的也不在夜里推，放进早上的简报",
+      "now": "2026-10-11T23:30:00+08:00",
+      "level": "normal",
+      "history": [],
+      "items": [
+        {"key": "job:字节跳动|data|agent开发实习生", "kind": "job", "title": "Agent开发实习生-Data", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "text": "LangGraph RAG", "first_seen": "2026-10-11T22:00:00+08:00",
+         "gold": "brief", "why": "很对口，但夜里不打扰"},
+        {"key": "post:xhs:meituan-mianjing-2", "kind": "post", "title": "美团 Agent 二面面经", "company": "美团", "directions": ["Agent"], "post_type": "面经", "first_seen": "2026-10-11T23:00:00+08:00",
+         "gold": "brief", "why": "你在面美团，但夜里不打扰"}
+      ]
+    },
+    {
+      "id": "C-budget",
+      "about": "下午、主动程度 normal（每天最多 3 条），今天已经推过 3 条",
+      "now": "2026-10-11T15:00:00+08:00",
+      "level": "normal",
+      "history": [
+        {"key": "x1", "company": "腾讯", "directions": ["Agent"], "sent_at": "2026-10-11T09:00:00+08:00"},
+        {"key": "x2", "company": "阿里巴巴", "directions": ["Agent"], "sent_at": "2026-10-11T10:00:00+08:00"},
+        {"key": "x3", "company": "百度", "directions": ["Agent"], "sent_at": "2026-10-11T11:00:00+08:00"}
+      ],
+      "items": [
+        {"key": "job:字节跳动|开发者服务|agent开发实习生", "kind": "job", "title": "AI Agent开发实习生 - 开发者服务", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "text": "LangGraph", "first_seen": "2026-10-11T14:00:00+08:00",
+         "gold": "brief", "why": "对口，但今天的推送名额用完了"}
+      ]
+    },
+    {
+      "id": "D-fatigue",
+      "about": "白天、主动程度 normal；你最近两周关掉了两条快手的推送",
+      "now": "2026-10-11T10:00:00+08:00",
+      "level": "normal",
+      "history": [
+        {"key": "k1", "company": "快手", "directions": ["算法"], "sent_at": "2026-10-03T10:00:00+08:00", "feedback": "dismissed"},
+        {"key": "k2", "company": "快手", "directions": ["数据"], "sent_at": "2026-10-06T10:00:00+08:00", "feedback": "dismissed"}
+      ],
+      "items": [
+        {"key": "job:快手|agent开发实习生", "kind": "job", "title": "Agent 开发实习生", "company": "快手", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "brief", "why": "对口，但你最近连着关掉快手的推送，放简报里就好"},
+        {"key": "job:字节跳动|tiktok|agent开发实习生", "kind": "job", "title": "Agent开发实习生-TikTok", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "text": "RAG", "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "push", "why": "对口、新出、想去的公司"}
+      ]
+    },
+    {
+      "id": "E-off",
+      "about": "你把主动推送关了：只进简报",
+      "now": "2026-10-11T10:00:00+08:00",
+      "level": "off",
+      "history": [],
+      "items": [
+        {"key": "job:字节跳动|aiplatform|agent开发实习生", "kind": "job", "title": "Agent开发实习生-AI Platform", "company": "字节跳动", "cities": ["北京"], "job_type": "intern", "directions": ["Agent"], "first_seen": "2026-10-11T08:00:00+08:00",
+         "gold": "brief", "why": "很对口，但你关了推送"}
+      ]
+    }
+  ]
+}
