@@ -19,9 +19,10 @@ async function forward(req: Request, ctx: Ctx): Promise<Response> {
   if (req.method !== "GET" && req.method !== "DELETE") init.body = await req.text();
   try {
     const res = await fetch(target, init);
-    return new Response(await res.text(), {
+    // 原样把响应体接过去：对话的流式事件（text/event-stream）要边收边转，不能等全部收完
+    return new Response(res.body, {
       status: res.status,
-      headers: { "Content-Type": res.headers.get("Content-Type") ?? "application/json" },
+      headers: { "Content-Type": res.headers.get("Content-Type") ?? "application/json", "Cache-Control": "no-cache" },
     });
   } catch {
     return Response.json({ detail: "连不上后端：先运行 uv run polaris serve" }, { status: 502 });

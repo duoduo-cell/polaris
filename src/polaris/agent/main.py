@@ -8,8 +8,10 @@
 `resume()` 带着你的决定（批准 / 拒绝）继续。对外的事（投递、发消息）北极星不做，只帮你起草。
 会话存在 LangGraph 的 Postgres 检查点里，同一个 thread_id 接着聊。
 """
+import queue
+import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -90,6 +92,15 @@ class Turn:
     latency_ms: int = 0
     error: str | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        return {"thread_id": self.thread_id, "answer": self.answer, "memory_events": self.memory_events,
+                "memory_questions": self.memory_questions, "approvals": self.approvals,
+                "tool_calls": [{"tool": c["tool"], "args": c["args"], "ok": c["ok"]} for c in self.tool_calls],
+                "latency_ms": self.latency_ms, "error": self.error}
+
+
+Event = Callable[[dict[str, Any]], None]
+
 
 def approval_policy() -> dict[str, Any]:
     """有副作用的工具都要批准（策略表见 TECH.md 第 5 节）；只能批准或拒绝，不让改参数后执行。"""
@@ -131,8 +142,29 @@ def _interrupts(state: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _stream(agent: Any, payload: Any, config: dict[str, Any], on_event: Event) -> dict[str, Any]:
+    """边跑边把进度交出去：模型吐出的字（只取模型节点的，摘要中间件自己调模型的不算）、发起的工具调用。
+    跑完从检查点读最终状态（含等你批准的动作）。"""
+    for mode, data in agent.stream(payload, config=config, stream_mode=["messages", "updates"]):
+        if mode == "messages":
+            chunk, meta = data
+            if meta.get("langgraph_node") == "model":
+                text = text_of(getattr(chunk, "content", ""))
+                if text:
+                    on_event({"type": "token", "text": text})
+        else:
+            for node, update in (data or {}).items():
+                if node == "model" and isinstance(update, dict):
+                    for m in update.get("messages", []):
+                        for tc in getattr(m, "tool_calls", None) or []:
+                            on_event({"type": "tool", "tool": tc["name"], "args": tc["args"]})
+    snap = agent.get_state(config)
+    return {"messages": snap.values.get("messages", []), "__interrupt__": list(snap.interrupts)}
+
+
 def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], model: BaseChatModel | None,
-         run_id: int | None, purpose: str) -> tuple[dict[str, Any] | None, ToolRuntime, PolarisTracer, str | None, int]:
+         run_id: int | None, purpose: str, on_event: Event | None = None,
+         ) -> tuple[dict[str, Any] | None, ToolRuntime, PolarisTracer, str | None, int]:
     runtime = ToolRuntime(run_id=run_id, thread_id=thread_id, agent="main")
     tools = runtime.langchain_tools([REGISTRY[n] for n in TOOLS])
     tracer = PolarisTracer(purpose=purpose, run_id=run_id, prompt_version=PROMPT_VERSION, recorder=DbRecorder())
@@ -141,8 +173,8 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
     try:
         # 步数上限只是保险：真正限制循环的是模型调用上限（到了会正常收尾）。每一轮"模型 → 工具"在图里要走好几步
         # （摘要、审批中间件各有自己的节点），10-11 网页实测按 2 倍算会先撞上步数上限报错，所以放宽到 8 倍
-        state = agent.invoke(payload, config={"callbacks": [tracer], "recursion_limit": 8 * MAX_MODEL_CALLS + 10,
-                                              "configurable": {"thread_id": thread_id}})
+        config = {"callbacks": [tracer], "recursion_limit": 8 * MAX_MODEL_CALLS + 10, "configurable": {"thread_id": thread_id}}
+        state = agent.invoke(payload, config=config) if on_event is None else _stream(agent, payload, config, on_event)
         err = None
     except Exception as e:  # noqa: BLE001  对话出错要告诉用户，而不是整个服务挂掉
         state, err = None, f"{type(e).__name__}: {e}"
@@ -150,7 +182,8 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
 
 
 def chat(message: str, thread_id: str, *, now: datetime | None = None, model: BaseChatModel | None = None,
-         remember_fn: Callable[..., dict[str, Any]] | None = None, run_id: int | None = None) -> Turn:
+         remember_fn: Callable[..., dict[str, Any]] | None = None, run_id: int | None = None,
+         on_event: Event | None = None) -> Turn:
     """你说一句话：先过记忆，再让 agent 回答。"""
     from polaris.memory.extract import remember
 
@@ -159,17 +192,19 @@ def chat(message: str, thread_id: str, *, now: datetime | None = None, model: Ba
         mem = (remember_fn or remember)(message, now=now, thread_id=thread_id, run_id=run_id)
     except Exception as e:  # noqa: BLE001  记忆抽取失败不影响回答，只是这句话没记
         mem = {"events": [], "questions": [], "error": f"{type(e).__name__}: {e}"[:200]}
+    if on_event:
+        on_event({"type": "memory", "events": mem["events"], "questions": mem["questions"]})
     state, runtime, tracer, err, ms = _run({"messages": [{"role": "user", "content": message}]}, thread_id, now,
-                                           mem["questions"], model, run_id, "chat")
+                                           mem["questions"], model, run_id, "chat", on_event)
     return _turn(thread_id, state, runtime, tracer, err, ms, mem)
 
 
 def resume(thread_id: str, approve: bool, reason: str = "", *, now: datetime | None = None,
-           model: BaseChatModel | None = None, run_id: int | None = None) -> Turn:
+           model: BaseChatModel | None = None, run_id: int | None = None, on_event: Event | None = None) -> Turn:
     """你对等批准的动作做了决定：批准就执行，拒绝就告诉 agent 你不同意（它会换个做法或直接回答）。"""
     decision: dict[str, Any] = {"type": "approve"} if approve else {"type": "reject", "message": reason or "用户没有批准"}
     state, runtime, tracer, err, ms = _run(Command(resume={"decisions": [decision]}), thread_id, now or datetime.now(UTC),
-                                           [], model, run_id, "chat:resume")
+                                           [], model, run_id, "chat:resume", on_event)
     return _turn(thread_id, state, runtime, tracer, err, ms, {"events": [], "questions": []})
 
 
@@ -182,3 +217,22 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
     return Turn(thread_id=thread_id, answer=answer, memory_events=mem.get("events", []),
                 memory_questions=mem.get("questions", []), approvals=approvals, tool_calls=runtime.calls,
                 llm_call_ids=tracer.call_ids, latency_ms=ms, error=err or mem.get("error"))
+
+
+def streamed(fn: Callable[..., Turn], *args: Any, **kwargs: Any) -> Iterator[dict[str, Any]]:
+    """把 chat / resume 变成事件流：memory（记忆改了什么）→ tool（发起了哪个工具）/ token（回答的字）→ done（和不流式时一样的结果）。
+    在后台线程里跑，事件经队列交出来，网页能边跑边显示。"""
+    q: queue.Queue[dict[str, Any] | None] = queue.Queue()
+
+    def work() -> None:
+        try:
+            q.put({"type": "done", "turn": fn(*args, on_event=q.put, **kwargs).to_dict()})
+        except Exception as e:  # noqa: BLE001
+            q.put({"type": "error", "message": f"{type(e).__name__}: {e}"[:300]})
+        finally:
+            q.put(None)
+
+    threading.Thread(target=work, daemon=True).start()
+    while (item := q.get()) is not None:
+        yield item
+

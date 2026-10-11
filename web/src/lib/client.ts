@@ -24,3 +24,30 @@ export async function tool<T = Record<string, unknown>>(name: string, args: Reco
   if (!r.ok) throw new Error(typeof r.result === "string" ? r.result : "工具出错了");
   return r.result as T;
 }
+
+// 流式接口：服务端发来的 "data: {...}" 事件逐个交给 onEvent
+export async function stream(path: string, body: unknown, onEvent: (e: Record<string, unknown>) => void): Promise<void> {
+  const res = await fetch(`/api/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail ?? `出错了（${res.status}）`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let cut: number;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const chunk = buffer.slice(0, cut);
+      buffer = buffer.slice(cut + 2);
+      if (chunk.startsWith("data: ")) onEvent(JSON.parse(chunk.slice(6)));
+    }
+  }
+}

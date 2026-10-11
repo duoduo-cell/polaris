@@ -97,3 +97,35 @@ def test_messages_endpoint_shows_pending_approval(db):
     chat("把我的学校忘掉", tid, now=NOW, remember_fn=fake_remember, model=script(call("memory_forget", {"attribute": "school"})))
     r = TestClient(app).get(f"/api/me/chat/{tid}/messages", headers={"Authorization": "Bearer test-owner-token"}).json()
     assert r["approvals"][0]["name"] == "memory_forget"
+
+
+def test_streamed_turn_emits_memory_tool_tokens_then_done(db):
+    import json
+
+    from fastapi.testclient import TestClient
+
+    from polaris.agent.main import streamed
+    from polaris.api.app import app
+
+    tid = f"t-{uuid.uuid4().hex[:8]}"
+    model = script(call("memory_card", {}), AIMessage(content="记着：学校 某大学"))
+    model.disable_streaming = True  # 假模型流式时会丢掉工具调用（真的 ChatOpenAI 不会），这里整条返回
+    events = list(streamed(chat, "看看记着什么", tid, now=NOW, remember_fn=fake_remember, model=model))
+    kinds = [e["type"] for e in events]
+    assert kinds[0] == "memory" and kinds[-1] == "done" and "tool" in kinds
+    assert kinds.index("tool") < kinds.index("token")
+    assert "".join(e["text"] for e in events if e["type"] == "token") == events[-1]["turn"]["answer"] == "记着：学校 某大学"
+
+    tid2 = f"t-{uuid.uuid4().hex[:8]}"
+    from polaris.agent import main
+
+    real_chat = main.chat
+    main.chat = lambda message, thread_id, on_event=None: real_chat(  # noqa: E731
+        message, thread_id, now=NOW, remember_fn=fake_remember, model=script(AIMessage(content="好的")), on_event=on_event)
+    try:
+        r = TestClient(app).post("/api/me/chat/stream", json={"message": "你好", "thread_id": tid2},
+                                 headers={"Authorization": "Bearer test-owner-token"})
+    finally:
+        main.chat = real_chat
+    lines = [json.loads(x[6:]) for x in r.text.split("\n\n") if x.startswith("data: ")]
+    assert r.headers["content-type"].startswith("text/event-stream") and lines[-1]["turn"]["answer"] == "好的"

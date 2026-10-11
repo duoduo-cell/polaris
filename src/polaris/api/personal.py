@@ -37,10 +37,19 @@ class ResumeIn(BaseModel):
 
 
 def _turn(t: Any) -> dict[str, Any]:
-    return {"thread_id": t.thread_id, "answer": t.answer, "memory_events": t.memory_events,
-            "memory_questions": t.memory_questions, "approvals": t.approvals,
-            "tool_calls": [{"tool": c["tool"], "args": c["args"], "ok": c["ok"]} for c in t.tool_calls],
-            "latency_ms": t.latency_ms, "error": t.error}
+    return t.to_dict()
+
+
+def _sse(events: Any) -> Any:
+    import json
+
+    from fastapi.responses import StreamingResponse
+
+    def body():
+        for e in events:
+            yield f"data: {json.dumps(e, ensure_ascii=False, default=str)}\n\n"
+
+    return StreamingResponse(body(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/chat", summary="Say something to Polaris (memory first, then the agent answers)")
@@ -55,6 +64,20 @@ def resume_endpoint(thread_id: str, body: ResumeIn) -> dict[str, Any]:
     from polaris.agent.main import resume
 
     return _turn(resume(thread_id, body.approve, body.reason))
+
+
+@router.post("/chat/stream", summary="Same as /chat, streamed as server-sent events: memory, tool, token, done")
+def chat_stream_endpoint(body: ChatIn) -> Any:
+    from polaris.agent.main import chat, streamed
+
+    return _sse(streamed(chat, body.message, body.thread_id))
+
+
+@router.post("/chat/{thread_id}/resume/stream", summary="Same as /resume, streamed")
+def resume_stream_endpoint(thread_id: str, body: ResumeIn) -> Any:
+    from polaris.agent.main import resume, streamed
+
+    return _sse(streamed(resume, thread_id, body.approve, body.reason))
 
 
 @router.get("/memory", summary="What Polaris remembers about you (on a given day), plus what it is waiting to confirm")

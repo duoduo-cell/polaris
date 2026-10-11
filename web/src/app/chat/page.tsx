@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Badge, Card, ErrorNote, Markdown } from "@/components/markdown";
-import { api } from "@/lib/client";
+import { api, stream } from "@/lib/client";
 
 type Approval = { name: string; args: Record<string, unknown>; description: string };
 type MemoryEvent = { op: string; attribute: string; value: string | null; reason: string };
@@ -29,6 +29,7 @@ export default function Chat() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [live, setLive] = useState<{ memory: MemoryEvent[]; tool: string | null; text: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
 
@@ -49,29 +50,34 @@ export default function Chat() {
     }
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || busy) return;
-    setInput(""); setError(null); setBusy(true);
-    setMessages((m) => [...m, { role: "user", content: text }]);
+  // 流式：记忆改了什么、正在调哪个工具、回答的字，边收边显示；最后用 done 里的完整结果替换
+  async function run(path: string, body: unknown) {
+    setBusy(true); setError(null); setLive({ memory: [], tool: null, text: "" });
     try {
-      take(await api<Turn>("chat", { body: { message: text, thread_id: thread } }));
+      await stream(path, body, (e) => {
+        if (e.type === "memory") setLive((l) => l && { ...l, memory: e.events as MemoryEvent[] });
+        else if (e.type === "tool") setLive((l) => l && { ...l, tool: e.tool as string, text: "" });
+        else if (e.type === "token") setLive((l) => l && { ...l, text: l.text + (e.text as string) });
+        else if (e.type === "done") take(e.turn as Turn);
+        else if (e.type === "error") setError(e.message as string);
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusy(false);
+      setLive(null); setBusy(false);
     }
   }
 
+  async function send() {
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    setMessages((m) => [...m, { role: "user", content: text }]);
+    await run("chat/stream", { message: text, thread_id: thread });
+  }
+
   async function decide(approve: boolean) {
-    setBusy(true); setError(null);
-    try {
-      take(await api<Turn>(`chat/${thread}/resume`, { body: { approve, reason: approve ? "" : "我没有批准" } }));
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    await run(`chat/${thread}/resume/stream`, { approve, reason: approve ? "" : "我没有批准" });
   }
 
   return (
@@ -122,7 +128,20 @@ export default function Chat() {
             </div>
           </Card>
         ))}
-        {busy && <p className="text-sm text-muted">北极星在查……（一般十几秒到半分钟）</p>}
+        {live && (
+          <Card className="space-y-2">
+            {live.memory.filter((e) => SHOWN_OPS.has(e.op)).length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {live.memory.filter((e) => SHOWN_OPS.has(e.op)).map((e, j) => (
+                  <Badge key={j} tone="green">记忆 · {OP_NAMES[e.op] ?? e.op}：{e.value}</Badge>
+                ))}
+              </div>
+            )}
+            {live.text ? <Markdown text={live.text} /> : (
+              <p className="text-sm text-muted">{live.tool ? `正在查：${live.tool}……` : "北极星在想……"}</p>
+            )}
+          </Card>
+        )}
         <ErrorNote error={error} />
         <div ref={end} />
       </div>
