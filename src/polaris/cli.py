@@ -396,6 +396,14 @@ def metrics_m3_tools(k: int = typer.Option(3, help="每题跑几次，用来算 
     typer.echo((m3.REPORT_DIR / "M3.md").read_text(encoding="utf-8"))
 
 
+@metrics_app.command("market")
+def metrics_market() -> None:
+    """大厂 Agent 岗位要什么技术、面经里问什么（按采到的数据统计，不调模型）。"""
+    from polaris.eval import market
+
+    typer.echo(market.run())
+
+
 @agent_app.command("ask")
 def agent_ask(question: str,
               record: Path = typer.Option(None, help="把这次运行录下来，存到这个文件"),
