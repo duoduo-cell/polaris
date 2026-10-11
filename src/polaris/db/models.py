@@ -263,3 +263,33 @@ class Posting(JobFields, Base):
     prompt_version: Mapped[str | None] = mapped_column(String(64))
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = created_at()
+
+
+class SearchChunk(Base):
+    """检索用的块（M4）：岗位的职责和要求、帖子（长帖分段）、面试题。由 jobs 和 posts 生成，随时可重建（search/chunking.py）。
+    关键词检索用 pg_search 的 BM25 索引（中文分词，迁移里用 SQL 建，模型里不声明），向量检索用 HNSW。"""
+
+    __tablename__ = "chunks"
+    __table_args__ = (
+        Index("ix_chunks_embedding", "embedding", postgresql_using="hnsw",
+              postgresql_ops={"embedding": "vector_cosine_ops"}),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    key: Mapped[str] = mapped_column(String(80), unique=True)  # 稳定编号：job:12:duty、post:5:q3
+    kind: Mapped[str] = mapped_column(String(16))  # job / job_duty / job_req / post / post_part / question
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True)
+    post_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"), index=True)
+    companies: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    header: Mapped[str] = mapped_column(Text)  # 上下文头：公司 ｜ 部门 ｜ 岗位名 ｜ 城市 ｜ 类型
+    body: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)  # 头 + 正文：检索和算向量都用它
+    content_hash: Mapped[str] = mapped_column(String(32))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM))
+    embedded_hash: Mapped[str | None] = mapped_column(String(32))  # 算向量时的正文指纹，和 content_hash 不同就要重算
+    embed_model: Mapped[str | None] = mapped_column(String(128))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now())

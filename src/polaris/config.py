@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     embed_model: str = "text-embedding-v4"
     embed_dim: int = EMBED_DIM
     embed_batch: int = 10
+    # 重排服务（M4）：不配就跳过重排，直接用融合分。key 和向量服务共用（开发期都是阿里云百炼）
+    rerank_base_url: str | None = None
+    rerank_model: str | None = None
 
     database_url: str = "postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris"
     ingest_token: SecretStr | None = None
@@ -72,6 +75,10 @@ class Settings(BaseSettings):
     def host(url: str) -> str:
         return urlparse(url).netloc
 
+    @property
+    def rerank_enabled(self) -> bool:
+        return bool(self.rerank_base_url and self.rerank_model)
+
     def public_summary(self) -> dict:
         """给 /health 用：只有模型名和服务域名，没有 key。"""
         return {
@@ -80,6 +87,8 @@ class Settings(BaseSettings):
             "embed_host": self.host(self.embed_base),
             "embed_model": self.embed_model,
             "embed_dim": self.embed_dim,
+            "rerank_host": self.host(self.rerank_base_url) if self.rerank_base_url else None,
+            "rerank_model": self.rerank_model,
             "cache": self.llm_cache,
         }
 

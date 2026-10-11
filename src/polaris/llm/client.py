@@ -3,6 +3,7 @@
 - chat：对话和工具调用
 - extract：结构化抽取。先试 json_schema；服务不支持就改用 json_object，本地按 schema 校验，不合格带着错误重试
 - embed：向量，按批调用，核对维度
+- rerank：重排（M4 检索用），返回每个候选的相关度
 """
 import hashlib
 import json
@@ -123,6 +124,9 @@ class LLM:
                                   timeout=s.llm_timeout, max_retries=0, http_client=http_client)
         self.embed_client = OpenAI(base_url=s.embed_base, api_key=s.embed_key.get_secret_value(),
                                    timeout=s.llm_timeout, max_retries=0, http_client=http_client)
+        self.rerank_client = (OpenAI(base_url=s.rerank_base_url, api_key=s.embed_key.get_secret_value(),
+                                     timeout=s.llm_timeout, max_retries=0, http_client=http_client)
+                              if s.rerank_enabled else None)
         self._no_json_schema: set[str] = set()  # 已知不支持 json_schema 的模型，下次直接用 json_object
         self._lock = threading.Lock()
 
@@ -197,6 +201,17 @@ class LLM:
             vectors.extend(batch)
         return vectors
 
+    def rerank(self, query: str, documents: list[str], *, purpose: str, top_n: int | None = None,
+               run_id: int | None = None) -> list[tuple[int, float]]:
+        """返回 (候选的下标, 相关度)，相关度高的在前。相关度只在同一次请求内可比（百炼文档的说明）。"""
+        if self.rerank_client is None:
+            raise LLMError("没有配置重排服务（RERANK_BASE_URL、RERANK_MODEL）")
+        body: dict[str, Any] = {"model": self.settings.rerank_model, "query": query, "documents": documents}
+        if top_n:
+            body["top_n"] = top_n
+        data, _, _, _ = self._request("rerank", body, purpose=purpose, run_id=run_id, cache=False)
+        return [(r["index"], float(r["relevance_score"])) for r in data.get("results") or []]
+
     # ---- 内部 ----
 
     @staticmethod
@@ -220,13 +235,18 @@ class LLM:
                  check: Callable[[dict[str, Any]], tuple[bool, str | None, Any]] | None = None):
         """发一次请求：读缓存、限流时等待重试、记账。返回 (回答, 记录编号, 是否读了缓存, 校验结果)。"""
         is_embed = endpoint == "embeddings"
-        client = self.embed_client if is_embed else self.chat_client
-        base = self.settings.embed_base if is_embed else self.settings.chat_base
+        if endpoint == "rerank":
+            client, base = self.rerank_client, self.settings.rerank_base_url or ""
+        else:
+            client = self.embed_client if is_embed else self.chat_client
+            base = self.settings.embed_base if is_embed else self.settings.chat_base
         use_cache = (self.settings.llm_cache if cache is None else cache) and not is_embed
         key = cache_key(endpoint, body)
         common = {"run_id": run_id, "purpose": purpose, "prompt_version": prompt_version,
                   "provider": urlparse(base).netloc, "model": body["model"], "endpoint": endpoint,
                   "request": body, "cache_key": key}
+        if endpoint == "rerank":  # 候选原文不进记录（可能是帖子原文），只记条数
+            common["request"] = {k: v for k, v in body.items() if k != "documents"} | {"documents": len(body["documents"])}
 
         if use_cache:
             cached = self.recorder.find_cached(key)
@@ -243,6 +263,8 @@ class LLM:
             try:
                 if is_embed:
                     resp = client.embeddings.create(**body)
+                elif endpoint == "rerank":  # OpenAI SDK 没有重排接口，用它的通用 POST（百炼的 /reranks）
+                    resp = client.post("/reranks", body=body, cast_to=object)
                 else:
                     resp = client.chat.completions.create(**body)
             except RETRYABLE as e:
@@ -257,8 +279,10 @@ class LLM:
                                       "latency_ms": int((time.perf_counter() - start) * 1000)})
                 raise
             latency = int((time.perf_counter() - start) * 1000)
-            data = resp.model_dump(mode="json")
+            data = resp if isinstance(resp, dict) else resp.model_dump(mode="json")
             usage = usage_fields(data.get("usage"))
+            if endpoint == "rerank":  # 重排只返回 total_tokens
+                usage["prompt_tokens"] = (data.get("usage") or {}).get("total_tokens")
             checked = check(data) if check else (None, None, None)
             if is_embed:  # 向量本身不进记录，只记条数和维度
                 vecs = data.get("data") or []

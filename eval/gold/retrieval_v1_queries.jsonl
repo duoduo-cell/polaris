@@ -1,0 +1,32 @@
+{"qid": "j01", "scope": "jobs", "query": "字节 Agent 开发实习 北京", "need": "字节跳动的 Agent 开发或研发类实习岗位，工作城市包含北京"}
+{"qid": "j02", "scope": "jobs", "query": "腾讯 要求 RAG 的岗位", "need": "腾讯的岗位，职位描述或任职要求里明确写了 RAG/检索增强"}
+{"qid": "j03", "scope": "jobs", "query": "大模型推理优化 实习", "need": "大模型推理加速、推理框架或推理优化方向的实习岗位，公司不限"}
+{"qid": "j04", "scope": "jobs", "query": "多模态大模型算法实习", "need": "多模态大模型算法方向的实习岗位"}
+{"qid": "j05", "scope": "jobs", "query": "Agent 评测 实习", "need": "做 Agent 或大模型评测（评估体系、评测集、评测平台）的实习岗位"}
+{"qid": "j06", "scope": "jobs", "query": "要求会 LangGraph 或 LangChain 的岗位", "need": "职位描述或要求里提到 LangGraph 或 LangChain 的岗位"}
+{"qid": "j07", "scope": "jobs", "query": "小红书 AI 全栈 校招", "need": "小红书的 Product Engineer / AI 全栈方向校招岗位"}
+{"qid": "j08", "scope": "jobs", "query": "Coding Agent 研究实习", "need": "Coding Agent（代码智能体、AI 编程）方向的研究或研发实习"}
+{"qid": "j09", "scope": "jobs", "query": "杭州 大模型 实习", "need": "工作城市包含杭州的大模型相关实习岗位"}
+{"qid": "j10", "scope": "jobs", "query": "上海 AI 应用开发 实习", "need": "工作城市包含上海的 AI 应用或 Agent 应用开发实习岗位"}
+{"qid": "j11", "scope": "jobs", "query": "腾讯 微信 大模型 岗位", "need": "腾讯 WXG / 微信相关团队的大模型岗位"}
+{"qid": "j12", "scope": "jobs", "query": "大模型安全 岗位", "need": "大模型安全方向的岗位（内容安全、对抗、防护等）"}
+{"qid": "j13", "scope": "jobs", "query": "知识图谱 大模型 岗位", "need": "职责或要求涉及知识图谱的大模型相关岗位"}
+{"qid": "j14", "scope": "jobs", "query": "后端开发 Agent 方向 实习", "need": "后端开发岗位且明确是 Agent 方向的实习"}
+{"qid": "p01", "scope": "posts", "query": "字节 Agent 面经", "need": "字节跳动 Agent 相关岗位的面试经验帖"}
+{"qid": "p02", "scope": "posts", "query": "腾讯 实习 内推", "need": "腾讯实习岗位的内推或招聘帖"}
+{"qid": "p03", "scope": "posts", "query": "剪映 面经", "need": "字节跳动剪映团队岗位的面试经验帖"}
+{"qid": "p04", "scope": "posts", "query": "Agent 开发面试问了 RAG", "need": "Agent 开发岗位的面经，面试中问到了 RAG 相关问题"}
+{"qid": "p05", "scope": "posts", "query": "Agent 实习 转正 经验", "need": "关于 Agent / 大模型方向实习、转正经历或经验的帖子"}
+{"qid": "p06", "scope": "posts", "query": "美团 大模型 面经", "need": "美团大模型或 Agent 相关岗位的面经"}
+{"qid": "p07", "scope": "posts", "query": "阿里 千问 面经", "need": "阿里千问 / 通义相关岗位的面经"}
+{"qid": "p08", "scope": "posts", "query": "AI 产品经理 实习 招聘", "need": "招 AI 产品经理（含 Agent 产品）实习生的帖子"}
+{"qid": "q01", "scope": "questions", "query": "KV Cache 显存计算", "need": "问 KV Cache 原理或显存怎么算的面试题"}
+{"qid": "q02", "scope": "questions", "query": "RAG 召回效果差怎么优化", "need": "关于 RAG 检索或召回效果优化的面试题"}
+{"qid": "q03", "scope": "questions", "query": "怎么评估 Agent 的效果", "need": "关于 Agent 评测、评估方法或指标的面试题"}
+{"qid": "q04", "scope": "questions", "query": "MCP 和 function calling 的区别", "need": "关于 MCP 或工具调用 / function calling 的面试题"}
+{"qid": "q05", "scope": "questions", "query": "Agent 的记忆怎么设计", "need": "关于 Agent 记忆、长期记忆或上下文管理设计的面试题"}
+{"qid": "q06", "scope": "questions", "query": "GRPO PPO DPO 区别", "need": "关于 PPO、DPO、GRPO 等强化学习对齐算法的面试题"}
+{"qid": "q07", "scope": "questions", "query": "多 Agent 协作怎么设计", "need": "关于多 Agent 架构或协作设计的面试题"}
+{"qid": "q08", "scope": "questions", "query": "手撕 LRU", "need": "要求手写 LRU 缓存的面试题"}
+{"qid": "a01", "scope": "all", "query": "字节 Seed 大模型", "need": "字节 Seed 团队的大模型岗位或相关帖子"}
+{"qid": "a02", "scope": "all", "query": "腾讯 混元", "need": "腾讯混元相关的岗位或帖子"}

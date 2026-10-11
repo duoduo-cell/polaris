@@ -412,6 +412,48 @@ def metrics_m3_tools(k: int = typer.Option(3, help="每题跑几次，用来算 
     typer.echo((m3.REPORT_DIR / "M3.md").read_text(encoding="utf-8"))
 
 
+@metrics_app.command("m4")
+def metrics_m4() -> None:
+    """M4：对齐（三份标准答案）、冲突发现、出处；检索各配置的消融对比（会调向量和重排，评审结果读缓存）。"""
+    from polaris.eval import m4
+
+    m4.run()
+    typer.echo(m4.REPORT.read_text(encoding="utf-8"))
+
+
+@app.command()
+def index(embed: bool = typer.Option(True, help="同时给新块算向量"), graph: bool = typer.Option(True, help="同时重建知识图谱")) -> None:
+    """检索的底子：jobs 和 posts 切块写进 chunks、算向量，重建 Neo4j 知识图谱。都可以重复跑。"""
+    from polaris.search.index import embed_pending, sync_chunks
+
+    typer.echo(json.dumps({"chunks": sync_chunks()}, ensure_ascii=False))
+    if embed:
+        typer.echo(json.dumps({"embed": embed_pending()}, ensure_ascii=False))
+    if graph:
+        from polaris.graph.client import enabled
+
+        if enabled():
+            from polaris.graph.build import rebuild
+
+            typer.echo(json.dumps({"graph": rebuild()}, ensure_ascii=False, default=str))
+        else:
+            typer.echo("没有配置 NEO4J_PASSWORD，跳过知识图谱")
+
+
+@app.command()
+def search(query: str, scope: str = typer.Option("all", help="all / jobs / posts / questions"),
+           company: str = typer.Option(None, help="只看这家公司"), top_k: int = typer.Option(10)) -> None:
+    """混合检索（关键词 + 向量 + 图谱，重排，去冗余），打印每条的各路名次和分数。"""
+    from polaris.search.retrieve import SearchQuery
+    from polaris.search.retrieve import search as run_search
+
+    hits, trace = run_search(SearchQuery(query, scope=scope, company=company, top_k=top_k))  # type: ignore[arg-type]
+    typer.echo(json.dumps(trace, ensure_ascii=False))
+    for h in hits:
+        rr = "—" if h.rerank is None else f"{h.rerank:.2f}"
+        typer.echo(f"{h.final:.3f}  重排 {rr}  融合 {h.fused:.2f}  {h.ranks}  {h.header}")
+
+
 @metrics_app.command("market")
 def metrics_market() -> None:
     """大厂 Agent 岗位要什么技术、面经里问什么（按采到的数据统计，不调模型）。"""

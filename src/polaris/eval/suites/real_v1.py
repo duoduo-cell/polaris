@@ -7,7 +7,7 @@
 """
 from sqlalchemy import select
 
-from polaris.db.models import Post, Posting, RawItem
+from polaris.db.models import Job, Post, Posting, RawItem
 from polaris.db.session import session_scope
 from polaris.eval.suites.tool_calling import Task
 
@@ -31,13 +31,15 @@ REFS = {
 
 def _short_ids() -> dict[str, list[str]]:
     with session_scope() as s:
-        jobs = {(src, ext): f"J-{pid}" for src, ext, pid in s.execute(
-            select(RawItem.source, RawItem.external_id, Posting.id).join(Posting, Posting.raw_item_id == RawItem.id))}
+        # M4 起 J- 指合并后的岗位：引用的挂牌换成它所属的岗位
+        jobs = {(src, ext): f"J-{jid}" for src, ext, jid in s.execute(
+            select(RawItem.source, RawItem.external_id, Posting.job_id).join(Posting, Posting.raw_item_id == RawItem.id)
+            .where(Posting.job_id.is_not(None)))}
         posts = {(src, ext): f"P-{pid}" for src, ext, pid in s.execute(
             select(RawItem.source, RawItem.external_id, Post.id).join(Post, Post.raw_item_id == RawItem.id))}
         # 字节在杭州的 Agent 实习：符合条件的都算对，随采集增加
-        hz = [f"J-{i}" for i in s.execute(select(Posting.id).where(
-            Posting.big_company == "字节跳动", Posting.city.ilike("%杭州%"), Posting.title.ilike("%agent%"))).scalars()]
+        hz = [f"J-{i}" for i in s.execute(select(Job.id).where(
+            Job.company == "字节跳动", Job.city.ilike("%杭州%"), Job.title.ilike("%agent%"))).scalars()]
     both = jobs | posts
     return {"bd_hz": hz} | {name: [both[r] for r in refs if r in both] for name, refs in REFS.items()}
 

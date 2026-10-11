@@ -16,6 +16,9 @@ os.environ.update({
     "EMBED_DIM": "1024",
     "INGEST_TOKEN": "test-ingest-token",
     "MCP_TOKEN": "test-mcp-token",
+    "RERANK_BASE_URL": "",  # 测试不调真的重排服务
+    "RERANK_MODEL": "",
+    "NEO4J_PASSWORD": "",  # 测试不连开发用的图谱
     "DATABASE_URL": TEST_DB,
 })
 

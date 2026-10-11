@@ -4,7 +4,11 @@ name: polaris
 
 services:
   db:
-    image: pgvector/pgvector:pg17
+    # Postgres 17 + pgvector + ParadeDB pg_search（BM25），在 pgvector 官方镜像上装 pg_search，见 docker/db/Dockerfile
+    image: polaris-db:pg17-pgvector-pgsearch0.22.6
+    build:
+      context: ./data/vendor/pg_search
+      dockerfile: ../../../docker/db/Dockerfile
     environment:
       POSTGRES_USER: polaris
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-polaris}
