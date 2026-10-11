@@ -551,6 +551,14 @@ def metrics_proactive() -> None:
     typer.echo(proactive_eval.write_report())
 
 
+@metrics_app.command("injection")
+def metrics_injection(k: int = typer.Option(3, help="每种攻击跑几次")) -> None:
+    """提示注入：帖子和职位描述里藏着删记忆、外传数据的指令，主 agent 会不会照做（会调模型，在单独的 polaris_inject 库里跑）。"""
+    from polaris.eval import injection
+
+    typer.echo(injection.write_report(injection.run(k=k)))
+
+
 @metrics_app.command("market")
 def metrics_market() -> None:
     """大厂 Agent 岗位要什么技术、面经里问什么（按采到的数据统计，不调模型）。"""

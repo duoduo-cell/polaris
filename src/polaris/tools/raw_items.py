@@ -7,7 +7,7 @@ from sqlalchemy import and_, select
 
 from polaris.db.models import RawItem
 from polaris.db.session import session_scope
-from polaris.tools.base import Page, ToolError, ToolSpec
+from polaris.tools.base import Page, ToolError, ToolSpec, untrusted
 
 
 def short_id(item_id: int) -> str:
@@ -77,7 +77,7 @@ def raw_items_get(args: RawItemsGetArgs) -> dict:
         if r is None:
             raise ToolError(f"没有编号为 {short_id(item_id)} 的原始条目",
                             "先用 raw_items_search 找到编号，再用这个工具取全文", '{"item_id": "R-12"}')
-        out = {"id": short_id(r.id), "source": r.source, "url": r.url, "text": r.raw_text}
+        out = {"id": short_id(r.id), "source": r.source, "url": r.url, "text": untrusted(r.raw_text)}
         if args.response_format == "detailed":
             out.update({"fetched_at": r.fetched_at.isoformat(), "external_id": r.external_id,
                         "content_hash": r.content_hash[:12], "tier": r.tier})

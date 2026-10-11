@@ -261,6 +261,11 @@ def get_raw_item(item_id: int, db: Db) -> RawItem:
     return item
 
 
+from polaris.api.personal import router as personal_router  # noqa: E402  放在 app 建好之后
+
+app.include_router(personal_router)
+
+
 def require_ingest_token(authorization: Annotated[str | None, Header()] = None) -> None:
     token = get_settings().ingest_token
     if token is None:

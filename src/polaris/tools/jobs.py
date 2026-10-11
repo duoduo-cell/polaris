@@ -17,7 +17,7 @@ from polaris.companies import match
 from polaris.db.models import Job, Post, Posting, RawItem
 from polaris.db.session import session_scope
 from polaris.search.retrieve import SearchQuery, search
-from polaris.tools.base import Page, ToolError, ToolSpec
+from polaris.tools.base import Page, ToolError, ToolSpec, untrusted
 
 JOB_TYPES = {"intern": "实习", "campus": "校招", "social": "社招"}
 SEARCH_DEPTH = 60  # 混合检索取多少块，再按字段筛
@@ -132,7 +132,7 @@ def jobs_get(args: JobsGetArgs) -> dict:
                                  "others": [{"value": a["value"], "sources": a["sources"]} for a in c["alternatives"]]}
                                 for c in j.conflicts]
         if args.response_format == "detailed":
-            out["jd_text"] = (j.jd_text or "")[:3000]
+            out["jd_text"] = untrusted((j.jd_text or "")[:3000])
     return out
 
 
@@ -203,7 +203,7 @@ def posts_get(args: PostsGetArgs) -> dict:
         out = _post_row(p, r, True)
         out.update({"interview_questions": p.interview_questions, "advice": p.advice, "grad_year": p.grad_year})
         if args.response_format == "detailed":
-            out["text"] = r.raw_text[:2500]
+            out["text"] = untrusted(r.raw_text[:2500])
     return out
 
 

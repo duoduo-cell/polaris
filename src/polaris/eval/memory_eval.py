@@ -43,16 +43,16 @@ QA_PROMPT = """你是北极星，求职者的个人助手。今天是 {today}。
 - 回答简短，写出依据的记忆编号（M-）。"""
 
 
-def use_eval_database() -> str:
+def use_eval_database(name: str = "polaris_memeval") -> str:
     """切到单独的评测库（不存在就建、迁移到最新），返回库名。必须在用到数据库之前调用。"""
     from polaris.config import get_settings
     from polaris.db.session import get_engine
 
-    url = make_url(get_settings().database_url).set(database="polaris_memeval")
+    url = make_url(get_settings().database_url).set(database=name)
     admin = create_engine(url.set(database="postgres"), isolation_level="AUTOCOMMIT")
     with admin.connect() as conn:
-        if not conn.execute(text("select 1 from pg_database where datname = 'polaris_memeval'")).scalar():
-            conn.execute(text('create database "polaris_memeval"'))
+        if not conn.execute(text("select 1 from pg_database where datname = :n"), {"n": name}).scalar():
+            conn.execute(text(f'create database "{name}"'))
     admin.dispose()
     os.environ["DATABASE_URL"] = url.render_as_string(hide_password=False)
     get_settings.cache_clear()
@@ -64,7 +64,7 @@ def use_eval_database() -> str:
     cfg.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
     cfg.attributes["configure_logger"] = False
     command.upgrade(cfg, "head")
-    return "polaris_memeval"
+    return name
 
 
 def _norm(v: str | None) -> str:
