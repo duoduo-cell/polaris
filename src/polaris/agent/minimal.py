@@ -48,7 +48,7 @@ KNOWLEDGE_PROMPT = """你是北极星，帮求职者在采集到的大厂岗位�
 - 比较类问题两边都查到再下结论，写出两边的数字；数量是"库里采到的"，不是全网。
 - jobs_get 返回 conflicts（各处说法不一致）时，说清取了哪个值、另一种说法是什么、来自哪里。
 - 推荐岗位时只推荐工具结果里确实符合用户条件（城市、类型、方向）的，并写出理由。
-- 找不到就直接说没找到，并说明查了哪些条件，不要编。
+- 找不到就直接说没找到，并说明查了哪些条件，不要编；放宽两三次条件还是没有，就停下来如实回答，不要一直换条件查。
 - 用户说的公司可能是简称、英文名或黑话（字节、TikTok、鹅厂、pdd），直接传给工具。
 - 和找岗位无关的问题，直接简短回答，不要调用工具。
 - 工具报错时，按它给的"怎么改"调整后再试。"""
@@ -65,7 +65,7 @@ class Profile:
 
 MINIMAL = Profile("minimal", PROMPT_VERSION, SYSTEM_PROMPT, TOOL_NAMES)
 SEARCH = Profile("search", "search-v1", SEARCH_PROMPT, ("jobs_search", "jobs_get", "posts_search", "posts_get"))
-KNOWLEDGE = Profile("knowledge", "knowledge-v1", KNOWLEDGE_PROMPT,
+KNOWLEDGE = Profile("knowledge", "knowledge-v2", KNOWLEDGE_PROMPT,
                     ("jobs_search", "jobs_get", "posts_search", "posts_get", "questions_search", "kg_stats"),
                     max_model_calls=12)  # 比较、统计类题要多查几次
 
@@ -109,7 +109,8 @@ def ask(question: str, *, run_id: int | None = None, thread_id: str | None = Non
     start = time.perf_counter()
     try:
         state = agent.invoke({"messages": [{"role": "user", "content": question}]},
-                             config={"callbacks": [tracer], "recursion_limit": 25})
+                             # 步数上限要大于"模型调用上限 × 2"：先到调用上限时能正常收尾，而不是撞上步数上限报错
+                             config={"callbacks": [tracer], "recursion_limit": 2 * profile.max_model_calls + 5})
         answer, error = text_of(state["messages"][-1].content), None
     except Exception as e:  # noqa: BLE001  评测要记下失败，而不是整批中断
         answer, error = "", f"{type(e).__name__}: {e}"

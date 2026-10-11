@@ -66,7 +66,7 @@ PRIVATE_TOOLS = ("posts_search", "posts_get", "questions_search")
 HIDDEN = "（查过帖子或面试题，回答原文只在本机）"
 
 
-def run_bench(k: int = 3) -> dict[str, Any]:
+def run_bench(k: int = 3, profiles: tuple[str, ...] = ("knowledge", "search")) -> dict[str, Any]:
     """Polaris-Bench v2：同一套难题，knowledge 配置（加面试题检索和图谱统计）对比 search 配置（M3 的四个工具）。
     录像和完整回答只在本机（会涉及帖子原文）；公开的 JSON 里，查过帖子或面试题的回答换成占位。"""
     from polaris.agent.minimal import KNOWLEDGE, SEARCH
@@ -75,7 +75,9 @@ def run_bench(k: int = 3) -> dict[str, Any]:
 
     tasks = build_tasks()
     full: dict[str, Any] = {"suite": SUITE_VERSION, "k": k, "profiles": {}}
-    for profile in (KNOWLEDGE, SEARCH):
+    if BENCH_PRIVATE.exists():  # 只重跑一部分配置时，保留另一部分上次的结果
+        full["profiles"] = json.loads(BENCH_PRIVATE.read_text(encoding="utf-8"))["profiles"]
+    for profile in (p for p in (KNOWLEDGE, SEARCH) if p.name in profiles):
         cassettes = BENCH_CASSETTES / profile.name
         cassettes.mkdir(parents=True, exist_ok=True)
         for old in cassettes.glob("*.jsonl"):
@@ -84,7 +86,11 @@ def run_bench(k: int = 3) -> dict[str, Any]:
                                                    profile=profile, purpose="m4_bench")
     BENCH_PRIVATE.parent.mkdir(parents=True, exist_ok=True)
     BENCH_PRIVATE.write_text(json.dumps(full, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    public: dict[str, Any] = {"suite": SUITE_VERSION, "k": k, "profiles": {}}
+    return publish_bench(full)
+
+
+def publish_bench(full: dict[str, Any]) -> dict[str, Any]:
+    public: dict[str, Any] = {"suite": full["suite"], "k": full["k"], "profiles": {}}
     for name, st in full["profiles"].items():
         touched = {r["task"] for r in st["results"] if any(t in PRIVATE_TOOLS for t in r["tools"])}
         public["profiles"][name] = {
@@ -92,6 +98,42 @@ def run_bench(k: int = 3) -> dict[str, Any]:
             "failures": [{**f, "answer": HIDDEN} if f["task"] in touched else f for f in st["failures"]]}
     BENCH_JSON.write_text(json.dumps(public, ensure_ascii=False, indent=2, default=str), encoding="utf-8", newline="\n")
     return public
+
+
+def rescore_bench() -> dict[str, Any]:
+    """不重跑 agent，按现在的评分规则重算已有的回答（推荐题用评审模型抽"真正推荐的"编号），再重出公开结果。"""
+    from collections import defaultdict
+
+    from polaris.eval.judge import recommended_ids
+    from polaris.eval.runner import CATEGORY_NAMES
+    from polaris.eval.suites.bench_v2 import build_tasks
+    from polaris.eval.suites.tool_calling import check
+
+    tasks = {t.id: t for t in build_tasks()}
+    full = json.loads(BENCH_PRIVATE.read_text(encoding="utf-8"))
+    for st in full["profiles"].values():
+        for r in st["results"]:
+            t = tasks[r["task"]]
+            calls = [{"tool": name, "error_kind": None} for name in r["tools"]]
+            rec = recommended_ids(r["answer"]) if t.category == "recommend" and not r["error"] else None
+            c = check(t, r["answer"], calls, r["error"], rec)
+            r.update({k_: c[k_] for k_ in ("success", "values_ok", "cite_ok", "tools_ok", "stray")}, recommended=rec)
+        per_task: dict[str, list[bool]] = defaultdict(list)
+        for r in st["results"]:
+            per_task[r["task"]].append(r["success"])
+        st["categories"] = {}
+        for cat in CATEGORY_NAMES:
+            rs = [r for r in st["results"] if r["category"] == cat]
+            ids = sorted({r["task"] for r in rs})
+            if rs:
+                st["categories"][cat] = {"runs": len(rs), "success": sum(r["success"] for r in rs), "tasks": len(ids),
+                                         "pass_k": sum(all(per_task[i]) for i in ids)}
+        st["success"] = sum(r["success"] for r in st["results"])
+        st["pass_k"] = sum(all(v) for v in per_task.values())
+        st["failures"] = [{k_: r[k_] for k_ in ("task", "k", "values_ok", "cite_ok", "tools_ok", "error")}
+                          | {"stray": r.get("stray", []), "answer": r["answer"][:200]} for r in st["results"] if not r["success"]]
+    BENCH_PRIVATE.write_text(json.dumps(full, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    return publish_bench(full)
 
 
 def _metric(st: dict[str, Any], key: str | None) -> str:

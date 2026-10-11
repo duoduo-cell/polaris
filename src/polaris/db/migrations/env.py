@@ -12,6 +12,11 @@ if config.config_file_name is not None and config.attributes.get("configure_logg
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+SQL_ONLY_INDEXES = {"ix_chunks_bm25"}  # 只在迁移里用 SQL 建的索引（pg_search 的 BM25），自动生成迁移时别把它当成多余的删掉
+
+
+def include_object(obj, name, type_, reflected, compare_to) -> bool:
+    return not (type_ == "index" and name in SQL_ONLY_INDEXES)
 
 
 def database_url() -> str:
@@ -25,7 +30,7 @@ def database_url() -> str:
 
 def run_migrations_offline() -> None:
     context.configure(url=database_url(), target_metadata=target_metadata, literal_binds=True,
-                      dialect_opts={"paramstyle": "named"})
+                      dialect_opts={"paramstyle": "named"}, include_object=include_object)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -33,7 +38,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     engine = create_engine(database_url(), poolclass=pool.NullPool)
     with engine.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object)
         with context.begin_transaction():
             context.run_migrations()
 

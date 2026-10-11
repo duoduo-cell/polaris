@@ -1,0 +1,178 @@
+{
+  "version": "memory-v1",
+  "about": "记忆评测（M5）。四个虚构的求职者，按时间先后和北极星聊几次；每句话标出应当发生的记忆操作，最后按 LongMemEval 的五种能力提问：IE 信息提取、MR 跨会话推理、KU 知识更新、TR 时间推理、ABS 没说过的要说不知道。全部是合成数据，人写的，可公开。value 写几种可接受的说法；optional 的操作做了不算错、没做也不算漏。问题都在 2026-10-11 问。",
+  "asked_at": "2026-10-11T20:00:00+08:00",
+  "personas": [
+    {
+      "id": "lin",
+      "sessions": [
+        {"at": "2026-09-15T20:00:00+08:00", "turns": [
+          {"user": "你好，我是浙大计算机研二的学生，2027 年毕业，想找 Agent 开发方向的日常实习。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["浙大", "浙江大学"]},
+             {"op": "add", "attr": "major", "value": ["计算机"], "optional": true},
+             {"op": "add", "attr": "degree", "value": ["研二", "硕士", "研究生"]},
+             {"op": "add", "attr": "grad_year", "value": ["2027"]},
+             {"op": "add", "attr": "target_role", "value": ["agent"]},
+             {"op": "add", "attr": "job_type", "value": ["日常实习", "实习"]}]},
+          {"user": "城市的话北京或者杭州都行，每周能去 4 天。",
+           "expect": [
+             {"op": "add", "attr": "target_city", "value": ["北京"]},
+             {"op": "add", "attr": "target_city", "value": ["杭州"]},
+             {"op": "add", "attr": "days_per_week", "value": ["4"]}]}]},
+        {"at": "2026-09-22T21:00:00+08:00", "turns": [
+          {"user": "我会 LangGraph 和 RAG，做过一个基于 LangGraph 的面试助手项目。",
+           "expect": [
+             {"op": "add", "attr": "skill", "value": ["langgraph"]},
+             {"op": "add", "attr": "skill", "value": ["rag"]},
+             {"op": "add", "attr": "project", "value": ["面试助手"]}]},
+          {"user": "最早 11 月 1 号能开始实习。",
+           "expect": [{"op": "add", "attr": "available_from", "value": ["11-01", "11月1", "1101", "11.1"]}]}]},
+        {"at": "2026-09-28T19:00:00+08:00", "turns": [
+          {"user": "字节那边约了我下周一面。",
+           "expect": [
+             {"op": "pending", "attr": "applied", "q": "字节跳动", "value": [""]},
+             {"op": "add", "attr": "interview_stage", "q": "字节跳动", "value": ["一面"]}]},
+          {"user": "对，我投的是字节的 Agent 开发实习。",
+           "expect": [{"op": "confirm", "attr": "applied", "q": "字节跳动", "value": ["agent"]}]}]},
+        {"at": "2026-10-05T20:00:00+08:00", "turns": [
+          {"user": "字节一面过了，下周二面。",
+           "expect": [{"op": "update", "attr": "interview_stage", "q": "字节跳动", "value": ["二面"]}]},
+          {"user": "另外现在每周只能去 3 天了，课比较多。",
+           "expect": [{"op": "update", "attr": "days_per_week", "value": ["3"]}]},
+          {"user": "杭州就不考虑了。",
+           "expect": [{"op": "invalidate", "attr": "target_city", "value": ["杭州"]}]}]},
+        {"at": "2026-10-10T21:00:00+08:00", "turns": [
+          {"user": "帮我看看北京有哪些 Agent 实习？", "expect": []}]}
+      ],
+      "questions": [
+        {"id": "lin-ie-school", "ability": "IE", "q": "我是哪个学校、哪年毕业的？", "must": [["浙大", "浙江大学"], ["2027"]]},
+        {"id": "lin-ku-days", "ability": "KU", "q": "我现在每周能去几天？", "must": [["3"]]},
+        {"id": "lin-tr-days", "ability": "TR", "q": "我 9 月底的时候说的是每周能去几天？", "must": [["4"]]},
+        {"id": "lin-ku-city", "ability": "KU", "q": "我现在考虑哪些城市？", "must": [["北京"]]},
+        {"id": "lin-mr-stage", "ability": "MR", "q": "我投的那家公司现在面到第几轮了？", "must": [["字节"], ["二面"]]},
+        {"id": "lin-tr-start", "ability": "TR", "q": "我最早什么时候能开始实习？", "must": [["11月1", "11 月 1", "2026-11-01", "11.1", "11/1"]]},
+        {"id": "lin-abs-salary", "ability": "ABS", "q": "我说过期望薪资是多少吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "zhou",
+      "sessions": [
+        {"at": "2026-09-18T19:00:00+08:00", "turns": [
+          {"user": "我是北邮本科大四，27 届，找上海的大模型应用开发实习，每周能去 5 天。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["北邮", "北京邮电"]},
+             {"op": "add", "attr": "degree", "value": ["本科"]},
+             {"op": "add", "attr": "grad_year", "value": ["2027", "27"]},
+             {"op": "add", "attr": "target_city", "value": ["上海"]},
+             {"op": "add", "attr": "target_role", "value": ["大模型应用"]},
+             {"op": "add", "attr": "job_type", "value": ["实习"], "optional": true},
+             {"op": "add", "attr": "days_per_week", "value": ["5"]}]},
+          {"user": "比较想去腾讯和小红书。",
+           "expect": [
+             {"op": "add", "attr": "company_like", "value": ["腾讯"]},
+             {"op": "add", "attr": "company_like", "value": ["小红书"]}]}]},
+        {"at": "2026-09-21T20:00:00+08:00", "turns": [
+          {"user": "我每周能去 4 天。",
+           "expect": [{"op": "ask", "attr": "days_per_week", "value": ["4"]}]},
+          {"user": "对，以 4 天为准。",
+           "expect": [{"op": "confirm", "attr": "days_per_week", "value": ["4"]}]}]},
+        {"at": "2026-09-30T21:00:00+08:00", "turns": [
+          {"user": "小红书算了，听说那个组很卷。",
+           "expect": [{"op": "invalidate", "attr": "company_like", "value": ["小红书"]}]},
+          {"user": "日薪最好 300 以上。",
+           "expect": [{"op": "add", "attr": "salary_expect", "value": ["300"]}]}]},
+        {"at": "2026-10-08T20:00:00+08:00", "turns": [
+          {"user": "我也开始投字节了，投的是大模型应用开发实习。",
+           "expect": [
+             {"op": "add", "attr": "applied", "q": "字节跳动", "value": ["大模型应用"]},
+             {"op": "add", "attr": "company_like", "value": ["字节"], "optional": true},
+             {"op": "pending", "attr": "company_like", "value": ["字节"], "optional": true}]}]}
+      ],
+      "questions": [
+        {"id": "zhou-ku-days", "ability": "KU", "q": "我现在每周能去几天？", "must": [["4"]]},
+        {"id": "zhou-ie-city", "ability": "IE", "q": "我想找哪个城市的实习？", "must": [["上海"]]},
+        {"id": "zhou-ku-company", "ability": "KU", "q": "我现在最想去哪家公司？", "must": [["腾讯"]]},
+        {"id": "zhou-tr-days", "ability": "TR", "q": "9 月 20 号那天，我说的是每周能去几天？", "must": [["5"]]},
+        {"id": "zhou-ie-salary", "ability": "IE", "q": "我期望的日薪是多少？", "must": [["300"]]},
+        {"id": "zhou-abs-skill", "ability": "ABS", "q": "我跟你说过我会哪些技术吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "chen",
+      "sessions": [
+        {"at": "2026-09-10T10:00:00+08:00", "turns": [
+          {"user": "我是北大软微的硕士，2028 年毕业，想找推荐算法或者大模型算法的实习，能实习 6 个月。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["北大", "北京大学"]},
+             {"op": "add", "attr": "major", "value": ["软件", "软微"], "optional": true},
+             {"op": "add", "attr": "degree", "value": ["硕士"]},
+             {"op": "add", "attr": "grad_year", "value": ["2028"]},
+             {"op": "add", "attr": "target_role", "value": ["推荐"]},
+             {"op": "add", "attr": "target_role", "value": ["大模型"]},
+             {"op": "add", "attr": "job_type", "value": ["实习"], "optional": true},
+             {"op": "add", "attr": "duration_months", "value": ["6"]}]},
+          {"user": "现在每周能去 3 天。",
+           "expect": [{"op": "add", "attr": "days_per_week", "value": ["3"]}]}]},
+        {"at": "2026-09-25T22:00:00+08:00", "turns": [
+          {"user": "最近在准备腾讯的面试，刷了好多八股。",
+           "expect": [
+             {"op": "pending", "attr": "applied", "q": "腾讯", "value": [""]},
+             {"op": "pending", "attr": "company_like", "value": ["腾讯"], "optional": true}]},
+          {"user": "不是，我没投腾讯，只是拿腾讯的面经练手。",
+           "expect": [
+             {"op": "reject", "attr": "applied", "q": "腾讯", "value": [""]},
+             {"op": "reject", "attr": "company_like", "value": ["腾讯"], "optional": true}]}]},
+        {"at": "2026-10-06T21:00:00+08:00", "turns": [
+          {"user": "12 月开始课少了，每周能去 5 天。",
+           "expect": [{"op": "schedule", "attr": "days_per_week", "value": ["5"]}]},
+          {"user": "我又在看腾讯的面经了。",
+           "expect": [{"op": "suppressed", "attr": "applied", "q": "腾讯", "value": [""], "optional": true}]}]}
+      ],
+      "questions": [
+        {"id": "chen-ku-days", "ability": "KU", "q": "我现在每周能去几天？", "must": [["3"]]},
+        {"id": "chen-tr-dec", "ability": "TR", "q": "到了 12 月，我每周能去几天？", "must": [["5"]]},
+        {"id": "chen-ie-duration", "ability": "IE", "q": "我能实习多久？", "must": [["6"]]},
+        {"id": "chen-ie-roles", "ability": "IE", "q": "我想找哪些方向的实习？", "must": [["推荐"], ["大模型"]]},
+        {"id": "chen-abs-tencent", "ability": "ABS", "q": "我投过腾讯吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "wu",
+      "sessions": [
+        {"at": "2026-09-12T20:00:00+08:00", "turns": [
+          {"user": "我是 26 届硕士，在找 Agent 方向的实习，base 深圳。",
+           "expect": [
+             {"op": "add", "attr": "grad_year", "value": ["2026", "26"]},
+             {"op": "add", "attr": "degree", "value": ["硕士"]},
+             {"op": "add", "attr": "target_role", "value": ["agent"]},
+             {"op": "add", "attr": "job_type", "value": ["实习"], "optional": true},
+             {"op": "add", "attr": "target_city", "value": ["深圳"]}]},
+          {"user": "字节跳动有 Agent 实习吗？", "expect": []}]},
+        {"at": "2026-09-19T20:00:00+08:00", "turns": [
+          {"user": "我投了美团、快手和腾讯的 Agent 实习。",
+           "expect": [
+             {"op": "add", "attr": "applied", "q": "美团", "value": ["agent"]},
+             {"op": "add", "attr": "applied", "q": "快手", "value": ["agent"]},
+             {"op": "add", "attr": "applied", "q": "腾讯", "value": ["agent"]}]}]},
+        {"at": "2026-09-29T20:00:00+08:00", "turns": [
+          {"user": "美团约了一面，快手已经二面了。",
+           "expect": [
+             {"op": "add", "attr": "interview_stage", "q": "美团", "value": ["一面"]},
+             {"op": "add", "attr": "interview_stage", "q": "快手", "value": ["二面"]}]}]},
+        {"at": "2026-10-09T20:00:00+08:00", "turns": [
+          {"user": "快手挂了，美团一面过了等二面。",
+           "expect": [
+             {"op": "update", "attr": "interview_stage", "q": "快手", "value": ["挂", "未通过", "没过", "失败"]},
+             {"op": "update", "attr": "interview_stage", "q": "美团", "value": ["二面"]}]}]}
+      ],
+      "questions": [
+        {"id": "wu-mr-applied", "ability": "MR", "q": "我投了几家公司？分别是哪几家？", "must": [["3", "三"], ["美团"], ["快手"], ["腾讯"]]},
+        {"id": "wu-mr-active", "ability": "MR", "q": "哪家公司我还在面试流程里，在等哪一轮？", "must": [["美团"], ["二面"]]},
+        {"id": "wu-ku-kuaishou", "ability": "KU", "q": "快手现在是什么状态？", "must": [["挂", "没过", "未通过", "失败", "结束"]]},
+        {"id": "wu-ie-city", "ability": "IE", "q": "我想在哪个城市实习？", "must": [["深圳"]]},
+        {"id": "wu-abs-tencent", "ability": "ABS", "q": "腾讯那边面试到哪一步了？", "abstain": true}
+      ]
+    }
+  ]
+}

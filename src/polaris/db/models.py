@@ -293,3 +293,62 @@ class SearchChunk(Base):
     created_at: Mapped[datetime] = created_at()
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
                                                  onupdate=func.now())
+
+
+class MemoryFact(Base):
+    """记忆里的一条事实（M5，自己实现）。双时间线：valid_* 是这件事在现实里什么时候成立（"下个月起每周能去 4 天"），
+    recorded_at / superseded_at 是北极星什么时候知道、什么时候被新说法取代。旧版本不删，能回答"我上个月是怎么说的"。"""
+
+    __tablename__ = "memory_facts"
+    __table_args__ = (Index("ix_memory_facts_slot", "attribute", "qualifier", "status"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    attribute: Mapped[str] = mapped_column(String(32))  # 属性，见 memory/schema.py，如 target_city、days_per_week
+    qualifier: Mapped[str | None] = mapped_column(String(100))  # 槽位限定，如面试进度按公司分槽："字节跳动"
+    value: Mapped[str] = mapped_column(Text)
+    value_key: Mapped[str] = mapped_column(String(200))  # 归一后的值，用来判断"是不是同一个说法"
+    statement: Mapped[str] = mapped_column(Text)  # 一句话说清这条事实，卡片里显示它
+    kind: Mapped[str] = mapped_column(String(16))  # stated 你亲口说的 / inferred 北极星推断的
+    status: Mapped[str] = mapped_column(String(16))  # active / pending 待确认 / superseded 被取代 / retracted 作废
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # 你最近一次又提到它
+    supersedes_id: Mapped[int | None] = mapped_column(ForeignKey("memory_facts.id", ondelete="SET NULL"))
+    source_text: Mapped[str] = mapped_column(Text)  # 从哪句话来的
+    thread_id: Mapped[str | None] = mapped_column(String(64))
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = created_at()
+
+
+class MemoryEvent(Base):
+    """每一次记忆更新的决定都记一条：新增、更新、作废、不变、待确认、追问、被抑制、确认、拒绝、忘记。可审计、可评测。"""
+
+    __tablename__ = "memory_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    op: Mapped[str] = mapped_column(String(16))
+    attribute: Mapped[str] = mapped_column(String(32))
+    qualifier: Mapped[str | None] = mapped_column(String(100))
+    value: Mapped[str | None] = mapped_column(Text)
+    fact_id: Mapped[int | None] = mapped_column(ForeignKey("memory_facts.id", ondelete="SET NULL"))
+    old_fact_id: Mapped[int | None] = mapped_column(ForeignKey("memory_facts.id", ondelete="SET NULL"))
+    reason: Mapped[str] = mapped_column(Text)
+    source_text: Mapped[str | None] = mapped_column(Text)
+    thread_id: Mapped[str | None] = mapped_column(String(64))
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class MemorySuppression(Base):
+    """你否认过的推断：同样的推断以后不再提（参考 WeKnora 的抑制记录）。"""
+
+    __tablename__ = "memory_suppressions"
+    __table_args__ = (UniqueConstraint("attribute", "value_key", name="uq_memory_suppressions_attr_value"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    attribute: Mapped[str] = mapped_column(String(32))
+    value_key: Mapped[str] = mapped_column(String(200))
+    reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at()

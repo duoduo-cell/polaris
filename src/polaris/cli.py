@@ -464,6 +464,17 @@ def metrics_m4_bench(k: int = typer.Option(3, help="每题跑几次，用来算 
     typer.echo(m4.REPORT.read_text(encoding="utf-8"))
 
 
+@metrics_app.command("m5")
+def metrics_m5(k: int = typer.Option(1, help="每个问题问几次")) -> None:
+    """M5：记忆评测（会调模型）。在单独的 polaris_memeval 库里跑，不碰你自己的记忆。"""
+    from polaris.eval import memory_eval
+
+    results = {name: memory_eval.run(k=k, gold_path=path)
+               for name, path in (("dev", memory_eval.GOLD), ("holdout", memory_eval.HOLDOUT))}
+    memory_eval.write_report(results)
+    typer.echo((memory_eval.REPORT_DIR / "M5.md").read_text(encoding="utf-8"))
+
+
 @metrics_app.command("market")
 def metrics_market() -> None:
     """大厂 Agent 岗位要什么技术、面经里问什么（按采到的数据统计，不调模型）。"""

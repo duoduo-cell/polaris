@@ -42,8 +42,13 @@ def run_one(task: Task, k: int, run_id: int, cassette_dir: Path, suite: str, pro
             purpose=purpose, profile=profile)
     if cassette is not None and r.error is None:
         cassette.save()
-    result = check(task, r.answer, r.tool_calls, r.error)
-    return {"task": task.id, "category": task.category, "k": k, "answer": r.answer, "error": r.error,
+    recommended = None
+    if task.category == "recommend" and r.error is None:  # 只有推荐题要分清"推荐"和"提到"
+        from polaris.eval.judge import recommended_ids
+
+        recommended = recommended_ids(r.answer)
+    result = check(task, r.answer, r.tool_calls, r.error, recommended)
+    return {"task": task.id, "recommended": recommended, "category": task.category, "k": k, "answer": r.answer, "error": r.error,
             "latency_ms": r.latency_ms, "tools": [c["tool"] for c in r.tool_calls], **result}
 
 

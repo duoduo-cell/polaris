@@ -1,0 +1,132 @@
+{
+  "version": "memory-holdout-v1",
+  "about": "记忆评测留出集：在 memory-v1 第一次跑完、按它改了规则和提示词之后才写，写的时候没看第二次的结果。四个新的虚构求职者，换了说法，也加了开发集没有的情况（用原来的值回答追问、一句话里同时说现在和将来、相对日期、要求删掉）。格式同 memory_v1.json。",
+  "asked_at": "2026-10-11T20:00:00+08:00",
+  "personas": [
+    {
+      "id": "yang",
+      "sessions": [
+        {"at": "2026-09-14T21:00:00+08:00", "turns": [
+          {"user": "我在南大读大三，软件工程专业，想找个大模型应用方向的暑期实习，base 南京或者上海都可以。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["南大", "南京大学"]},
+             {"op": "add", "attr": "degree", "value": ["本科", "大三"]},
+             {"op": "add", "attr": "major", "value": ["软件工程"]},
+             {"op": "add", "attr": "target_role", "value": ["大模型应用"]},
+             {"op": "add", "attr": "job_type", "value": ["暑期实习", "实习"]},
+             {"op": "add", "attr": "target_city", "value": ["南京"]},
+             {"op": "add", "attr": "target_city", "value": ["上海"]},
+             {"op": "add", "attr": "grad_year", "value": ["2028"], "optional": true}]},
+          {"user": "我会 Python 和 LangChain。",
+           "expect": [
+             {"op": "add", "attr": "skill", "value": ["python"]},
+             {"op": "add", "attr": "skill", "value": ["langchain"]}]}]},
+        {"at": "2026-09-26T20:00:00+08:00", "turns": [
+          {"user": "其实我改主意了，想找日常实习，暑期太晚了。",
+           "expect": [{"op": "update", "attr": "job_type", "value": ["日常实习"]}]},
+          {"user": "阿里也不考虑了，我更想去字节。",
+           "expect": [
+             {"op": "invalidate", "attr": "company_like", "value": ["阿里"], "optional": true},
+             {"op": "add", "attr": "company_avoid", "value": ["阿里"], "optional": true},
+             {"op": "add", "attr": "company_like", "value": ["字节"]}]}]},
+        {"at": "2026-10-09T19:00:00+08:00", "turns": [
+          {"user": "字节的面试官刚约了我后天一面。",
+           "expect": [
+             {"op": "add", "attr": "interview_stage", "q": "字节跳动", "value": ["一面"]},
+             {"op": "pending", "attr": "applied", "q": "字节跳动", "value": [""]}]}]}
+      ],
+      "questions": [
+        {"id": "yang-ku-type", "ability": "KU", "q": "我现在找的是暑期实习还是日常实习？", "must": [["日常"]]},
+        {"id": "yang-ie-cities", "ability": "IE", "q": "我考虑哪些城市？", "must": [["南京"], ["上海"]]},
+        {"id": "yang-mr-bytedance", "ability": "MR", "q": "我最想去的那家公司，现在面试到哪一步了？", "must": [["字节"], ["一面"]]},
+        {"id": "yang-tr-type", "ability": "TR", "q": "9 月中旬的时候，我说的是找哪种实习？", "must": [["暑期"]]},
+        {"id": "yang-abs-days", "ability": "ABS", "q": "我说过每周能去几天吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "zheng",
+      "sessions": [
+        {"at": "2026-09-20T20:00:00+08:00", "turns": [
+          {"user": "我是华科硕士二年级，27 年毕业，每周可以去 5 天，想做 RAG 或者搜索相关的。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["华科", "华中科技"]},
+             {"op": "add", "attr": "degree", "value": ["硕士"]},
+             {"op": "add", "attr": "grad_year", "value": ["2027", "27"]},
+             {"op": "add", "attr": "days_per_week", "value": ["5"]},
+             {"op": "add", "attr": "target_role", "value": ["rag"]},
+             {"op": "add", "attr": "target_role", "value": ["搜索"]}]}]},
+        {"at": "2026-09-23T21:00:00+08:00", "turns": [
+          {"user": "每周大概能去 4 天。",
+           "expect": [{"op": "ask", "attr": "days_per_week", "value": ["4"]}]},
+          {"user": "还是 5 天吧，刚才说错了。",
+           "expect": [{"op": "reject", "attr": "days_per_week", "value": ["4"]}]}]},
+        {"at": "2026-10-02T20:00:00+08:00", "turns": [
+          {"user": "下周一（10 月 12 号）开始就能入职了。",
+           "expect": [{"op": "add", "attr": "available_from", "value": ["10-12", "1012", "10月12"]}]},
+          {"user": "我投了腾讯的搜索算法实习和美团的 RAG 实习。",
+           "expect": [
+             {"op": "add", "attr": "applied", "q": "腾讯", "value": ["搜索"]},
+             {"op": "add", "attr": "applied", "q": "美团", "value": ["rag"]}]}]}
+      ],
+      "questions": [
+        {"id": "zheng-ku-days", "ability": "KU", "q": "我每周能去几天？", "must": [["5"]]},
+        {"id": "zheng-ie-start", "ability": "IE", "q": "我什么时候能入职？", "must": [["10月12", "10 月 12", "2026-10-12", "10.12", "10/12"]]},
+        {"id": "zheng-mr-applied", "ability": "MR", "q": "我投了哪几家，各是什么岗位？", "must": [["腾讯"], ["美团"], ["搜索"], ["RAG", "rag"]]},
+        {"id": "zheng-abs-stage", "ability": "ABS", "q": "美团那边约面试了吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "sun",
+      "sessions": [
+        {"at": "2026-09-16T20:00:00+08:00", "turns": [
+          {"user": "我是西电的研究生，做过一个多 Agent 协作的论文助手项目，还有一个 RAG 知识库问答。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["西电", "西安电子"]},
+             {"op": "add", "attr": "degree", "value": ["研究生", "硕士"]},
+             {"op": "add", "attr": "project", "value": ["论文助手"]},
+             {"op": "add", "attr": "project", "value": ["知识库"]},
+             {"op": "add", "attr": "skill", "value": ["多agent", "agent"], "optional": true},
+             {"op": "add", "attr": "skill", "value": ["rag"], "optional": true}]},
+          {"user": "不想去外包，也不接受单休。",
+           "expect": [
+             {"op": "add", "attr": "constraint", "value": ["外包"]},
+             {"op": "add", "attr": "constraint", "value": ["单休"]}]}]},
+        {"at": "2026-10-04T20:00:00+08:00", "turns": [
+          {"user": "那个论文助手的项目别记了，太水了。",
+           "expect": [{"op": "invalidate", "attr": "project", "value": ["论文助手"]}]}]}
+      ],
+      "questions": [
+        {"id": "sun-ku-projects", "ability": "KU", "q": "你记着我做过哪些项目？", "must": [["知识库"]]},
+        {"id": "sun-ie-constraints", "ability": "IE", "q": "我找工作有什么硬性条件？", "must": [["外包"], ["单休"]]},
+        {"id": "sun-abs-city", "ability": "ABS", "q": "我想去哪个城市？", "abstain": true}
+      ]
+    },
+    {
+      "id": "xu",
+      "sessions": [
+        {"at": "2026-09-25T20:00:00+08:00", "turns": [
+          {"user": "我现在每周只能去 2 天，从 11 月 15 号开始每周能去 4 天。",
+           "expect": [
+             {"op": "add", "attr": "days_per_week", "value": ["2"]},
+             {"op": "schedule", "attr": "days_per_week", "value": ["4"]}]},
+          {"user": "能实习 4 个月左右，想找北京的 Agent 评测岗。",
+           "expect": [
+             {"op": "add", "attr": "duration_months", "value": ["4"]},
+             {"op": "add", "attr": "target_city", "value": ["北京"]},
+             {"op": "add", "attr": "target_role", "value": ["评测"]}]}]},
+        {"at": "2026-10-07T20:00:00+08:00", "turns": [
+          {"user": "快手的评测实习一面过了，在等二面。",
+           "expect": [
+             {"op": "add", "attr": "interview_stage", "q": "快手", "value": ["二面"]},
+             {"op": "pending", "attr": "applied", "q": "快手", "value": [""]},
+             {"op": "add", "attr": "applied", "q": "快手", "value": ["评测"], "optional": true}]}]}
+      ],
+      "questions": [
+        {"id": "xu-ku-days", "ability": "KU", "q": "我现在每周能去几天？", "must": [["2"]]},
+        {"id": "xu-tr-later", "ability": "TR", "q": "11 月下旬我每周能去几天？", "must": [["4"]]},
+        {"id": "xu-mr-stage", "ability": "MR", "q": "我在面的那家公司在等第几轮？", "must": [["快手"], ["二面"]]},
+        {"id": "xu-ie-duration", "ability": "IE", "q": "我能实习多久？", "must": [["4"]]}
+      ]
+    }
+  ]
+}

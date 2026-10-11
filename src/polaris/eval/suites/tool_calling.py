@@ -97,11 +97,17 @@ def cited(short_id: str, answer: str) -> bool:
     return re.search(rf"(?<![A-Za-z0-9-]){re.escape(short_id)}(?!\d)", answer) is not None
 
 
-def check(task: Task, answer: str, tool_calls: list[dict[str, Any]], error: str | None) -> dict[str, Any]:
-    """按最终结果打分：回答里有没有正确的值、有没有写出依据编号、该不该调工具。"""
+def check_values(must: list[list[str]], answer: str) -> bool:
+    """每组至少命中一个（忽略空白）。"""
     flat = re.sub(r"\s+", "", answer)
+    return all(any(re.sub(r"\s+", "", w) in flat for w in group) for group in must)
+
+
+def check(task: Task, answer: str, tool_calls: list[dict[str, Any]], error: str | None,
+          recommended: list[str] | None = None) -> dict[str, Any]:
+    """按最终结果打分：回答里有没有正确的值、有没有写出依据编号、该不该调工具。"""
     used_tools = len(tool_calls) > 0
-    values_ok = all(any(re.sub(r"\s+", "", w) in flat for w in group) for group in task.must_contain)
+    values_ok = check_values(task.must_contain, answer)
     cite_ok = not task.cite or any(cited(c, answer) for c in task.cite)
     tools_ok = used_tools if task.expect_tools else not used_tools
     if task.category == "conflict":  # 两个来源的说法都要指出来
@@ -110,9 +116,11 @@ def check(task: Task, answer: str, tool_calls: list[dict[str, Any]], error: str 
     if task.cite_min > 1 or task.cite_only:
         cite_ok = sum(cited(c, answer) for c in task.cite) >= task.cite_min
         if task.cite_only:
-            mentioned = set(re.findall(rf"(?<![A-Za-z0-9-]){re.escape(task.cite_only)}\d+", answer))
+            # recommended：评审模型从回答里抽出的"真正推荐的"编号（eval/judge.py）；没给就退回按字符串找
+            mentioned = set(recommended) if recommended is not None else set(
+                re.findall(rf"(?<![A-Za-z0-9-]){re.escape(task.cite_only)}\d+", answer))
             stray = sorted(mentioned - set(task.cite))
-            cite_ok = cite_ok and not stray
+            cite_ok = len(mentioned & set(task.cite)) >= task.cite_min and not stray
     success = error is None and values_ok and cite_ok and tools_ok
     return {"success": success, "values_ok": values_ok, "cite_ok": cite_ok, "tools_ok": tools_ok, "stray": stray,
             "n_tool_calls": len(tool_calls),
