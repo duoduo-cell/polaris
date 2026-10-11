@@ -104,8 +104,9 @@ class BrowserCaller:
                 has=self.page.locator(f":scope > span:text-is('{label}')"))
             group.locator("div.tags").filter(has_text=option).first.click(force=True)  # 悬浮层，跳过可点击检查
             self.sleep(random.uniform(0.4, 1.0))
-        for _ in range(50):  # 等结果换成筛选后的
-            if self.page.evaluate(STATE_FEED_IDS) != before:
+        for _ in range(50):  # 等结果换成筛选后的。换的过程中列表会先变空，空的不算换好（10-11 踩过：读到空列表）
+            ids = self.page.evaluate(STATE_FEED_IDS)
+            if ids and ids != before:
                 break
             self.sleep(0.3)
 
