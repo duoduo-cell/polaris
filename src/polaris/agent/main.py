@@ -405,16 +405,22 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
     answer = ""
     if state and not approvals:
         answer = text_of(state["messages"][-1].content)
+    from polaris.agent.steps import describe, outcome
     from polaris.results import activity, presentation
     with session_scope() as s:
         results = presentation(s, answer, runtime.calls) if answer else []
+    steps = []
+    for i, c in enumerate(runtime.calls):
+        data = runtime.results.get(i)
+        steps.append({**activity(c, data), "desc": describe(c["tool"], c["args"]),
+                      "summary": outcome(c["tool"], data, c["ok"], c.get("output", ""))})
     context = None
     if state and state.get("messages"):
         context = {"tokens": count_tokens_approximately(state["messages"]), "limit": SUMMARY_TRIGGER_TOKENS}
     return Turn(thread_id=thread_id, answer=answer, memory_events=mem.get("events", []),
                 memory_questions=mem.get("questions", []), approvals=approvals, tool_calls=runtime.calls,
                 llm_call_ids=tracer.call_ids, latency_ms=ms, error=err or mem.get("error"), results=results,
-                activities=[activity(c, runtime.results.get(i)) for i, c in enumerate(runtime.calls)],
+                activities=steps,
                 context=context, compacted=(state or {}).get("compacted"))
 
 

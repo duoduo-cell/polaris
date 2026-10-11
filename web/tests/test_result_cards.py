@@ -120,11 +120,39 @@ class ResultCardsRegression(unittest.TestCase):
         self.assertNotIn("round", params)
 
     def test_activity_explains_tool_source_and_count(self):
-        self.page.get_by_test_id("chat-transcript").get_by_text("查看活动 · 1.2 秒", exact=True).click()
-        expect(self.page.get_by_text("找到 3 条 ·", exact=True)).to_be_visible()
-        expect(self.page.get_by_text("搜索岗位", exact=True)).to_be_visible()
-        self.page.get_by_text("查看筛选条件", exact=True).click()
-        expect(self.page.get_by_text("公司：", exact=True)).to_be_visible()
+        transcript = self.page.get_by_test_id("chat-transcript")
+        expect(transcript.get_by_text("搜岗位", exact=True)).not_to_be_visible()  # 思考过程默认收起
+        transcript.get_by_text("思考了 1.2 秒 · 查了 1 次", exact=True).click()
+        expect(transcript.get_by_text("搜岗位", exact=True)).to_be_visible()
+        expect(transcript.get_by_text("· 找到 3 条", exact=True)).to_be_visible()
+        expect(transcript.get_by_text("· 小红书", exact=True)).to_be_visible()
+        transcript.get_by_text("查看筛选条件", exact=True).click()
+        expect(transcript.get_by_text("公司：", exact=True)).to_be_visible()
+
+    def test_answer_hides_ids_and_links_names_to_details(self):
+        transcript = self.page.get_by_test_id("chat-transcript")
+        expect(transcript.get_by_text("J-1", exact=False)).to_have_count(0)
+        transcript.get_by_role("button", name="合成公司 · 岗位2", exact=True).click()
+        expect(self.page.get_by_role("dialog", name="结果详情")).to_be_visible()
+        expect(self.page.get_by_role("dialog").get_by_text("J-2", exact=False)).to_have_count(0)
+
+    def test_match_shows_each_condition_and_missing_skill(self):
+        self.rows[0]["match"] = {"score": 86, "level": "good", "checks": [
+            {"key": "city", "label": "城市", "ok": True, "detail": "北京"},
+            {"key": "days", "label": "每周天数", "ok": False, "detail": "要每周 5 天，你能去 4 天"},
+            {"key": "months", "label": "实习时长", "ok": None, "detail": "没写实习多久"}],
+            "skills": {"required": ["RAG/检索增强", "CUDA/算子"], "have": ["RAG/检索增强"], "missing": ["CUDA/算子"], "known": True}}
+        self.page.reload()
+        card = self.page.get_by_test_id("result-J-1")
+        expect(card.get_by_text("要每周 5 天，你能去 4 天", exact=True)).to_be_visible()
+        expect(card.get_by_text("1 项岗位没写", exact=True)).to_be_visible()
+        expect(card.get_by_text("缺 CUDA/算子", exact=True)).to_be_visible()
+        card.get_by_role("button", name="查看详情").click()
+        dialog = self.page.get_by_role("dialog", name="结果详情")
+        expect(dialog.get_by_text("很合适", exact=True)).to_be_visible()
+        dialog.get_by_role("button", name="问北极星怎么补").click()
+        expect(self.page.get_by_role("textbox")).to_have_value(
+            "合成公司 · 岗位1 这个岗位要求 CUDA/算子，我还不会。面试常怎么考？我该怎么在短时间里补上？")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { BarChart3, Network, Search, Sparkles } from "lucide-react";
+import { BarChart3, Search, Sparkles } from "lucide-react";
 import { Button, Card, EmptyState, ErrorNote, PageHeader, Skeleton } from "@/components/markdown";
 import { tool } from "@/lib/client";
 
@@ -37,11 +37,11 @@ export default function Graph() {
     }
   }
 
-  const field = "rounded-xl border border-line bg-card px-3 py-1.5 text-sm outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/15 transition";
+  const field = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm outline-none focus:border-faint transition-colors";
   const max = Math.max(1, ...(stats?.groups.map((g) => g.count) ?? [1]));
   return (
     <div className="space-y-5">
-      <PageHeader icon={Network} title="知识图谱">
+      <PageHeader title="知识图谱">
         公司、部门、岗位、城市、技能、方向、帖子、面试题之间的关系。按条件筛，再按一类分组数一数
       </PageHeader>
 
@@ -49,7 +49,7 @@ export default function Graph() {
         {PRESETS.map((p, i) => (
           <motion.button key={p.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                          whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                         className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-sm hover:border-accent/50 hover:text-accent transition-colors"
+                         className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-card px-3 py-1.5 text-sm text-muted hover:border-faint hover:text-foreground transition-colors"
                          onClick={() => { const a = { company: "", skill: "", direction: "", city: "", ...p.args }; setArgs(a); run(a); }}>
             <Sparkles size={13} />{p.label}
           </motion.button>
@@ -70,7 +70,7 @@ export default function Graph() {
         <input className={`${field} w-28`} placeholder="技能" value={args.skill} onChange={(e) => setArgs({ ...args, skill: e.target.value })} />
         <input className={`${field} w-24`} placeholder="方向" value={args.direction} onChange={(e) => setArgs({ ...args, direction: e.target.value })} />
         <input className={`${field} w-20`} placeholder="城市" value={args.city} onChange={(e) => setArgs({ ...args, city: e.target.value })} />
-        <Button icon={busy ? undefined : Search} onClick={() => run(args)} disabled={busy} className="ml-auto">
+        <Button variant="primary" icon={busy ? undefined : Search} onClick={() => run(args)} disabled={busy} className="ml-auto">
           {busy ? <span className="dots"><span /><span /><span /></span> : "统计"}
         </Button>
       </Card>
@@ -92,8 +92,8 @@ export default function Graph() {
                 {stats.groups.map((g, i) => (
                   <div key={g.group} className="group grid grid-cols-[8rem_1fr_2.5rem] sm:grid-cols-[10rem_1fr_2.5rem_12rem] items-center gap-3 text-sm">
                     <span className="truncate font-medium" title={g.group}>{g.group}</span>
-                    <div className="h-6 rounded-lg bg-soft overflow-hidden">
-                      <motion.div className="h-full rounded-lg bg-gradient-to-r from-accent to-accent-2 group-hover:brightness-110"
+                    <div className="h-5 rounded-md bg-soft overflow-hidden">
+                      <motion.div className="h-full rounded-md bg-accent/80 group-hover:bg-accent"
                                   initial={{ width: 0 }} animate={{ width: `${(g.count / max) * 100}%` }}
                                   transition={{ duration: 0.6, delay: i * 0.04, ease: "easeOut" }} />
                     </div>

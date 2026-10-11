@@ -12,6 +12,11 @@ export type Question = {
   category?: string; evidence?: string | null; material?: string; material_label?: string;
   interview_date?: string | null;
 };
+export type Check = { key: string; label: string; ok: boolean | null; detail: string };
+export type Match = {
+  score: number; level: "good" | "ok" | "weak"; checks: Check[];
+  skills: { required: string[]; have: string[]; missing: string[]; known: boolean };
+};
 export type Result = {
   id: string; kind: "job" | "interview" | "question" | "referral" | "recruitment" | "study" | "post";
   display_title: string; title?: string; company?: string | null; unit?: string | null; city?: string | null;
@@ -25,7 +30,7 @@ export type Result = {
   body_companies?: string[]; comment_companies?: string[]; question_details?: Question[]; advice?: string[];
   conflicting_fields?: string[]; conflicts?: { field: string; chosen: unknown; rule: string;
     alternatives?: { value: unknown; sources?: string[] }[]; others?: { value: unknown; sources?: string[] }[] }[];
-  jd_text?: string; text?: string; followup?: Followup; attribution?: string;
+  jd_text?: string; text?: string; followup?: Followup; attribution?: string; match?: Match; listings?: number;
 };
 export const STATUSES: Record<string, string> = {
   untracked: "未投递", skipped: "暂不考虑", applied: "已投递", interview: "面试中",
