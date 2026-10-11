@@ -1,0 +1,32 @@
+# 要登录的平台每天的采集量：从下往上找安全的量，不去试平台的上限（DATASET.md 第 4 节）。
+# 每天的上限 = 前一天的上限 ×
+#   growth：前一天用到八成以上、没有任何警告
+#   0.5   ：前一天有软警告（失败超过两成、连续搜不到结果）
+#   0.5，且停 24 小时：前一天被拦（验证码、操作频繁、掉登录）
+# 不超过 max。calls 指打开的页面数（搜索页、笔记或岗位详情页、作者主页都算一次）。
+# pause 是两次打开之间随机停的秒数；window 是每天采集的时间段（北京时间）。
+
+[xhs]
+via = "browser"      # browser：采集专用的 Edge；mcp：Docker 里的 xiaohongshu-mcp（无头，风险更高，留作备用）
+start = 300
+max = 1500
+growth = 1.3
+pause = [6, 15]
+window = ["09:00", "23:00"]
+round_queries = 4
+
+[boss]
+start = 100
+max = 400
+growth = 1.25
+pause = [5, 12]
+window = ["09:00", "22:00"]
+round_queries = 2
+
+[maimai]
+start = 80
+max = 300
+growth = 1.25
+pause = [6, 15]
+window = ["09:00", "22:00"]
+round_queries = 2

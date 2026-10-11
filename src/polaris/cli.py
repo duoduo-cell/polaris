@@ -247,6 +247,24 @@ def seed(file: Path = typer.Option(FIXTURE, help="合成数据文件")) -> None:
 
 
 @app.command()
+def daemon() -> None:
+    """常驻采集：开着就行。按 config/collect.toml 的时间段和每天的量，轮流采小红书、Boss；被拦或掉登录会弹通知。"""
+    from polaris.daemon import loop
+
+    loop(echo=typer.echo)
+
+
+@app.command()
+def budget() -> None:
+    """看今天每个来源的采集上限、为什么是这个数、已经用了多少。"""
+    from polaris.collectors import budget as b
+
+    for source in b.policy():
+        cap, why = b.today_cap(source)
+        typer.echo(f"{source}：今天上限 {cap}，已用 {b.used_today(source)}（{why}）")
+
+
+@app.command()
 def backfill() -> None:
     """给原始条目补上缺的字段（近似重复指纹、发布时间、采集方式），旧版本采集器写进来的也能补齐。"""
     from datetime import UTC, datetime

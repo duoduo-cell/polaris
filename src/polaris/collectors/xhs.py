@@ -32,7 +32,8 @@ READ_ONLY_TOOLS = frozenset({"check_login_status", "get_login_qrcode",
 VERTICAL_WORDS = ("实习", "内推", "面经", "招聘", "hc", "HC", "offer", "日常实习", "暑期", "校招", "转正", "base")
 RECRUITER_WORDS = ("内推", "招聘", "招人", "hc", "HC", "直招", "收简历")
 # 出现这些字样说明平台在拦：验证码、操作频繁、登录失效、账号异常。碰到一次就停下当天的采集
-BLOCK_WORDS = ("验证", "频繁", "安全限制", "账号异常", "未登录", "登录失效", "请登录", "captcha", "too many", "风控")
+BLOCK_WORDS = ("验证", "频繁", "安全限制", "账号异常", "未登录", "登录失效", "请登录", "登录后查看", "扫码登录",
+               "captcha", "too many", "风控", "疑似被拦")
 PAYLOAD_KEYS = ("feeds", "data", "note", "notes", "userBasicInfo")
 MAX_CONSECUTIVE_FAILURES = 3
 COLLECTOR_VERSION = "xhs-2"  # 2：半年内、多种排序、遇阻即停
