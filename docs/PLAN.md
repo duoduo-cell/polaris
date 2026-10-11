@@ -7,6 +7,32 @@
 **项目的主体是北极星这个 agent 本身**：它怎么规划、怎么调工具、怎么用记忆、怎么查知识图谱、怎么被评测。
 采集是给它喂数据的，已经做完并在后台常驻运行（`DATASET.md`），后面的时间全部给 agent。
 
+### 0.0 对标 Muse 和 Dots：北极星是"求职版的 Muse / Dots，而且每件事都能核实"（10-11 傍晚补）
+
+Meta Muse（2026-09）和 OpenAI Dots（2026-09-29）是同一类产品：**有目标、常驻、记得你、会主动、对外动作要你批准**。
+北极星把这一类做在求职上，并在它们的两个短板上做得更好：**领域知识**（它们是通用助手，没有招聘领域的知识图谱）和**可核实**（两者闭源；Dots 的记忆用户看不到也改不了）。
+
+主线（七件事，每件都对着 Muse / Dots 的一个能力）：
+
+| # | 北极星能做什么 | Muse / Dots 怎么做的 | 北极星用什么技术 | 对上的岗位要求 | 怎么评测 |
+|---|---|---|---|---|---|
+| 1 | **有目标**：你给一个长期目标（找到 LLM、Agent 实习），它拆成计划，每天推进，目标页看进度（投了几家、到了哪一轮） | Muse 的 Goals 页跟踪任务和计划；Dots 围绕一个持续的目标工作，在两次对话之间继续推进 | LangGraph 状态图做每日计划；目标和投递状态存 Postgres；人工审批中断 | 规划 23% | "模拟一天"端到端 pass^3 |
+| 2 | **常驻**：你不在也照常跑，定时任务加事件触发 | Muse 每人一台云端虚拟机（浏览器、文件、后台任务、定时任务、并发子 agent）；Dots 有自己的云电脑，关掉对话也继续 | 常驻进程加配额（已有）；公开来源上云；要登录的平台在你电脑上用真实浏览器 | 分布式、高并发 19% | 连续运行天数、限流次数 |
+| 3 | **懂你**：记得你说过的事；记忆**能看、能改、能删、能导出**，每条带"什么时候成立、从哪句话来"，新旧矛盾有记录 | Muse 的记忆文件可以查看、编辑、下载，可以让它忘掉；Dots 的记忆用户看不到单条，删记忆要删掉整个 Dot | 双时间线事实表（Postgres），对话转事实（新增、更新、作废、不变），摘要压缩中间件 | 记忆 17%，上下文工程 9% | LongMemEval 式五项；压缩前后正确率之差 |
+| 4 | **懂行**：知识图谱：公司、团队、岗位、面经、内推人之间的关系，带时间和出处；同一岗位跨来源合并，字段冲突有裁决 | 两者都没有领域知识图谱（通用助手） | Postgres 里的实体表和边表，参照 LightRAG 抽取、Graphiti 时间边；jieba + pgvector + 图谱 + 重排混合检索 | RAG 20%，知识图谱 | 同岗合并 P/R、冲突裁决正确率、Recall@20、nDCG@10、有无图谱对比 |
+| 5 | **主动但克制**：自己判断什么值得打扰你（新出的内推、目标团队开岗、截止日临近），什么不该（重复、过时、和你不相关）；主动程度可调 | Muse 判断新结果值不值得通知，主动发消息的频率可以调低、调高或关掉；Dots 空闲时自己做只读调研 | 推送决策器（新颖度、匹配度、紧迫度打分）加审查 agent | Prompt 31%，评测 47% | 参照 PersonaMem-v3 的主动性和"该克制时克制"：推送准确率、漏报率、打扰率 |
+| 6 | **可托付**：所有对外动作（投递、发消息）和外部内容都过守门 agent；按"允许、拒绝、问你"三档的策略；读过外部内容的环节不能自动对外发送；登录凭证 agent 永远看不到 | Muse 的 Sentinel 是唯一的放行者，按策略返回允许、拒绝、问你，批准可以是一次、本次会话、本任务、限时或永久；读过用户数据的进程不再自动放行；agent 只拿到替身令牌；外部数据标为不可信，多个分类器防提示注入。Dots 让用户定规则：哪些自己做、哪些要批准；敏感操作永远留给人 | 守门 agent 加策略表；LangChain 人工审批中间件；外部内容打不可信标记；登录态只在浏览器资料夹里 | 多 Agent 19%，Harness 11% | 未经批准的对外动作为 0；提示注入攻击用例的拦截率 |
+| 7 | **可核实**：每一步都有记录、能回放、有分数；活动记录页能看到它做了什么、为什么 | Muse 有活动记录和授权记录；Dots 记忆不可见；两者都闭源 | 自有的 runs、llm_calls、tool_calls（已有，按 OpenTelemetry 规范命名）加 LangSmith；Polaris-Bench 公开 | 评测 47%，可观测 5% 到 9% | 追踪完整率、回放一致率 |
+
+另外两个角色补齐多 agent：**侦察**（只读，并行采集，已有）、**工程师**（Coding Agent，在沙箱里给其余官网写采集适配器，岗位里 Coding Agent 11%）。
+
+评测对标的公开基准：工具调用参照 τ-bench（pass^k，已用）；记忆参照 LongMemEval；个人化、主动性、克制参照 PersonaMem-v3（2026-10，arXiv 2608.21381）；失败归类参照 MAST；提示注入参照 Muse 的做法（外部数据不可信、多重检测、人批准外发）。
+
+依据：Meta《How We Built Safety Into Muse》https://research.meta.ai/blog/security-and-safety-for-ai-agents-our-approach-with-muse ；
+Muse 功能的报道 https://www.testingcatalog.com/meta-introduces-muse-as-a-proactive-personal-agent/ 、https://builtin.com/articles/meta-muse ；
+Dots（OpenAI 帮助中心原文不让抓取，以下为转述其内容的第三方指南，细节以官方为准）https://www.datacamp.com/blog/openai-dots 、https://composio.dev/blog/a-guide-to-chatgpt-dots-how-openai-s-always-on-agents-work 、https://www.university-365.com/post/openai-dots-always-on-agents-with-their-own-cloud-computer-and-memories-you-cannot-read ；
+PersonaMem-v3 https://arxiv.org/abs/2608.21381 。
+
 ### 0.1 岗位要什么 → 北极星里对应什么 → HR 能核实什么
 
 数字来自 `eval/reports/market.md`（`polaris metrics market` 可复现）：北极星采到的字节、腾讯、小红书 352 个 Agent / 大模型岗位，
