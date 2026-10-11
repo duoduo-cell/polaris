@@ -98,9 +98,13 @@ def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) 
             else:
                 ok = via != "browser" or logged_in(context, source)
             if not ok:
-                key = f"{today}:{source}:login"
+                # Boss 的令牌二三十分钟就过期，只有页面重新加载时 Boss 自己才会生成新的；我们不替你刷新它的页面
+                # （那就是在绕它的反自动化检测），所以这里只提醒：你在 Boss 窗口里点一下，就能接着采。每两小时最多提醒一次。
+                key = f"{today}:{source}:login:{datetime.now(BEIJING).hour // 2}"
                 if key not in notified:
-                    notify("北极星：需要登录", f"{source} 没登录，在它的采集窗口里扫一次码就好（运行 polaris browser open）")
+                    msg = ("Boss 的令牌过期了：在 Boss 窗口里按一下 F5 或随便点一个页面，就能接着采" if source == "boss"
+                           else f"{source} 没登录，在它的采集窗口里扫一次码就好（运行 polaris browser open）")
+                    notify("北极星：需要你点一下", msg)
                     notified.add(key)
                 echo(f"[{source}] 没登录，跳过")
                 continue

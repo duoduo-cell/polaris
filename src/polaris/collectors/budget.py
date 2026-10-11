@@ -17,7 +17,9 @@ from polaris.db.session import session_scope
 from polaris.report import BEIJING, day_range
 
 CONFIG = ROOT / "config" / "collect.toml"
-HARD_WORDS = ("疑似被拦", "验证", "频繁", "登录", "rate_limited", "not_authenticated")
+# 被拦才罚（冷却、减半）；登录过期、令牌过期不是被拦，不罚，只等你重新登录或刷新一下
+HARD_WORDS = ("疑似被拦", "验证", "频繁", "rate_limited")
+LOGIN_WORDS = ("not_authenticated", "登录", "令牌", "stoken")
 
 
 @lru_cache
@@ -38,7 +40,8 @@ def day_summary(source: str, day: datetime) -> dict[str, Any]:
     calls = sum(st.get("calls", 0) or 0 for _, st, _ in runs)
     failures = sum(st.get("failures", 0) or 0 for _, st, _ in runs)
     stops = [(st["stopped"], t) for _, st, t in runs if st.get("stopped")]
-    hard = [(s, t) for s, t in stops if any(w in str(s) for w in HARD_WORDS)]
+    hard = [(s, t) for s, t in stops if any(w in str(s) for w in HARD_WORDS) and not any(w in str(s) for w in LOGIN_WORDS)]
+    stops = [(s, t) for s, t in stops if not any(w in str(s) for w in LOGIN_WORDS)]
     caps = [p["cap"] for p, _, _ in runs if p.get("cap")]
     return {"calls": calls, "failures": failures, "hard": hard, "soft": bool(stops and not hard) or
             (calls >= 20 and failures / calls > 0.2), "cap": caps[-1] if caps else None}

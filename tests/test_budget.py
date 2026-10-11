@@ -45,3 +45,8 @@ def test_blocked_today_means_zero(db):
     add_run(NOW - timedelta(hours=1), calls=50, stopped="连续失败 3 次：疑似被拦")
     assert budget.today_cap("xhs", NOW)[0] == 0
     assert budget.used_today("xhs", NOW) == 50
+
+
+def test_login_expiry_is_not_a_block(db):
+    add_run(NOW - timedelta(hours=1), calls=1, stopped="not_authenticated")
+    assert budget.today_cap("xhs", NOW)[0] > 0  # 令牌过期不是被拦，不清零
