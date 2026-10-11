@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Badge, Card, ErrorNote, Markdown } from "@/components/markdown";
+import { Badge, Card, ErrorNote } from "@/components/markdown";
+import { ResultCards } from "@/components/result-cards";
 import { useChatSession } from "@/components/chat-session";
 import { ChatActivity, TOOL_NAMES } from "@/components/chat-activity";
 
@@ -46,7 +47,7 @@ export default function Chat() {
             ) : (
               <Card className="space-y-2">
                 {m.turn && <ChatActivity turn={m.turn} />}
-                {m.content && <Markdown text={m.content} />}
+                {m.content && <ResultCards text={m.content} results={m.turn?.results ?? []} />}
                 {m.content && (
                   <div className="flex gap-2 pt-1 text-xs">
                     {m.verdict ? (

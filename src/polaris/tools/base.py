@@ -36,7 +36,7 @@ class Page(BaseModel):
     limit: int = Field(10, ge=1, le=50, description="每页条数，1 到 50")
     offset: int = Field(0, ge=0, description="从第几条开始，翻页时用上一页返回的 next_offset")
     response_format: Literal["concise", "detailed"] = Field(
-        "concise", description="concise 只给关键信息；需要链接、时间、编号等细节时用 detailed")
+        "concise", description="concise 含关键信息和来源；detailed 再给更多字段/原文")
 
 
 @dataclass
@@ -56,10 +56,57 @@ class ToolSpec:
 
 def render(data: Any) -> str:
     """工具结果统一转成 JSON 文本；超长时截断并附提示。"""
-    text = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False, default=str)
-    if len(text) > MAX_OUTPUT_CHARS:
-        text = text[:MAX_OUTPUT_CHARS] + TRUNCATED_HINT
-    return text
+    if isinstance(data, str):
+        return data if len(data) <= MAX_OUTPUT_CHARS else data[:MAX_OUTPUT_CHARS] + TRUNCATED_HINT
+    def encode(value):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    out = json.loads(encode(data))
+    if len(encode(out)) <= MAX_OUTPUT_CHARS:
+        return encode(out)
+    if isinstance(out, dict):
+        out["truncated"] = True
+        out["hint"] = TRUNCATED_HINT
+        if isinstance(out.get("items"), list):
+            original = len(out["items"])
+            while len(out["items"]) > 1 and len(encode(out)) > MAX_OUTPUT_CHARS:
+                out["items"].pop()
+            kept = len(out["items"])
+            out["returned"] = kept
+            if kept < original:
+                base = out.get("offset", (out.get("next_offset") or original) - original)
+                out["next_offset"] = base + kept
+        # 始终保留完整合法 JSON 和真实 URL；全文由详情接口直接返回。
+        for key in ("jd_text", "text", "question_details", "interview_questions", "advice"):
+            if len(encode(out)) <= MAX_OUTPUT_CHARS:
+                break
+            out.pop(key, None)
+        if len(encode(out)) > MAX_OUTPUT_CHARS:
+            def compact(value: Any) -> Any:
+                if isinstance(value, dict):
+                    result = {}
+                    for key, item in value.items():
+                        if key in ("jd_text", "text", "question_details", "interview_questions", "advice"):
+                            continue
+                        if key == "url":
+                            # 超长链接整条省略；绝不把半个 URL 当作可点击的来源。
+                            if not isinstance(item, str) or len(item) <= 1800:
+                                result[key] = item
+                            else:
+                                result["url_in_detail"] = True
+                        else:
+                            result[key] = compact(item)
+                    return result
+                if isinstance(value, list):
+                    return [compact(item) for item in value[:3]]
+                return value[:600] + "…" if isinstance(value, str) and len(value) > 600 else value
+            out = compact(out)
+        if len(encode(out)) > MAX_OUTPUT_CHARS:
+            out = {k: out[k] for k in ("id", "items", "returned", "offset", "next_offset") if k in out}
+            if "items" in out:
+                out["items"] = [{k: item[k] for k in ("id", "from", "display_title", "title") if k in item}
+                                for item in out["items"] if isinstance(item, dict)]
+            out.update(truncated=True, hint=TRUNCATED_HINT)
+    return encode(out)
 
 
 def validation_error(spec: ToolSpec, err: ValidationError) -> ToolError:

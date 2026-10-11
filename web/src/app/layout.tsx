@@ -13,6 +13,7 @@ const NAV = [
   { href: "/chat", label: "对话" },
   { href: "/memory", label: "记忆" },
   { href: "/jobs", label: "岗位" },
+  { href: "/interviews", label: "面经与内推" },
   { href: "/graph", label: "图谱" },
   { href: "/evals", label: "评测" },
 ];

@@ -76,5 +76,23 @@ def finish_turn(s: Session, thread_id: str, key: str, turn: dict[str, Any]) -> N
 
 
 def visible_messages(s: Session, thread_id: str) -> list[dict[str, Any]]:
+    from polaris.followups import states
+    from polaris.results import enrich_history
+
     rows = s.scalars(select(ChatMessage).where(ChatMessage.thread_id == thread_id).order_by(ChatMessage.id)).all()
-    return [{"id": m.id, "role": m.role, "content": m.content, **({"turn": m.turn} if m.turn else {})} for m in rows]
+    for m in rows:
+        if m.role == "assistant":
+            enrich_history(s, m)
+    # 历史答案/来源保持原样，岗位跟进属于当前状态，刷新后不能显示旧的收藏和投递。
+    job_ids = {int(r["id"][2:]) for m in rows for r in (m.turn or {}).get("results", [])
+               if r.get("kind") == "job" and isinstance(r.get("id"), str) and r["id"].startswith("J-") and r["id"][2:].isdigit()}
+    progress = {f"J-{i}": value for i, value in states(s, list(job_ids)).items()}
+    out = []
+    for m in rows:
+        row = {"id": m.id, "role": m.role, "content": m.content}
+        if m.turn:
+            cards = [{**r, "followup": progress[r["id"]]} if r.get("kind") == "job" and r.get("id") in progress
+                     else r for r in m.turn.get("results", [])]
+            row["turn"] = {**m.turn, "results": cards} if "results" in m.turn else m.turn
+        out.append(row)
+    return out

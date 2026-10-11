@@ -170,6 +170,55 @@ class Post(Base):
     likes: Mapped[int | None] = mapped_column(Integer)
     llm_call_id: Mapped[int | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"))
     prompt_version: Mapped[str | None] = mapped_column(String(64))
+    evidence_profile: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    created_at: Mapped[datetime] = created_at()
+
+
+class InterviewQuestion(Base):
+    """题目与原帖证据；公司归属不再继承全文提及公司的集合。"""
+
+    __tablename__ = "interview_questions"
+    key: Mapped[str] = mapped_column(String(80), unique=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"), index=True)
+    question: Mapped[str] = mapped_column(Text)
+    company: Mapped[str | None] = mapped_column(String(200), index=True)
+    role: Mapped[str | None] = mapped_column(String(200))
+    team: Mapped[str | None] = mapped_column(String(200))
+    job_type: Mapped[str | None] = mapped_column(String(16))
+    round: Mapped[str | None] = mapped_column(String(50))
+    category: Mapped[str] = mapped_column(String(32))
+    material: Mapped[str] = mapped_column(String(16))  # firsthand / study / uncertain
+    evidence: Mapped[str | None] = mapped_column(Text)
+    attribution: Mapped[str] = mapped_column(String(16))  # explicit / unknown
+    interview_date: Mapped[date | None] = mapped_column(Date)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class JobFollowup(Base):
+    """用户明确选择的岗位状态；收藏不等同投递。"""
+
+    __tablename__ = "job_followups"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), unique=True)
+    saved: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(24), default="untracked")
+    stage: Mapped[str | None] = mapped_column(String(200))
+    note: Mapped[str | None] = mapped_column(Text)
+    next_followup: Mapped[date | None] = mapped_column(Date)
+    revision: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class JobFollowupEvent(Base):
+    __tablename__ = "job_followup_events"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True)
+    request_key: Mapped[str] = mapped_column(String(100), unique=True)
+    before: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    after: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    changes: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    source_text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at()
 
 

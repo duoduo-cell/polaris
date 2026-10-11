@@ -20,12 +20,16 @@ EMBED_CONCURRENCY = 4
 def build_chunks() -> list[Chunk]:
     with session_scope() as s:
         jobs = s.execute(select(Job).order_by(Job.id)).scalars().all()
-        posts = s.execute(select(Post, RawItem.raw_text, RawItem.source)
+        posts = s.execute(select(Post, RawItem.raw_text, RawItem.source, RawItem.raw_json)
                           .join(RawItem, RawItem.id == Post.raw_item_id).order_by(Post.id)).all()
-        return [c for j in jobs for c in job_chunks(j)] + [c for p, text, src in posts for c in post_chunks(p, text, src)]
+        return [c for j in jobs for c in job_chunks(j)] + [c for p, text, src, raw in posts for c in post_chunks(p, text, src, raw)]
 
 
 def sync_chunks() -> dict[str, int]:
+    from polaris.interviews import sync_questions
+
+    with session_scope() as s:
+        sync_questions(s)
     chunks = build_chunks()
     stats: Counter = Counter()
     with session_scope() as s:

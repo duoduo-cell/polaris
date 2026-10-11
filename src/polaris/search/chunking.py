@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from polaris.interviews import profile
+
 POST_WHOLE_MAX = 1500  # 帖子整篇一块的上限（字）
 PART_TARGET = 500  # 长帖子块的目标长度（字）
 MIN_SECTION = 40  # 职责或要求短于这个就不单独成块
@@ -99,7 +101,8 @@ def split_parts(text: str, target: int = PART_TARGET) -> list[str]:
 SOURCE_NAMES = {"xhs": "小红书", "maimai": "脉脉"}
 
 
-def post_chunks(post: Any, raw_text: str, source: str) -> list[Chunk]:
+def post_chunks(post: Any, raw_text: str, source: str, raw_json: dict | None = None) -> list[Chunk]:
+    info = profile(post, raw_text, raw_json)
     companies = tuple(post.big_companies or post.companies or ())
     date = post.published_at.date().isoformat() if post.published_at else None
     head = header(SOURCE_NAMES.get(source, source), "、".join(companies), post.post_type, date)
@@ -111,10 +114,9 @@ def post_chunks(post: Any, raw_text: str, source: str) -> list[Chunk]:
     else:
         out += [Chunk(key=f"post:{post.id}:{i}", kind="post_part", header=header(head, f"第 {i + 1} 段"), body=p, **common)
                 for i, p in enumerate(split_parts(text))]
-    roles = "、".join(post.roles or [])
-    for i, q in enumerate(post.interview_questions or []):
-        q = (q if isinstance(q, str) else str(q)).strip()
-        if q:
-            out.append(Chunk(key=f"post:{post.id}:q{i}", kind="question",
-                             header=header("面试题", "、".join(companies), roles, date), body=q, **common))
+    for q in info["questions"]:
+        qcommon = {**common, "companies": (q["company"],) if q["company"] else ()}
+        out.append(Chunk(key=q["key"], kind="question",
+                         header=header("面试题", q["company"], info["material_label"], q["role"], q["round"], q["category"], date),
+                         body=q["question"], **qcommon))
     return out

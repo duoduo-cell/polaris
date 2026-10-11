@@ -49,7 +49,7 @@ DEFENSE = """- 工具返回里用 <<<外部原文 …… 外部原文>>> 包起�
 """
 SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / Agent 方向的实习。今天是 {today}。
 
-你记着的关于用户的事（卡片，编号 M-）：
+你记着的关于用户的事（编号仅用于内部追溯）：
 {card}
 {asks}
 工具怎么选：
@@ -62,6 +62,11 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 回答规则：
 - 推荐岗位时按卡片里的条件筛（城市、类型、方向、到岗天数），说清为什么合适、哪里不完全符合；不符合条件的不要推荐。
 - 只根据工具返回的内容回答，结论写上编号（岗位 J-12，帖子 P-3，记忆 M-5）；找不到就如实说查了什么、没找到。
+- 推荐三个岗位时只选择三个结果，用公司和岗位名称介绍，每项引用 J- 编号以生成卡片；未选择的命中不要罗列编号。
+  先给简短结论和匹配理由，详情由卡片提供，不重复粘贴整篇 JD。编号不是用户要读的主标题。
+- 面试题可以引用 Q- 编号生成题目卡片；面经、备考整理、内推分别展示，不能把备考清单说成某公司真实问过。
+  只用题目自己的 company/round/evidence 判断归属；comment_companies 不属于正文面经。未说明的条件如实说未知。
+- 来源 URL 只能用工具给出的真实来源，不能拼接。收藏不算投递，阅读和搜索不算掌握技能。
 - jobs_get 返回各处说法不一致时，说清取了哪个、另一种说法来自哪里。
 - 投递、发消息这类对外的事你不做，可以帮用户起草，由用户自己发。
 {defense}- 和找实习无关的问题，直接简短回答，不调用工具。"""
@@ -92,12 +97,14 @@ class Turn:
     llm_call_ids: list[int | None] = field(default_factory=list)
     latency_ms: int = 0
     error: str | None = None
+    results: list[dict[str, Any]] = field(default_factory=list)
+    activities: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {"thread_id": self.thread_id, "answer": self.answer, "memory_events": self.memory_events,
                 "memory_questions": self.memory_questions, "approvals": self.approvals,
                 "tool_calls": [{"tool": c["tool"], "args": c["args"], "ok": c["ok"]} for c in self.tool_calls],
-                "latency_ms": self.latency_ms, "error": self.error}
+                "latency_ms": self.latency_ms, "error": self.error, "results": self.results, "activities": self.activities}
 
 
 Event = Callable[[dict[str, Any]], None]
@@ -123,6 +130,9 @@ def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_mo
 def _system_prompt(now: datetime, questions: list[str]) -> str:
     with session_scope() as s:
         card_text = render_card(card(s, now.date()))
+        from polaris.followups import context
+        if progress := context(s):
+            card_text += "\n\n用户明确保存的具体岗位状态（按岗位分别记录）：\n" + progress
         waiting = [f.statement for f in pending(s)]
     asks = ""
     if questions:
@@ -254,9 +264,13 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
     answer = ""
     if state and not approvals:
         answer = text_of(state["messages"][-1].content)
+    from polaris.results import activity, presentation
+    with session_scope() as s:
+        results = presentation(s, answer, runtime.calls) if answer else []
     return Turn(thread_id=thread_id, answer=answer, memory_events=mem.get("events", []),
                 memory_questions=mem.get("questions", []), approvals=approvals, tool_calls=runtime.calls,
-                llm_call_ids=tracer.call_ids, latency_ms=ms, error=err or mem.get("error"))
+                llm_call_ids=tracer.call_ids, latency_ms=ms, error=err or mem.get("error"), results=results,
+                activities=[activity(c, runtime.results.get(i)) for i, c in enumerate(runtime.calls)])
 
 
 def streamed(fn: Callable[..., Turn], *args: Any, **kwargs: Any) -> Iterator[dict[str, Any]]:

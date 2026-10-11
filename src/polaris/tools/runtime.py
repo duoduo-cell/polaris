@@ -5,6 +5,7 @@
 - 录制回放：见 polaris/replay.py
 - 记账：每次调用（包括失败的、回放的）写一条 tool_calls
 """
+import json
 import time
 from collections import defaultdict, deque
 from typing import Any, Literal
@@ -36,6 +37,7 @@ class ToolRuntime:
         self.record_db = record_db
         self.engine = engine
         self.calls: list[dict[str, Any]] = []  # 本次运行的调用，评测时直接读
+        self.results: dict[int, Any] = {}  # 完整结构化结果给界面；不受模型文本长度限制影响
 
     def invoke(self, spec: ToolSpec, raw_args: dict[str, Any]) -> str:
         start = time.perf_counter()
@@ -54,25 +56,34 @@ class ToolRuntime:
                 entry = self.cassette.replay_tool(spec.name, normalized)
             except CassetteMiss as e:
                 return self._done(spec, normalized, f"出错了：{e}", False, "replay_miss", start, replayed=True)
+            try:
+                data = json.loads(entry["output"]) if entry["ok"] else None
+            except ValueError:
+                data = None
             return self._done(spec, normalized, entry["output"], entry["ok"], entry.get("error_kind"), start,
-                              replayed=True)
+                              replayed=True, data=data)
 
         try:
-            output, ok, kind = render(spec.func(args)), True, None
+            data = spec.func(args)
+            output, ok, kind = render(data), True, None
         except ToolError as e:
+            data = None
             output, ok, kind = e.render(), False, "tool_error"
         except Exception as e:  # noqa: BLE001  工具自己的 bug 不能让 agent 崩掉
+            data = None
             output, ok, kind = INTERNAL_ERROR.format(name=type(e).__name__), False, "internal"
         if self.cassette is not None:
             self.cassette.record_tool(spec.name, normalized, output, ok, kind)
-        return self._done(spec, normalized, output, ok, kind, start)
+        return self._done(spec, normalized, output, ok, kind, start, data=data)
 
     def _done(self, spec: ToolSpec, args: dict[str, Any], output: str, ok: bool, kind: str | None,
-              start: float, replayed: bool = False) -> str:
+              start: float, replayed: bool = False, data: Any = None) -> str:
         row = {"run_id": self.run_id, "thread_id": self.thread_id, "agent": self.agent, "tool": spec.name,
                "args": args, "output": output, "ok": ok, "error_kind": kind,
                "latency_ms": int((time.perf_counter() - start) * 1000), "replayed": replayed}
         self.calls.append(row)
+        if data is not None:
+            self.results[len(self.calls) - 1] = data
         if self.record_db:
             with session_scope(self.engine) as s:
                 s.add(ToolCall(**row))

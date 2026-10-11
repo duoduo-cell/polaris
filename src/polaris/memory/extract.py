@@ -15,7 +15,7 @@ from polaris.llm.client import LLM
 from polaris.memory.schema import ATTRIBUTES
 from polaris.memory.update import Candidate, Context, apply, card, render_card
 
-PROMPT_VERSION = "memory-extract-v2"
+PROMPT_VERSION = "memory-extract-v3"
 # 改口要有明确的说法。模型常把"换了个数"也标成改口（10-11 开发集、留出集和实测里都出现过："我每周能去 5 天"被当成改口，
 # 直接覆盖了刚说过的 4 天），所以代码再核对一遍：这句话里没有这些词，就不算改口，规则会先问你以哪个为准。
 CHANGE_WORDS = re.compile(r"改|变|换|现在|目前|其实|不再|不能|不考虑|算了|还是|说错|更正|纠正|调整|以后|之后|重新|不想|只能")
@@ -29,6 +29,7 @@ AttrName = Literal[tuple(ATTRIBUTES)]  # type: ignore[valid-type]
 class FactCandidate(BaseModel):
     attribute: AttrName = Field(..., description="属性名，只能用属性表里的")  # type: ignore[valid-type]
     qualifier: str | None = Field(None, description="分槽的属性（投递、面试进度）填公司名，其余留空")
+    job_ref: str | None = Field(None, description="明确对应一个已展示岗位时填其 J- 编号；不能确定则留空，不能编编号")
     value: str = Field(..., description="简短、规范的值：天数、月数、年份只写数字；城市写城市名；公司写常用名")
     statement: str = Field(..., description="一句话说清这条事实，用第三人称\"用户……\"，如：用户每周能到岗 4 天")
     kind: Literal["stated", "inferred"] = Field(..., description="stated：用户直接说的；inferred：从话里推出来的")
@@ -47,12 +48,16 @@ SYSTEM = """你帮求职助手"北极星"维护对用户的记忆。从用户这
 - 只记用户自己的情况、意愿和进度；用户在问问题、闲聊、问岗位信息时，没有关于自己的事就返回空列表。
 - 一句话里有几件事就拆成几条；同一件事不要重复。
 - 用户直接说的 kind=stated，包括字面上就能读出来的（"研二"就是硕士在读，"27 届"就是 2027 年毕业）。
-- 从话里推出来、用户没明说的 kind=inferred。最常见的：用户说约了、在面、准备某公司的面试，除了面试进度，再加一条
+- 从话里推出来、用户没明说的 kind=inferred。最常见的：用户说约了、在面某公司的面试，除了面试进度，再加一条
   applied（qualifier 填公司，value 写"投递过"，kind=inferred）——面试说明投过，但用户没亲口说投了。
 - 用户说某件事不再成立（不考虑上海了、不想去某公司了），polarity=negate，value 写那件事原来的值。
 - 用户在改口（改成、现在、其实、换成、不再、算了还是……），change_signal=true。
 - 相对时间按今天的日期换算成具体日期，填进 valid_from / valid_to。
 - 不要把卡片里已有的事实原样再抽一遍，除非用户这句话又明确说了它。"""
+SYSTEM += """
+- 投递和面试按具体岗位分开；用最近展示的岗位只解决指代，不把推荐、点击、收藏、阅读面经当作用户投递或掌握技术。
+- 公司有多个岗位而用户未说明是哪一个时，不猜具体岗位。job_ref 留空。
+- 只是在备考某公司的资料，不代表已经投递、收到面试邀请或参加了面试。"""
 
 
 def _attr_table() -> str:
@@ -68,7 +73,8 @@ def extract(llm: LLM, message: str, card_text: str, today: date, run_id: int | N
     if not r.ok or r.value is None:
         raise RuntimeError(f"记忆抽取失败：{r.error}")
     return [Candidate(attribute=f.attribute, value=f.value, statement=f.statement, kind=f.kind, polarity=f.polarity,
-                      change_signal=f.change_signal, qualifier=f.qualifier, valid_from=f.valid_from, valid_to=f.valid_to)
+                      change_signal=f.change_signal, qualifier=f.qualifier, valid_from=f.valid_from, valid_to=f.valid_to,
+                      job_ref=f.job_ref)
             for f in r.value.facts]
 
 
@@ -79,17 +85,32 @@ def remember(message: str, *, llm: LLM | None = None, now: datetime | None = Non
     llm = llm or LLM()
 
     def run(s: Session) -> dict[str, Any]:
-        candidates = extract(llm, message, render_card(card(s, now.date())), now.date(), run_id)
+        from polaris.memory.job_scope import recent_jobs, resolve, sync_followup
+
+        recent = recent_jobs(s, thread_id)
+        context = render_card(card(s, now.date()))
+        if recent:
+            context += "\n最近展示的岗位（只用于解析指代）：\n" + "\n".join(
+                f"J-{j.id} {j.company} · {j.title}" for j in recent)
+        candidates = extract(llm, message, context, now.date(), run_id)
         ctx = Context(s, now, message, thread_id, run_id)
         events, questions = [], []
         explicit = has_change_words(message)
         for c in candidates:
+            job, clarification = resolve(s, c, message, recent)
+            if clarification:
+                questions.append(clarification)
+                continue
             c.change_signal = c.change_signal and explicit
             e, q = apply(ctx, c)
+            if job:
+                e["scope_label"] = f"{job.company} · {job.title}"
             events.append(e)
             if q:
                 questions.append(q)
             s.flush()
+            if job:
+                sync_followup(s, job, c, e, message)
         return {"events": events, "questions": questions}
 
     if session is not None:

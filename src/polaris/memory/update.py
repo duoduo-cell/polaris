@@ -48,6 +48,7 @@ class Candidate:
     qualifier: str | None = None
     valid_from: date | None = None
     valid_to: date | None = None
+    job_ref: str | None = None
 
 
 @dataclass
@@ -125,6 +126,7 @@ def _event(ctx: Context, op: str, c_attr: str, qualifier: str | None, value: str
                     thread_id=ctx.thread_id, run_id=ctx.run_id, created_at=ctx.now)
     ctx.session.add(e)
     return {"op": op, "attribute": c_attr, "qualifier": qualifier, "value": value, "reason": reason,
+            "label": ATTRIBUTES[c_attr].label, "old_value": old.value if old else None,
             "fact_id": fact.id if fact else None, "old_fact_id": old.id if old else None}
 
 

@@ -16,7 +16,7 @@ from polaris.llm import LLM, parallel_map
 from polaris.schemas import JobFacts, PostFacts
 
 JOB_PROMPT_VERSION = "extract-job-v1"
-POST_PROMPT_VERSION = "extract-post-v2"
+POST_PROMPT_VERSION = "extract-post-v3"
 DIRECTION_VOCAB = "Agent、RAG、大模型、多模态、推理加速、评测、数据、推荐搜索、后端、前端、客户端、算法、安全、其他"
 
 JOB_SYSTEM = f"""你从招聘原文里抽取岗位信息。规则：
@@ -39,6 +39,10 @@ POST_SYSTEM = f"""你从小红书笔记（含评论）里抽取对求职有用�
 - directions 从这些里选，可以多选：{DIRECTION_VOCAB}。
 - interview_rounds：面经写了"一面""二面"就是对应的轮数（写到几面就填几）。
 - interview_questions 只放面经里真实出现的题目，每条一句，最多 15 条；advice 最多 5 条。
+- 正文和评论分开处理：companies、team、roles、面试公司只从正文确定，评论中的另一家公司不属于正文面经。
+- 题库、考点清单、备考资料、营销课程归为经验或其他，不冒充亲历面经；爆料可单独分类。
+- interview_company 是实际面试公司；company_evidence 照抄正文原句；question_details 与题目对应，证据照抄正文。
+  每道题自己的公司、岗位、轮次、面试日期只有正文明确时才填；发布时间不当成面试日期。
 - has_referral：发帖人或评论里明确说可以内推才是 true。"""
 
 
@@ -88,6 +92,8 @@ def extract_post(llm: LLM, item: RawItem, run_id: int | None = None) -> dict[str
             "interview_rounds": f.interview_rounds, "interview_questions": f.interview_questions[:15],
             "advice": f.advice[:5], "summary": f.summary, "published_at": published,
             "likes": _likes((note.get("interactInfo") or {}).get("likedCount")), "llm_call_id": r.call_ids[-1],
+            "evidence_profile": {"interview_company": f.interview_company, "company_evidence": f.company_evidence,
+                                 "questions": [q.model_dump(mode="json") for q in f.question_details]},
             "prompt_version": POST_PROMPT_VERSION}
 
 

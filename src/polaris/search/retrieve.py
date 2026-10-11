@@ -20,7 +20,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from polaris.companies import match as big_company
-from polaris.db.models import SearchChunk
+from polaris.db.models import InterviewQuestion, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
 from polaris.llm.client import LLM, LLMError
 
@@ -53,6 +53,12 @@ class SearchQuery:
     rerank: bool = True
     mmr: bool = True
     channels: tuple[str, ...] = ("keyword", "vector", "graph")
+    role: str | None = None
+    job_type: str | None = None
+    round: str | None = None
+    material: str | None = None
+    category: str | None = None
+    source: str | None = None
 
 
 @dataclass
@@ -93,6 +99,18 @@ def _filters(q: SearchQuery) -> list[Any]:
         conds.append(SearchChunk.companies.any(big.name if big else q.company))
     if q.since:
         conds.append(SearchChunk.published_at >= q.since)
+    question_conditions = []
+    for attr in ("job_type", "round", "material", "category"):
+        if value := getattr(q, attr):
+            question_conditions.append(getattr(InterviewQuestion, attr) == value)
+    if q.role:
+        question_conditions.append(InterviewQuestion.role.ilike(f"%{q.role}%"))
+    if question_conditions:
+        conds.append(select(InterviewQuestion.id).where(InterviewQuestion.key == SearchChunk.key,
+                                                       *question_conditions).exists())
+    if q.source:
+        conds.append(SearchChunk.post_id.in_(select(Post.id).join(RawItem, RawItem.id == Post.raw_item_id)
+                                             .where(RawItem.source == q.source)))
     return conds
 
 
@@ -119,7 +137,8 @@ def vector(s: Session, q: SearchQuery, vec: list[float]) -> list[tuple[int, floa
     s.execute(text("SET LOCAL hnsw.ef_search = 200"))
     s.execute(text("SET LOCAL hnsw.iterative_scan = relaxed_order"))  # 带过滤条件时继续往下找，不会少返回（pgvector 0.8）
     dist = SearchChunk.embedding.cosine_distance(vec).label("dist")
-    rows = s.execute(select(SearchChunk.id, dist).where(SearchChunk.embedding.is_not(None), *_filters(q))
+    rows = s.execute(select(SearchChunk.id, dist).where(SearchChunk.embedding.is_not(None),
+                                                       SearchChunk.embedded_hash == SearchChunk.content_hash, *_filters(q))
                      .order_by(dist, SearchChunk.id).limit(RECALL_K)).all()
     return [(r.id, 1 - float(r.dist)) for r in rows if 1 - r.dist >= VECTOR_MIN]
 

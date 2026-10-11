@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Card, ErrorNote } from "@/components/markdown";
+import { FollowupList } from "@/components/result-cards";
 import { api } from "@/lib/client";
 
-type Fact = { id: string; attribute: string; value: string; for?: string; valid_from?: string; valid_to?: string };
+type Fact = { id: string; attribute: string; value: string; for?: string; scope_label?: string; valid_from?: string; valid_to?: string };
 type CardResp = { on: string; facts: Fact[]; waiting_for_confirmation?: { id: string; statement: string }[] };
 type Version = Fact & { status: string; kind: string; recorded: string; superseded?: string; from_text: string };
 
@@ -62,7 +63,7 @@ export default function Memory() {
           <tbody>
             {card?.facts.map((f) => (
               <tr key={f.id} className="border-b border-line last:border-0">
-                <td className="py-2 pr-3 text-muted whitespace-nowrap">{f.attribute}{f.for ? `（${f.for}）` : ""}</td>
+                <td className="py-2 pr-3 text-muted whitespace-nowrap">{f.attribute}{f.for ? `（${f.scope_label ?? f.for}）` : ""}</td>
                 <td className="py-2 pr-3">{f.value}{f.valid_from ? <span className="text-muted">（{f.valid_from} 起）</span> : null}</td>
                 <td className="py-2 pr-3 text-muted">{f.id}</td>
                 <td className="py-2 text-right whitespace-nowrap">
@@ -89,6 +90,7 @@ export default function Memory() {
           ))}
         </Card>
       )}
+      <FollowupList />
     </div>
   );
 }

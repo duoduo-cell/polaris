@@ -11,9 +11,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from polaris.companies import match as big_company
-from polaris.db.models import SearchChunk
+from polaris.db.models import InterviewQuestion, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
+from polaris.interviews import MATERIAL_LABELS
 from polaris.search.retrieve import SearchQuery, search
+from polaris.sources import source_dict
 from polaris.tools.base import ToolError, ToolSpec
 from polaris.vocab import SKILLS, skills_in
 
@@ -22,23 +24,37 @@ DIRECTIONS = ("大模型", "Agent", "RAG", "评测", "多模态", "后端", "数
 
 class QuestionsSearchArgs(BaseModel):
     query: str = Field(..., max_length=100, description="想找什么样的面试题，如：RAG 召回效果差怎么办、KV Cache、Agent 记忆怎么设计")
-    company: str | None = Field(None, description="只看提到这家公司的面经，如 字节、腾讯")
+    company: str | None = Field(None, description="实际面试公司；评论提及和备考汇总不算，如 字节、腾讯")
+    role: str | None = Field(None, max_length=100, description="岗位方向，如 后端、Agent")
+    job_type: Literal["intern", "campus", "social"] | None = None
+    round: str | None = Field(None, max_length=50, description="轮次，如 1面、2面")
+    material: Literal["firsthand", "study", "uncertain"] | None = Field("firsthand", description="默认只看面经记录；备考填 study")
+    category: str | None = Field(None, max_length=32)
+    source: str | None = Field(None, max_length=64)
     since_days: int | None = Field(None, ge=1, le=365, description="只看最近多少天发的面经里的题")
     limit: int = Field(10, ge=1, le=30)
 
 
 def questions_search(args: QuestionsSearchArgs) -> dict:
     since = datetime.now(UTC) - timedelta(days=args.since_days) if args.since_days else None
-    hits, _ = search(SearchQuery(args.query, scope="questions", company=args.company, since=since, top_k=args.limit))
+    hits, _ = search(SearchQuery(args.query, scope="questions", company=args.company, since=since, top_k=args.limit,
+                                role=args.role, job_type=args.job_type, round=args.round, material=args.material,
+                                category=args.category, source=args.source))
     with session_scope() as s:
         rows = {r.id: r for r in s.execute(select(SearchChunk).where(SearchChunk.id.in_([h.chunk_id for h in hits])))
                 .scalars()}
+        details = {q.key: (q, p, raw) for q, p, raw in s.execute(
+            select(InterviewQuestion, Post, RawItem).join(Post, Post.id == InterviewQuestion.post_id)
+            .join(RawItem, RawItem.id == Post.raw_item_id).where(InterviewQuestion.key.in_([h.key for h in hits])))}
         items = []
         for h in hits:
             r = rows.get(h.chunk_id)
             if r is None:
                 continue
             item: dict[str, Any] = {"question": r.body, "from": f"P-{r.post_id}", "companies": r.companies}
+            if r.key in details:
+                q, p, raw = details[r.key]
+                item.update(question_row(q, p, raw))
             if r.published_at:
                 item["published"] = r.published_at.date().isoformat()
             items.append(item)
@@ -46,6 +62,16 @@ def questions_search(args: QuestionsSearchArgs) -> dict:
     if not items:
         out["hint"] = "没找到相关的面试题。可以换个说法、去掉公司或时间条件；确实没有就如实告诉用户。"
     return out
+
+
+def question_row(q: InterviewQuestion, p: Post, raw: RawItem) -> dict[str, Any]:
+    return {"id": f"Q-{q.id}", "from": f"P-{p.id}", "display_title": q.question, "question": q.question,
+            "companies": [q.company] if q.company else [], "company": q.company, "role": q.role, "team": q.team,
+            "job_type": q.job_type, "round": q.round, "category": q.category, "material": q.material,
+            "material_label": MATERIAL_LABELS[q.material], "attribution": q.attribution, "evidence": q.evidence,
+            "interview_date": q.interview_date.isoformat() if q.interview_date else None,
+            "published": q.published_at.date().isoformat() if q.published_at else None,
+            "sources": [source_dict(raw.source, raw.url, raw_id=raw.id, fetched_at=raw.fetched_at, published_at=p.published_at)]}
 
 
 class KgStatsArgs(BaseModel):

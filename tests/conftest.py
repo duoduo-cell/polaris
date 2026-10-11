@@ -33,7 +33,8 @@ from polaris.db.session import get_engine  # noqa: E402
 get_settings.cache_clear()
 get_engine.cache_clear()
 
-TABLES = ["chat_tasks", "chat_messages", "chat_threads", "notifications", "memory_events", "memory_facts", "memory_suppressions",
+TABLES = ["interview_questions", "job_followup_events", "job_followups",
+          "chat_tasks", "chat_messages", "chat_threads", "notifications", "memory_events", "memory_facts", "memory_suppressions",
           "posts", "postings", "jobs", "raw_items", "companies", "search_queries", "tool_calls", "llm_calls", "runs"]
 
 

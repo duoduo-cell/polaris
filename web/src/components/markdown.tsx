@@ -28,3 +28,7 @@ export function ErrorNote({ error }: { error: string | null }) {
   if (!error) return null;
   return <p className="text-sm text-red-600 my-2">{error}</p>;
 }
+
+export function Skeleton({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={`skeleton ${className}`} style={style} />;
+}

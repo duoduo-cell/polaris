@@ -23,7 +23,7 @@ from sqlalchemy import select
 
 from polaris.align.match import DISTINGUISHING, role_difference
 from polaris.align.normalize import key, split_title
-from polaris.db.models import Job, Post, RawItem, SearchChunk
+from polaris.db.models import InterviewQuestion, Job, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
 from polaris.graph.client import driver
 from polaris.vocab import skills_in
@@ -70,7 +70,9 @@ def collect() -> dict[str, list[dict[str, Any]]]:
         jobs = s.execute(select(Job).where(Job.is_synthetic.is_(False)).order_by(Job.id)).scalars().all()
         posts = s.execute(select(Post, RawItem.source, RawItem.raw_text)
                           .join(RawItem, RawItem.id == Post.raw_item_id).order_by(Post.id)).all()
-        questions = s.execute(select(SearchChunk.key, SearchChunk.post_id, SearchChunk.body)
+        questions = s.execute(select(SearchChunk.key, SearchChunk.post_id, SearchChunk.body, InterviewQuestion.company,
+                                     InterviewQuestion.material, InterviewQuestion.evidence)
+                              .outerjoin(InterviewQuestion, InterviewQuestion.key == SearchChunk.key)
                               .where(SearchChunk.kind == "question").order_by(SearchChunk.id)).all()
         g: dict[str, list[dict[str, Any]]] = defaultdict(list)
         units_by_company: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
@@ -113,9 +115,10 @@ def collect() -> dict[str, list[dict[str, Any]]]:
                         for job in jobs_by_unit.get(u["key"], []):
                             if any(_same_role(key(r), job["role"]) for r in p.roles or []):
                                 g["post_job"].append({"post": p.id, "job": job["id"], "method": "部门一致且岗位名相近"})
-        for qkey, post_id, body in questions:
+        for qkey, post_id, body, company, material, evidence in questions:
             g["questions"].append({"key": qkey, "post": post_id, "text": body[:300]})
-            g["question_company"] += [{"q": qkey, "company": c} for c in posts_by_id.get(post_id, [])]
+            if company and material == "firsthand":
+                g["question_company"].append({"q": qkey, "company": company, "source": f"P-{post_id}", "evidence": evidence})
             g["question_skill"] += [{"q": qkey, "skill": k} for k in skills_in(body)]
     return dict(g)
 
@@ -147,7 +150,7 @@ CYPHER = {
     "questions": """UNWIND $rows AS r MATCH (p:Post {id: r.post})
         MERGE (q:Question {key: r.key}) SET q.text = r.text MERGE (q)-[:FROM]->(p)""",
     "question_company": """UNWIND $rows AS r MATCH (q:Question {key: r.q}) MERGE (c:Company {name: r.company})
-        MERGE (q)-[:ASKED_AT]->(c)""",
+        MERGE (q)-[e:ASKED_AT]->(c) SET e.source = r.source, e.evidence = r.evidence""",
     "question_skill": "UNWIND $rows AS r MATCH (q:Question {key: r.q}) MERGE (k:Skill {name: r.skill}) MERGE (q)-[:TESTS]->(k)",
 }
 

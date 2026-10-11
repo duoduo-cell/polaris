@@ -56,5 +56,7 @@ def value_key(attribute: str, value: str) -> str:
 def qualifier_key(qualifier: str | None) -> str | None:
     if not qualifier:
         return None
-    big = big_company(qualifier)
-    return big.name if big else qualifier.strip()
+    company, separator, scope = qualifier.partition("|")
+    big = big_company(company)
+    key = big.name if big else company.strip()
+    return f"{key} | {scope.strip()}" if separator and scope.strip() else key

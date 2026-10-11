@@ -26,10 +26,19 @@ class JobFacts(BaseModel):
     requirements: list[str] = Field(default_factory=list, description="任职要求要点，每条一句")
 
 
+class QuestionEvidence(BaseModel):
+    question: str
+    company: str | None = None
+    role: str | None = None
+    round: str | None = None
+    interview_date: str | None = None
+    evidence: str | None = Field(None, description="正文中支持题目/归属的原句，照抄，不用评论作为面试题证据")
+
+
 class PostFacts(BaseModel):
     """小红书笔记（面经、内推、招聘、经验帖）里抽出来的信息。"""
 
-    post_type: Literal["内推", "招聘", "面经", "经验", "求助", "其他"] = Field(
+    post_type: Literal["内推", "招聘", "面经", "经验", "求助", "爆料", "其他"] = Field(
         ..., description="内推：员工帮部门找人；招聘：岗位信息；面经：面试过程和题目；经验：求职或实习经验；求助：发帖人在问问题")
     companies: list[str] = Field(default_factory=list,
                                  description="提到的公司，写规范全称。谐音和 emoji 要还原，如 🫘音→抖音、tou条→今日头条")
@@ -45,6 +54,9 @@ class PostFacts(BaseModel):
     has_referral: bool = Field(False, description="发帖人或评论里明确可以内推")
     interview_rounds: int | None = Field(None, description="面经里提到几轮面试")
     interview_questions: list[str] = Field(default_factory=list, description="面经里的题目，每条一句，最多 15 条")
+    interview_company: str | None = Field(None, description="正文里实际面试的公司；多公司/不能确定留空，不继承评论公司")
+    company_evidence: str | None = Field(None, description="实际面试公司的正文原句，照抄")
+    question_details: list[QuestionEvidence] = Field(default_factory=list)
     advice: list[str] = Field(default_factory=list, description="作者给的建议，每条一句，最多 5 条")
     summary: str = Field(..., description="一句话概括这条笔记对求职者有什么用")
 

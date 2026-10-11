@@ -149,6 +149,16 @@
 
 ## 9. 依据
 
+### 10-12 结果展示与证据补充
+
+产品目标及验收见 `design/RESULTS.md`。保留 LangGraph、现有任务队列与视觉设计，工具结构化结果驱动展示，无额外生成界面模型或 SDK。
+
+- `Turn.results` 保存成功工具结果中实际被回答引用的岗位/帖子/题目；未查询或失败的编号不生成卡片。`activities` 保存范围、数量、来源、耗时和失败，技术参数可展开查看。模型输出保持合法 JSON，完整结果另供接口使用。
+- `GET /api/me/results/{J/P/Q-id}` 直接提供详情和安全原始 URL；`GET /api/me/knowledge/posts`、`questions` 提供不调用模型的筛选分页。全部沿用 owner 鉴权。旧聊天首次读取时验证历史成功工具出处，补保存展示数据。
+- `interview_questions` 按 `post:{id}:q{index}` 幂等保存题目、正文公司/岗位/轮次/类别、材料性质、证据和两个日期；`posts.evidence_profile` 记录正文/评论公司与修复版本。`ASKED_AT` 只使用明确归属的面经题，发布时间不能替代面试日期；旧向量仅在 embedded_hash 与 content_hash 一致时可用。
+- `job_followups` 按 job_id 独立保存收藏、状态、面试阶段、备注和日期；`job_followup_events` 保存前后值及用户来源。明确 UI 操作使用 UUID 去重和 revision 冲突保护，沿用共享记忆写锁；阅读/收藏不推断投递。自然语言按明确编号、完整岗位名、推荐序号或唯一已投岗位解析范围，有多个可能时先追问，推断不写入已投递状态。
+- 迁移只增加结构，不清空聊天、记忆、原始资料。存量证据/块/图谱回填不调用模型；不运行 drop_stale 或批量重抽。备份与原始内容留在忽略目录，公开版本不含真实帖子。
+
 - 参考答案：`REFERENCE_WEKNORA.md`（腾讯 WeKnora，MIT，读的是 `17dc7da`）
 - 选型过程和其余依据：`STACK.md`、`INTRO.md`、`FINDINGS.md`
 - 岗位市场统计：`eval/reports/market.md`

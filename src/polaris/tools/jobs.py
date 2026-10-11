@@ -16,7 +16,10 @@ from sqlalchemy import any_, or_, select
 from polaris.companies import match
 from polaris.db.models import Job, Post, Posting, RawItem
 from polaris.db.session import session_scope
+from polaris.followups import states
+from polaris.interviews import profile
 from polaris.search.retrieve import SearchQuery, search
+from polaris.sources import source_dict
 from polaris.tools.base import Page, ToolError, ToolSpec, untrusted
 
 JOB_TYPES = {"intern": "实习", "campus": "校招", "social": "社招"}
@@ -62,7 +65,9 @@ class JobsSearchArgs(Page):
 
 def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
     out = {"id": f"J-{j.id}", "company": j.company or j.company_name, "title": j.title, "city": j.city,
-           "type": JOB_TYPES.get(j.job_type or "", j.job_type)}
+           "type": JOB_TYPES.get(j.job_type or "", j.job_type), "job_type": j.job_type, "unit": j.unit,
+           "display_title": " · ".join(x for x in (j.company or j.company_name, j.title) if x),
+           "last_seen": j.last_seen_at.date().isoformat() if j.last_seen_at else None}
     for k in ("days_per_week", "duration_months", "salary_text", "can_convert", "deadline", "posted_at"):
         v = getattr(j, k)
         if v is not None:
@@ -74,6 +79,17 @@ def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
     if detailed:
         out.update({"unit": j.unit, "directions": j.directions, "last_seen": j.last_seen_at.date().isoformat()})
     return out
+
+
+def job_sources(s, ids: list[int]) -> dict[int, list[dict[str, Any]]]:
+    rows = s.execute(select(Posting.job_id, Posting.city, RawItem).join(RawItem, RawItem.id == Posting.raw_item_id)
+                     .where(Posting.job_id.in_(ids)).order_by(Posting.id)).all()
+    sources: dict[int, list[dict[str, Any]]] = {i: [] for i in ids}
+    for jid, city, r in rows:
+        source = source_dict(r.source, r.url, raw_id=r.id, city=city, fetched_at=r.fetched_at, published_at=r.published_at)
+        if not any(v["url"] == source["url"] and v["source"] == source["source"] and v["city"] == city for v in sources[jid]):
+            sources[jid].append(source)
+    return sources
 
 
 def jobs_search(args: JobsSearchArgs) -> dict:
@@ -101,8 +117,15 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             rows = _in_order(s.execute(stmt).scalars().all(), order, lambda j: j.id)
             rows = rows[args.offset: args.offset + args.limit + 1]
         items = [_job_row(j, args.response_format == "detailed") for j in rows[: args.limit]]
+        sources = job_sources(s, [j.id for j in rows[:args.limit]])
+        progress = states(s, [j.id for j in rows[:args.limit]])
+        for j, item in zip(rows[:args.limit], items, strict=True):
+            item["sources"] = sources[j.id][:3]
+            item["source_count"] = len(sources[j.id])
+            item["followup"] = progress[j.id]
     has_more = len(rows) > args.limit
-    result: dict = {"returned": len(items), "items": items, "next_offset": args.offset + args.limit if has_more else None}
+    result: dict = {"returned": len(items), "items": items, "offset": args.offset,
+                    "next_offset": args.offset + args.limit if has_more else None}
     if not items:
         result["hint"] = ("没有符合条件的岗位。可以去掉一两个条件（比如城市、类型）、换个说法，"
                           "或者库里确实还没采到这家公司的岗位——那就如实告诉用户。")
@@ -122,11 +145,9 @@ def jobs_get(args: JobsGetArgs) -> dict:
             raise ToolError(f"没有编号为 J-{jid} 的岗位", "先用 jobs_search 找到编号再取详情", '{"job_id": "J-12"}')
         out = _job_row(j, True)
         out["requirements"] = j.requirements
-        listings = s.execute(select(RawItem.source, RawItem.url, RawItem.fetched_at, Posting.city)
-                             .join(RawItem, RawItem.id == Posting.raw_item_id).where(Posting.job_id == j.id)
-                             .order_by(Posting.id)).all()
-        out["sources"] = [{"source": r.source, "url": r.url, "city": r.city, "fetched_at": r.fetched_at.date().isoformat()}
-                          for r in listings]
+        out["sources"] = job_sources(s, [j.id])[j.id]
+        out["field_sources"] = j.field_sources
+        out["status"] = j.status
         if j.conflicts:  # 说法不一致的字段：取了哪个、为什么、另外的说法来自哪里
             out["conflicts"] = [{"field": c["field"], "chosen": c["chosen"], "rule": c["rule"],
                                  "others": [{"value": a["value"], "sources": a["sources"]} for a in c["alternatives"]]}
@@ -137,16 +158,30 @@ def jobs_get(args: JobsGetArgs) -> dict:
 
 
 class PostsSearchArgs(Page):
+    keyword: str | None = Field(None, max_length=100, description="按文字包含筛选，不进行语义检索")
     query: str | None = Field(None, max_length=100,
                               description="想找什么样的帖子，自然语言或关键词都行，按相关度排，如：字节 Agent 面经 问了 RAG")
     company: str | None = Field(None, description="帖子涉及的公司，如 字节、滴滴、米哈游")
-    post_type: Literal["内推", "招聘", "面经", "经验", "求助", "其他"] | None = Field(None, description="帖子类型")
+    post_type: Literal["内推", "招聘", "面经", "经验", "求助", "爆料", "其他"] | None = Field(None, description="帖子类型")
+    material: Literal["firsthand", "study", "uncertain"] | None = Field(None, description="面经记录、备考整理、待核实")
+    role: str | None = Field(None, max_length=100, description="岗位方向，如 后端、Agent 开发")
+    job_type: Literal["intern", "campus", "social"] | None = None
+    source: str | None = Field(None, max_length=64, description="来源，如 xhs 小红书、maimai 脉脉")
     has_referral: bool | None = Field(None, description="true 只看明确能内推的")
     since_days: int | None = Field(None, ge=1, le=365, description="只看最近多少天发的帖子")
 
 
 def _post_row(p: Post, r: RawItem, detailed: bool) -> dict[str, Any]:
-    out = {"id": f"P-{p.id}", "type": p.post_type, "companies": p.big_companies or p.companies, "summary": p.summary}
+    info = profile(p, r.raw_text, r.raw_json)
+    out = {"id": f"P-{p.id}", "type": p.post_type, "companies": info["body_companies"], "summary": p.summary}
+    out.update({"title": info["headline"], "display_title": info["headline"], "roles": p.roles, "job_type": p.job_type,
+                "material": info["material"], "material_label": info["material_label"],
+                "interview_company": info["interview_company"], "rounds": info["rounds"],
+                "body_companies": info["body_companies"], "comment_companies": info["comment_companies"],
+                "sources": [source_dict(r.source, r.url, raw_id=r.id, fetched_at=r.fetched_at, published_at=p.published_at)],
+                "url": source_dict(r.source, r.url)["url"], "question_count": len(p.interview_questions or [])})
+    if p.post_type == "面经":
+        out["companies"] = [info["interview_company"]] if info["interview_company"] else []
     for k in ("team", "city", "days_per_week", "duration_months", "can_convert", "interview_rounds"):
         v = getattr(p, k)
         if v is not None:
@@ -156,7 +191,7 @@ def _post_row(p: Post, r: RawItem, detailed: bool) -> dict[str, Any]:
     if p.published_at:
         out["published"] = p.published_at.date().isoformat()
     if detailed:
-        out.update({"roles": p.roles, "likes": p.likes, "url": r.url, "raw_id": f"R-{r.id}",
+        out.update({"roles": p.roles, "likes": p.likes, "raw_id": f"R-{r.id}",
                     "interview_questions": p.interview_questions[:8]})
     return out
 
@@ -165,6 +200,9 @@ def posts_search(args: PostsSearchArgs) -> dict:
     order = ranked_ids(args.query, "posts", args.company) if args.query else None
     with session_scope() as s:
         stmt = select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)
+        stmt = stmt.where(RawItem.is_synthetic.is_(False))
+        if args.keyword:
+            stmt = stmt.where(Post.summary.ilike(f"%{args.keyword}%") | RawItem.raw_text.ilike(f"%{args.keyword}%"))
         if order is not None:
             stmt = stmt.where(Post.id.in_(order))
         if args.company:
@@ -173,16 +211,30 @@ def posts_search(args: PostsSearchArgs) -> dict:
             stmt = stmt.where(Post.post_type == args.post_type)
         if args.has_referral is not None:
             stmt = stmt.where(Post.has_referral.is_(args.has_referral))
+        if args.role:
+            stmt = stmt.where(Post.roles.any(args.role) | Post.summary.ilike(f"%{args.role}%"))
+        if args.job_type:
+            stmt = stmt.where(Post.job_type == args.job_type)
+        if args.source:
+            stmt = stmt.where(RawItem.source == args.source)
         if args.since_days:
             stmt = stmt.where(Post.published_at >= datetime.now(UTC) - timedelta(days=args.since_days))
         if order is None:
-            rows = s.execute(stmt.order_by(Post.published_at.desc().nulls_last(), Post.id)
-                             .limit(args.limit + 1).offset(args.offset)).all()
+            rows = s.execute(stmt.order_by(Post.published_at.desc().nulls_last(), Post.id)).all()
         else:
-            rows = _in_order(s.execute(stmt).all(), order, lambda row: row[0].id)[args.offset: args.offset + args.limit + 1]
-        items = [_post_row(p, r, args.response_format == "detailed") for p, r in rows[: args.limit]]
-    has_more = len(rows) > args.limit
-    result: dict = {"returned": len(items), "items": items, "next_offset": args.offset + args.limit if has_more else None}
+            rows = _in_order(s.execute(stmt).all(), order, lambda row: row[0].id)
+        all_items = [_post_row(p, r, args.response_format == "detailed") for p, r in rows]
+        if args.material:
+            all_items = [item for item in all_items if item["material"] == args.material]
+        if args.company:
+            big = match(args.company)
+            wanted = big.name if big else args.company
+            all_items = [item for item in all_items if wanted in item["companies"] or
+                         (item["material"] != "firsthand" and wanted in item["body_companies"])]
+        items = all_items[args.offset:args.offset + args.limit]
+    has_more = len(all_items) > args.offset + args.limit
+    result: dict = {"returned": len(items), "items": items, "offset": args.offset,
+                    "next_offset": args.offset + args.limit if has_more else None}
     if not items:
         result["hint"] = "没有符合条件的帖子。可以去掉类型或公司条件、换个说法；确实没有就如实告诉用户。"
     return result
@@ -201,6 +253,9 @@ def posts_get(args: PostsGetArgs) -> dict:
             raise ToolError(f"没有编号为 P-{pid} 的帖子", "先用 posts_search 找到编号再取详情", '{"post_id": "P-3"}')
         p, r = row
         out = _post_row(p, r, True)
+        out["question_details"] = [dict(q, interview_date=q["interview_date"].isoformat() if q["interview_date"] else None,
+                                         published_at=q["published_at"].isoformat() if q["published_at"] else None)
+                                   for q in profile(p, r.raw_text, r.raw_json)["questions"]]
         out.update({"interview_questions": p.interview_questions, "advice": p.advice, "grad_year": p.grad_year})
         if args.response_format == "detailed":
             out["text"] = untrusted(r.raw_text[:2500])
@@ -210,7 +265,7 @@ def posts_get(args: PostsGetArgs) -> dict:
 TOOLS = [
     ToolSpec(name="jobs_search",
              description="查岗位（多来源合并后的）：按公司、城市、类型、方向筛，给 query 时按相关度排，默认只看大厂。"
-                         "返回岗位编号和关键字段；各处说法不一致的字段会标出来。要看要求、来源和冲突详情用 jobs_get。",
+                         "返回可读标题、关键字段和原始来源；各处说法不一致的字段会标出来。详情用 jobs_get。",
              args_schema=JobsSearchArgs, func=jobs_search, example='{"company": "字节", "city": "杭州", "query": "Agent"}'),
     ToolSpec(name="jobs_get", description="按编号取一个岗位的全部字段、任职要求、每条来源，以及说法不一致的字段取了哪个、为什么；"
                                           "detailed 再给职位描述全文。",

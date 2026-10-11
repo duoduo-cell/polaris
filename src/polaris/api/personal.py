@@ -159,7 +159,131 @@ def resume_stream_endpoint(thread_id: str, body: ResumeIn) -> Any:
 def memory_card_endpoint(on: date | None = None) -> dict[str, Any]:
     from polaris.tools.memory import MemoryCardArgs, memory_card
 
-    return memory_card(MemoryCardArgs(on=on))
+    out = memory_card(MemoryCardArgs(on=on))
+    from polaris.db.models import Job
+    from polaris.results import REF_RE
+
+    ids = {int(ref[2:]) for f in out["facts"] for ref in REF_RE.findall(f.get("for", "")) if ref.startswith("J-")}
+    if ids:
+        with session_scope() as s:
+            names = {f"J-{j.id}": j.title for j in s.scalars(select(Job).where(Job.id.in_(ids))).all()}
+        for fact in out["facts"]:
+            fact["scope_label"] = REF_RE.sub(lambda m: names.get(m[0], m[0]), fact.get("for", ""))
+    return out
+
+
+@router.get("/results/{reference}", summary="Read a result directly, with full original sources and current followup state")
+def result_detail(reference: str) -> dict[str, Any]:
+    from polaris.results import REF_RE, entities
+
+    if not REF_RE.fullmatch(reference):
+        raise HTTPException(422, "无效的结果编号")
+    with session_scope() as s:
+        rows = entities(s, [reference], detailed=True)
+        if not rows:
+            raise HTTPException(404, "这条资料已经不存在，请重新搜索")
+        return rows[0]
+
+
+class FollowupChanges(BaseModel):
+    saved: bool | None = None
+    status: Literal["untracked", "skipped", "applied", "interview", "offer", "rejected", "withdrawn"] | None = None
+    stage: str | None = Field(None, max_length=200)
+    note: str | None = Field(None, max_length=2000)
+    next_followup: date | None = None
+
+
+class FollowupIn(BaseModel):
+    request_id: UUID
+    revision: int | None = Field(None, ge=0)
+    changes: FollowupChanges
+
+
+@router.post("/jobs/{reference}/followup", summary="An explicit user action updates one job; retries are idempotent")
+def update_followup(reference: str, body: FollowupIn) -> dict[str, Any]:
+    from polaris.followups import FollowupConflict, update
+    from polaris.tools.base import ToolError
+    from polaris.tools.jobs import _parse
+
+    changes = body.changes.model_dump(exclude_unset=True)
+    if any(changes.get(k) is None for k in ("saved", "status") if k in changes):
+        raise HTTPException(422, "收藏和投递状态不能留空")
+    try:
+        job_id = _parse(reference, "J", "jobs_search", '{"job_id": "J-12"}')
+        with session_scope() as s:
+            return update(s, job_id, changes, str(body.request_id), "用户在岗位详情中明确保存了状态", body.revision)
+    except FollowupConflict as e:
+        raise HTTPException(409, str(e)) from e
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    except (ValueError, ToolError) as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/followups", summary="Saved jobs and independent application progress")
+def followups_endpoint() -> list[dict[str, Any]]:
+    from sqlalchemy import or_
+
+    from polaris.db.models import JobFollowup
+    from polaris.results import entities
+
+    with session_scope() as s:
+        stmt = select(JobFollowup).where(or_(JobFollowup.saved.is_(True), JobFollowup.status != "untracked",
+                                             JobFollowup.stage.is_not(None), JobFollowup.note.is_not(None),
+                                             JobFollowup.next_followup.is_not(None)))
+        rows = s.scalars(stmt.order_by(JobFollowup.updated_at.desc()).limit(100)).all()
+        return entities(s, [f"J-{r.job_id}" for r in rows])
+
+
+@router.get("/knowledge/posts", summary="Browse source-backed interview, referral and recruiting posts without model calls")
+def browse_posts(company: str | None = None, post_type: str | None = None, material: str | None = None,
+                 role: str | None = None, job_type: str | None = None, source: str | None = None,
+                 text: str | None = None, limit: int = 20, offset: int = 0) -> dict[str, Any]:
+    from polaris.results import POST_KINDS
+    from polaris.tools.jobs import PostsSearchArgs, posts_search
+
+    try:
+        args = PostsSearchArgs(company=company, post_type=post_type, material=material, role=role, job_type=job_type,
+                               source=source, keyword=text, limit=limit, offset=offset)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    out = posts_search(args)
+    for row in out["items"]:
+        row["kind"] = POST_KINDS.get(row["type"], "post")
+        if row["kind"] == "interview" and row["material"] != "firsthand":
+            row["kind"] = "study" if row["material"] == "study" else "post"
+    return out
+
+
+@router.get("/knowledge/questions", summary="Browse questions by actual interview company, role, round and material")
+def browse_questions(company: str | None = None, role: str | None = None, job_type: str | None = None,
+                     round: str | None = None, material: str | None = None, category: str | None = None,
+                     source: str | None = None, text: str | None = None, limit: int = 20, offset: int = 0) -> dict[str, Any]:
+    from polaris.companies import match
+    from polaris.db.models import InterviewQuestion, Post, RawItem
+    from polaris.tools.knowledge import question_row
+
+    if not 1 <= limit <= 50 or offset < 0 or material not in (None, "firsthand", "study", "uncertain"):
+        raise HTTPException(422, "筛选或分页参数不合法")
+    with session_scope() as s:
+        stmt = select(InterviewQuestion, Post, RawItem).join(Post, Post.id == InterviewQuestion.post_id)
+        stmt = stmt.join(RawItem, RawItem.id == Post.raw_item_id).where(RawItem.is_synthetic.is_(False))
+        if company:
+            big = match(company)
+            stmt = stmt.where(InterviewQuestion.company == (big.name if big else company))
+        if role:
+            stmt = stmt.where(InterviewQuestion.role.ilike(f"%{role}%"))
+        for attr, value in (("job_type", job_type), ("round", round), ("material", material), ("category", category)):
+            if value:
+                stmt = stmt.where(getattr(InterviewQuestion, attr) == value)
+        if source:
+            stmt = stmt.where(RawItem.source == source)
+        if text:
+            stmt = stmt.where(InterviewQuestion.question.ilike(f"%{text}%"))
+        rows = s.execute(stmt.order_by(InterviewQuestion.published_at.desc().nulls_last(), InterviewQuestion.id)
+                         .offset(offset).limit(limit + 1)).all()
+        return {"items": [{**question_row(q, p, r), "kind": "question"} for q, p, r in rows[:limit]],
+                "next_offset": offset + limit if len(rows) > limit else None}
 
 
 @router.get("/memory/{attribute}/history", summary="Every version of one memory attribute, with the sentence it came from")
@@ -238,7 +362,7 @@ def tool_endpoint(name: str, body: ToolIn) -> dict[str, Any]:
     out = runtime.invoke(spec, body.args)
     call = runtime.calls[-1]
     try:
-        result: Any = json.loads(out)
+        result: Any = runtime.results[len(runtime.calls) - 1] if len(runtime.calls) - 1 in runtime.results else json.loads(out)
     except ValueError:
         result = out
     return {"ok": call["ok"], "error_kind": call["error_kind"], "result": result}

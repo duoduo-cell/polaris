@@ -2,13 +2,16 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/client";
+import { type Result } from "@/lib/results";
 
 export type Approval = { name: string; args: Record<string, unknown>; description: string };
-export type MemoryEvent = { op: string; attribute: string; value: string | null; reason: string };
+export type MemoryEvent = { op: string; attribute: string; value: string | null; reason: string; label?: string; old_value?: string | null; scope_label?: string };
 export type Turn = {
   answer: string; memory_events: MemoryEvent[]; memory_questions: string[]; approvals: Approval[];
   tool_calls: { tool: string; args: Record<string, unknown>; ok: boolean }[];
   latency_ms: number; error: string | null; question?: string;
+  results?: Result[];
+  activities?: { tool: string; args: Record<string, unknown>; ok: boolean; returned?: number; sources?: string[]; output?: string }[];
 };
 export type Message = { id?: number; role: "user" | "assistant"; content: string; turn?: Turn; verdict?: "good" | "bad" };
 export type Activity = { type: "tool" | "memory"; tool?: string; args?: Record<string, unknown>; events?: MemoryEvent[] };
