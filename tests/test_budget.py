@@ -26,7 +26,7 @@ def test_grows_after_clean_full_day(db):
 
 def test_keeps_when_not_used_up(db):
     add_run(NOW - timedelta(days=1), calls=100)
-    assert budget.today_cap("xhs", NOW)[0] == budget.policy()["xhs"]["start"]
+    assert budget.today_cap("xhs", NOW)[0] == 300  # 前一天上限 300 没用满，保持
 
 
 def test_halves_on_soft_warning(db):
