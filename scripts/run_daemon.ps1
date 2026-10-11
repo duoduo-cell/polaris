@@ -13,4 +13,5 @@ for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Seconds 10
 }
 
-& "$root\.venv\Scripts\python.exe" -X utf8 -m polaris.cli daemon *>> "$root\data\logs\daemon.log"
+# 日志由程序自己用 UTF-8 写（PowerShell 转写会把中文弄成乱码）；报错另存一份
+& "$root\.venv\Scripts\python.exe" -X utf8 -m polaris.cli daemon --log "$root\data\logs\daemon.log" 2>> "$root\data\logs\daemon.err.log" | Out-Null

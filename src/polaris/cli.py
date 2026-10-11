@@ -293,11 +293,20 @@ def status(items: int = typer.Option(5, help="每个来源显示最近几条")) 
 
 
 @app.command()
-def daemon() -> None:
-    """常驻采集：开着就行。按 config/collect.toml 的时间段和每天的量，轮流采小红书、Boss；被拦或掉登录会弹通知。"""
+def daemon(log: Path = typer.Option(None, help="同时写进这个日志文件（UTF-8，每行带时间）")) -> None:
+    """常驻采集：开着就行。按 config/collect.toml 的时间段和每天的量，轮流采脉脉、Boss、小红书；被拦或掉登录会弹通知。"""
+    from datetime import datetime
+
     from polaris.daemon import loop
 
-    loop(echo=typer.echo)
+    def echo(line: str) -> None:
+        typer.echo(line)
+        if log:
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with log.open("a", encoding="utf-8") as f:
+                print(f"{datetime.now():%m-%d %H:%M:%S} {line}", file=f)
+
+    loop(echo=echo)
 
 
 @app.command()
