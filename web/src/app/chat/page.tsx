@@ -1,21 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Badge, Card, ErrorNote, Markdown } from "@/components/markdown";
-import { api, stream } from "@/lib/client";
-
-type Approval = { name: string; args: Record<string, unknown>; description: string };
-type MemoryEvent = { op: string; attribute: string; value: string | null; reason: string };
-type Turn = {
-  answer: string;
-  memory_events: MemoryEvent[];
-  memory_questions: string[];
-  approvals: Approval[];
-  tool_calls: { tool: string; args: Record<string, unknown>; ok: boolean }[];
-  latency_ms: number;
-  error: string | null;
-};
-type Message = { role: "user" | "assistant"; content: string; turn?: Turn; verdict?: "good" | "bad" };
+import { useChatSession } from "@/components/chat-session";
 
 const SHOWN_OPS = new Set(["add", "update", "schedule", "invalidate", "pending", "ask", "confirm", "reject", "forget"]);
 const OP_NAMES: Record<string, string> = {
@@ -24,86 +11,20 @@ const OP_NAMES: Record<string, string> = {
 };
 
 export default function Chat() {
-  // 当前会话编号记在浏览器里；"新对话"换一个编号（记忆是所有会话共用的，换会话只是清掉聊天记录）
-  const [thread, setThread] = useState(() => {
-    if (typeof window === "undefined") return "main";
-    try {
-      return localStorage.getItem("polaris-thread") ?? "main";
-    } catch {
-      return "main";  // 浏览器不让存就用默认的
-    }
-  });
-  function newThread() {
-    const id = `t-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
-    try { localStorage.setItem("polaris-thread", id); } catch { /* 忽略 */ }
-    setMessages([]); setApprovals([]); setThread(id);
-  }
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [live, setLive] = useState<{ memory: MemoryEvent[]; tool: string | null; text: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { thread, messages, approvals, input, busy: running, loading, live: progress, error,
+          setInput, newThread, send, decide, mark: markAnswer } = useChatSession();
+  const busy = running || loading;
+  const live = progress && { memory: progress.memory ?? [], tool: progress.steps.at(-1)?.tool ?? null, text: progress.text };
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api<{ messages: Message[]; approvals: Approval[] }>(`chat/${thread}/messages`)
-      .then((r) => { setMessages(r.messages); setApprovals(r.approvals); })
-      .catch((e) => setError(e.message));
-  }, [thread]);
-  useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth" });  // 新版 Chromium 的 scrollIntoView 返回 Promise，不能直接当 effect 的返回值
-  }, [messages, approvals, busy]);
+    end.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, approvals, busy, live]);
 
-  // 测试时用：给一条回答标"对 / 有问题"，存在本机，开发时逐条看
   async function mark(index: number, verdict: "good" | "bad") {
     const note = verdict === "bad" ? window.prompt("哪里有问题？（越具体越好：应该怎样、实际怎样）") : "";
     if (note === null) return;
-    const question = [...messages.slice(0, index)].reverse().find((m) => m.role === "user")?.content ?? "";
-    try {
-      await api("feedback", { body: { thread_id: thread, question, answer: messages[index].content, verdict, note } });
-      setMessages((ms) => ms.map((m, i) => (i === index ? { ...m, verdict } : m)));
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
-  function take(turn: Turn) {
-    if (turn.error) setError(turn.error);
-    setApprovals(turn.approvals);
-    if (turn.answer || turn.memory_events.length || turn.tool_calls.length) {
-      setMessages((m) => [...m, { role: "assistant", content: turn.answer, turn }]);
-    }
-  }
-
-  // 流式：记忆改了什么、正在调哪个工具、回答的字，边收边显示；最后用 done 里的完整结果替换
-  async function run(path: string, body: unknown) {
-    setBusy(true); setError(null); setLive({ memory: [], tool: null, text: "" });
-    try {
-      await stream(path, body, (e) => {
-        if (e.type === "memory") setLive((l) => l && { ...l, memory: e.events as MemoryEvent[] });
-        else if (e.type === "tool") setLive((l) => l && { ...l, tool: e.tool as string, text: "" });
-        else if (e.type === "token") setLive((l) => l && { ...l, text: l.text + (e.text as string) });
-        else if (e.type === "done") take(e.turn as Turn);
-        else if (e.type === "error") setError(e.message as string);
-      });
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLive(null); setBusy(false);
-    }
-  }
-
-  async function send() {
-    const text = input.trim();
-    if (!text || busy) return;
-    setInput("");
-    setMessages((m) => [...m, { role: "user", content: text }]);
-    await run("chat/stream", { message: text, thread_id: thread });
-  }
-
-  async function decide(approve: boolean) {
-    await run(`chat/${thread}/resume/stream`, { approve, reason: approve ? "" : "我没有批准" });
+    await markAnswer(index, verdict, note ?? "");
   }
 
   return (
@@ -199,7 +120,7 @@ export default function Chat() {
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
           disabled={busy || approvals.length > 0}
         />
-        <button className="rounded-lg bg-accent text-white px-4 text-sm disabled:opacity-50" onClick={send} disabled={busy || approvals.length > 0 || !input.trim()}>
+        <button className="rounded-lg bg-accent text-white px-4 text-sm disabled:opacity-50" onClick={() => send()} disabled={busy || approvals.length > 0 || !input.trim()}>
           发送
         </button>
       </div>

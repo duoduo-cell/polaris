@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ChatSessionProvider } from "@/components/chat-session";
 import Link from "next/link";
 import "./globals.css";
 
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="zh-CN" className="h-full antialiased">
       <body className="min-h-full flex flex-col md:flex-row">
+        <ChatSessionProvider>
         <nav className="md:w-44 shrink-0 border-b md:border-b-0 md:border-r border-line bg-card px-4 py-3 md:py-6 flex md:flex-col gap-1 overflow-x-auto">
           <Link href="/" className="font-bold text-lg mr-4 md:mr-0 md:mb-4 whitespace-nowrap">
             北极星
@@ -35,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           ))}
         </nav>
         <main className="flex-1 min-w-0 px-4 md:px-8 py-6 max-w-5xl">{children}</main>
+        </ChatSessionProvider>
       </body>
     </html>
   );
