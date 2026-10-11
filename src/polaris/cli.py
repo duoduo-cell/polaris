@@ -133,12 +133,14 @@ def collect_boss(queries: int = typer.Option(2, help="本轮搜几个查询词")
 
 @browser_app.command("open")
 def browser_open() -> None:
-    """打开采集专用的 Edge（单独的资料夹）。第一次用时在里面登录 Boss、脉脉；之后保持开着即可。"""
-    from polaris.browser import PROFILE_DIR, open_browser
+    """打开两个采集专用的 Edge：一个放小红书和脉脉，一个只放 Boss。第一次在里面各登录一次，之后保持开着即可。"""
+    from polaris.browser import PROFILES, open_browser
 
-    started = open_browser(["https://www.zhipin.com/", "https://maimai.cn/"])
-    typer.echo(("已打开" if started else "已经开着") + f"采集专用的 Edge（资料夹 {PROFILE_DIR}）。"
-               "请在这个窗口里登录 Boss直聘和脉脉（扫码或验证码都行，你自己操作）；登录后保持窗口开着，可以最小化。")
+    a = open_browser(["https://www.xiaohongshu.com/explore", "https://maimai.cn/"], profile="collect")
+    b = open_browser(["https://www.zhipin.com/"], profile="boss")
+    typer.echo(f"小红书和脉脉的窗口{'已打开' if a else '已经开着'}（资料夹 {PROFILES['collect'][0]}）；"
+               f"Boss 的窗口{'已打开' if b else '已经开着'}（资料夹 {PROFILES['boss'][0]}）。"
+               "第一次请在各自窗口里登录（扫码或验证码，你自己操作）；之后窗口开着即可，可以最小化。")
 
 
 @browser_app.command("status")
@@ -146,7 +148,8 @@ def browser_status() -> None:
     """采集浏览器是否开着。"""
     from polaris.browser import is_running
 
-    typer.echo("开着" if is_running() else "没开，运行 polaris browser open")
+    for profile, name in (("collect", "小红书和脉脉的窗口"), ("boss", "Boss 的窗口")):
+        typer.echo(f"{name}：{'开着' if is_running(profile) else '没开，运行 polaris browser open'}")
 
 
 @app.command()

@@ -47,7 +47,10 @@ def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
     """调一个只读命令，返回 data；出错时抛 BossCallFailed（code 是 not_authenticated、rate_limited 等）。"""
     if not args or args[0] not in READ_ONLY_COMMANDS:
         raise BlockedCommand(f"{args[:1]} 不是只读命令，北极星不调用它")
-    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+    from polaris.browser import cdp_url
+
+    # BOSS_CDP_URL：boss-cli 登录过期时，向 Boss 专用的 Edge 窗口要一次新的 cookie（只读 cookie，不碰页面），你不用重新扫码
+    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "BOSS_CDP_URL": cdp_url("boss")}
     p = subprocess.run([boss_bin(), *args, "--json"], capture_output=True, text=True, encoding="utf-8",
                        errors="replace", env=env, timeout=timeout)
     try:
@@ -59,6 +62,15 @@ def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
         err = envelope.get("error") or {}
         raise BossCallFailed(err.get("code", "api_error"), str(err.get("message", ""))[:200])
     return envelope.get("data") or {}
+
+
+def logged_in() -> bool:
+    """boss-cli 能不能用：本地存的登录还有效，或者能从 Boss 专用的 Edge 窗口拿到新的。"""
+    try:
+        run_boss(["status"], timeout=60)
+        return True
+    except (BossCallFailed, subprocess.TimeoutExpired):
+        return False
 
 
 def slim_card(job: dict[str, Any]) -> dict[str, Any]:

@@ -16,7 +16,7 @@ def add_run(when: datetime, calls: int, cap: int | None = 300, failures: int = 0
 
 
 def test_first_day_starts_low(db):
-    assert budget.today_cap("xhs", NOW)[0] == 300
+    assert budget.today_cap("xhs", NOW)[0] == budget.policy()["xhs"]["start"]
 
 
 def test_grows_after_clean_full_day(db):
@@ -26,7 +26,7 @@ def test_grows_after_clean_full_day(db):
 
 def test_keeps_when_not_used_up(db):
     add_run(NOW - timedelta(days=1), calls=100)
-    assert budget.today_cap("xhs", NOW)[0] == 300
+    assert budget.today_cap("xhs", NOW)[0] == budget.policy()["xhs"]["start"]
 
 
 def test_halves_on_soft_warning(db):

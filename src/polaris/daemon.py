@@ -17,9 +17,9 @@ from polaris.config import get_settings
 from polaris.logins import logged_in, notify
 from polaris.report import BEIJING
 
-# Boss 会识别出被程序接管的浏览器、把页面跳成空白（10-11 实测），我们不去隐藏，所以暂不自动采 Boss，等用户决定。
+# Boss 走 boss-cli（调搜索和详情接口），登录从 Boss 专用的 Edge 窗口拿；我们的程序不接管那个窗口（browser.py）。
 # 脉脉采集器写好后加进来。
-IMPLEMENTED = ("xhs",)
+IMPLEMENTED = ("xhs", "boss")
 POST_SOURCES = {"xhs": ("post", "xhs"), "boss": ("job", "boss")}
 
 
@@ -33,9 +33,9 @@ def _xhs_collector(context: Any, cap_left: int, cfg: dict[str, Any]):
 
 
 def _boss_collector(context: Any, cap_left: int, cfg: dict[str, Any]):
-    from polaris.collectors.boss_web import BossWebCollector
+    from polaris.collectors.boss import BossCollector
 
-    return BossWebCollector(context, max_calls=cap_left, pause=tuple(cfg["pause"]))
+    return BossCollector(max_calls=cap_left, pause=tuple(cfg["pause"]))
 
 
 FACTORIES: dict[str, Callable[[Any, int, dict[str, Any]], Any]] = {"xhs": _xhs_collector, "boss": _boss_collector}
@@ -82,10 +82,17 @@ def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) 
     with attached() as context:
         for source, cap, used, why in due:
             via = budget.policy()[source].get("via", "browser")
-            if via == "browser" and not logged_in(context, source):
+            if source == "boss":
+                from polaris.collectors.boss import logged_in as boss_logged_in
+
+                open_browser(["https://www.zhipin.com/"], profile="boss")
+                ok = boss_logged_in()
+            else:
+                ok = via != "browser" or logged_in(context, source)
+            if not ok:
                 key = f"{today}:{source}:login"
                 if key not in notified:
-                    notify("北极星：需要登录", f"{source} 在采集浏览器里没登录，扫一次码就好（运行 polaris browser open）")
+                    notify("北极星：需要登录", f"{source} 没登录，在它的采集窗口里扫一次码就好（运行 polaris browser open）")
                     notified.add(key)
                 echo(f"[{source}] 没登录，跳过")
                 continue
