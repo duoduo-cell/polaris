@@ -32,5 +32,26 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
 
+  # 小红书采集工具（B 档）：只在你自己的电脑上跑，用你本人的账号登录；我们只用它的只读工具。
+  # 默认不启动，要用时：docker compose --profile local up -d xhs-mcp
+  xhs-mcp:
+    image: xpzouying/xiaohongshu-mcp
+    # Docker Hub 慢时，先用作者在阿里云的镜像拉取，再改名成上面的名字：
+    # docker pull crpi-hocnvtkomt7w9v8t.cn-beijing.personal.cr.aliyuncs.com/xpzouying/xiaohongshu-mcp
+    # docker tag crpi-hocnvtkomt7w9v8t.cn-beijing.personal.cr.aliyuncs.com/xpzouying/xiaohongshu-mcp xpzouying/xiaohongshu-mcp
+    profiles: ["local"]
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - xhs-data:/app/data   # 登录态存在 Docker 卷里，不进仓库
+    environment:
+      - COOKIES_PATH=/app/data/cookies.json
+      - HOME=/app/data/home
+      - XDG_CONFIG_HOME=/app/data/config
+      - AUTH_TOKEN=${XHS_MCP_TOKEN:-}
+    ports:
+      - "127.0.0.1:18060:18060"
+
 volumes:
   pgdata:
+  xhs-data:
