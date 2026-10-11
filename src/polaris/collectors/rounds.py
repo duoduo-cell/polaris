@@ -20,27 +20,35 @@ def collect_round(source: str, collector: Any, n_queries: int, params: dict[str,
         if hasattr(collector, "per_query_calls") and params.get("max_calls"):
             collector.per_query_calls = max(2, params["max_calls"] // max(1, len(batch)))
         searched: list[str] = []
-        for kw in batch:
-            n_kw = new_kw = 0
-            searched_before = getattr(getattr(collector, "stats", None), "searched", None)
-            # 采到一条写一条：小红书一次调用要几十秒，中途中断也不丢已经采到的
-            for item in collector.collect(Query(keywords=[kw], max_pages=params.get("max_pages", 1))):
-                n_kw += 1
-                big += is_big(item.raw_text)
-                result = ingest_raw_items([item], run_id)
-                new_kw += result.inserted
-                new_ids += result.ids  # 只含新写入的
-            got, inserted = got + n_kw, inserted + new_kw
-            searched_after = getattr(getattr(collector, "stats", None), "searched", None)
-            if searched_before is None or searched_after != searched_before:  # 真搜过才记，没轮到的下次优先
-                q.mark(source, kw, new_kw)
-                searched.append(kw)
-                echo(f"  「{kw}」采到 {n_kw} 条，新写入 {new_kw} 条")
-            else:
-                echo(f"  「{kw}」本轮预算用完，没搜，下次优先")
+
+        def record() -> None:  # 中途被打断（Ctrl+C、出错）也把已经用掉的调用数记下，第二天的量才算得对
+            extra = vars(collector.stats) if hasattr(collector, "stats") else {}
+            stats.update({**extra, "items": got, "inserted": inserted, "big_company_items": big,
+                          "searched_queries": searched})
+
+        try:
+            for kw in batch:
+                n_kw = new_kw = 0
+                searched_before = getattr(getattr(collector, "stats", None), "searched", None)
+                # 采到一条写一条：中途中断也不丢已经采到的
+                for item in collector.collect(Query(keywords=[kw], max_pages=params.get("max_pages", 1))):
+                    n_kw += 1
+                    big += is_big(item.raw_text)
+                    result = ingest_raw_items([item], run_id)
+                    new_kw += result.inserted
+                    inserted += result.inserted
+                    got += 1
+                    new_ids += result.ids  # 只含新写入的
+                searched_after = getattr(getattr(collector, "stats", None), "searched", None)
+                if searched_before is None or searched_after != searched_before:  # 真搜过才记，没轮到的下次优先
+                    q.mark(source, kw, new_kw)
+                    searched.append(kw)
+                    echo(f"  「{kw}」采到 {n_kw} 条，新写入 {new_kw} 条")
+                else:
+                    echo(f"  「{kw}」本轮预算用完，没搜，下次优先")
+        finally:
+            record()
         extra = vars(collector.stats) if hasattr(collector, "stats") else {}
-        stats.update({**extra, "items": got, "inserted": inserted, "big_company_items": big,
-                      "searched_queries": searched})
         out = {**stats, "run_id": run_id, "new_ids": new_ids}
     echo(f"本轮：采到 {got} 条，新写入 {inserted} 条，其中提到大厂的 {big} 条。")
     if extra.get("errors"):

@@ -76,3 +76,36 @@ def test_simhash_separates_reposts_from_unrelated():
     b = a + "！！#找实习[话题]# [飞吻R]"
     c = "滴滴后端一面，主要拷打项目，四十分钟，无手撕。知识库怎么存储、建设、分层，RAG 的流程，怎么召回"
     assert near_duplicate(simhash64(a), simhash64(b)) and not near_duplicate(simhash64(a), simhash64(c))
+
+
+def test_interrupted_round_still_records_calls(db):
+    from dataclasses import dataclass
+
+    import pytest
+    from sqlalchemy import select
+
+    from polaris.collectors.rounds import collect_round
+    from polaris.db.models import Run
+    from polaris.db.session import session_scope
+    from polaris.ingest import RawItemIn
+
+    @dataclass
+    class Stats:
+        calls: int = 0
+        searched: int = 0
+
+    class Flaky:
+        def __init__(self):
+            self.stats = Stats()
+
+        def collect(self, query):
+            self.stats.calls += 3
+            self.stats.searched += 1
+            yield RawItemIn(source="xhs", tier="B", kind="post", raw_text="一条笔记")
+            raise KeyboardInterrupt  # 模拟中途按了 Ctrl+C
+
+    with pytest.raises(KeyboardInterrupt):
+        collect_round("xhs", Flaky(), 2, {"max_calls": 10})
+    with session_scope() as s:
+        run = s.execute(select(Run).where(Run.kind == "collect")).scalar_one()
+        assert run.status == "failed" and run.stats["calls"] == 3 and run.stats["inserted"] == 1

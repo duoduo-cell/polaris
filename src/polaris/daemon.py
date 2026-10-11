@@ -4,6 +4,7 @@
 采完马上抽取，小红书再提新查询词。被拦就停这个来源到明天并弹通知；掉登录就弹通知等你扫码，别的来源照常。
 每天的量按 config/collect.toml 慢慢加（budget.py）。
 """
+import sys
 import time
 from collections.abc import Callable
 from datetime import datetime
@@ -97,9 +98,21 @@ def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) 
     return ran
 
 
+def keep_awake(on: bool) -> None:
+    """常驻采集开着时不让电脑自己睡着（Windows 的 SetThreadExecutionState，和播放器、下载工具用的一样，不改系统设置）。
+    合上笔记本盖子、手动点睡眠仍然会睡。"""
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    es_continuous, es_system_required = 0x80000000, 0x00000001
+    ctypes.windll.kernel32.SetThreadExecutionState(es_continuous | (es_system_required if on else 0))
+
+
 def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
     notified: set[str] = set()
-    echo("常驻采集开始。按 Ctrl+C 停止。")
+    keep_awake(True)
+    echo("常驻采集开始，电脑开着时不会自己睡着。按 Ctrl+C 停止。")
     while True:
         try:
             ran = tick(echo, notified)
