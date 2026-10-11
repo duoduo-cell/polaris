@@ -399,6 +399,92 @@ def _approve_loop(turn, thread: str):
     return turn
 
 
+memory_app = typer.Typer(help="记忆：看、清空")
+app.add_typer(memory_app, name="memory")
+
+
+@memory_app.command("show")
+def memory_show() -> None:
+    """北极星现在记着的关于你的事，和等你确认的推断。"""
+    from polaris.db.session import session_scope
+    from polaris.memory.update import card, pending, render_card
+
+    with session_scope() as s:
+        typer.echo(render_card(card(s)))
+        waiting = pending(s)
+        if waiting:
+            typer.echo("\n等你确认的：")
+            for f in waiting:
+                typer.echo(f"- {f.statement}  [M-{f.id}]")
+
+
+@memory_app.command("reset")
+def memory_reset(yes: bool = typer.Option(False, "--yes", help="不再确认")) -> None:
+    """清空当前库里的全部记忆（事实、事件、抑制记录）和推送记录。测试时用；会先问你。"""
+    from sqlalchemy import text
+
+    from polaris.config import get_settings
+    from polaris.db.session import session_scope
+
+    db = get_settings().database_url.rsplit("/", 1)[-1]
+    if not yes and not typer.confirm(f"清空库 {db} 里的全部记忆和推送记录？", default=False):
+        raise typer.Exit()
+    with session_scope() as s:
+        s.execute(text("truncate notifications, memory_events, memory_facts, memory_suppressions restart identity cascade"))
+    typer.echo(f"已清空 {db} 的记忆和推送记录。")
+
+
+SANDBOX = "polaris_sandbox"
+
+
+@app.command()
+def sandbox(keep_memory: bool = typer.Option(False, help="连记忆一起复制（默认复制后清空记忆，从零开始）")) -> None:
+    """把真实的库复制一份到 polaris_sandbox，随便测，不碰你的真实记忆。复制前先关掉连着沙盒库的 API。
+    用沙盒：scripts/start.ps1 -Sandbox，或者先设 $env:DATABASE_URL 再运行命令。"""
+    import subprocess
+
+    from polaris.config import get_settings
+
+    if SANDBOX in get_settings().database_url:
+        typer.echo("现在连的就是沙盒库，换回真实的库再复制。")
+        raise typer.Exit(1)
+
+    def run(*args: str) -> None:
+        r = subprocess.run(["docker", "exec", "polaris-db-1", *args], capture_output=True, text=True, encoding="utf-8")
+        if r.returncode != 0:
+            typer.echo(f"出错了：{' '.join(args[:3])}：{r.stderr.strip()[:300]}")
+            raise typer.Exit(1)
+
+    typer.echo("导出真实的库……")
+    run("pg_dump", "-U", "polaris", "-Fc", "-f", "/tmp/sandbox.dump", "polaris")
+    run("psql", "-U", "polaris", "-d", "postgres", "-qc", f"drop database if exists {SANDBOX} with (force)")
+    run("psql", "-U", "polaris", "-d", "postgres", "-qc", f"create database {SANDBOX}")
+    typer.echo("恢复到沙盒库……")
+    run("pg_restore", "-U", "polaris", "-d", SANDBOX, "--no-owner", "/tmp/sandbox.dump")
+    if not keep_memory:
+        run("psql", "-U", "polaris", "-d", SANDBOX, "-qc",
+            "truncate notifications, memory_events, memory_facts, memory_suppressions restart identity cascade")
+    typer.echo(f"好了：{SANDBOX}（岗位、帖子、向量都有；记忆{'保留' if keep_memory else '是空的'}）。"
+               "用它：.\\scripts\\start.ps1 -Sandbox")
+
+
+@app.command()
+def feedback(last: int = typer.Option(20, help="看最近几条")) -> None:
+    """你在网页对话里标的"对 / 有问题"（存在 data/feedback/answers.jsonl，只在本机）。"""
+    from polaris.config import ROOT
+
+    path = ROOT / "data" / "feedback" / "answers.jsonl"
+    if not path.exists():
+        typer.echo("还没有。")
+        return
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()][-last:]
+    for r in rows:
+        mark = "对" if r["verdict"] == "good" else "有问题"
+        typer.echo(f"[{r['at'][:16]}] {mark}（{r['db']}，会话 {r['thread_id']}）问：{r['question'][:60]}")
+        if r.get("note"):
+            typer.echo(f"    你的说明：{r['note']}")
+
+
 @app.command()
 def serve(port: int = typer.Option(8000), reload: bool = typer.Option(False, help="改代码后自动重启（开发用）")) -> None:
     """在本机起 API（只绑 127.0.0.1）。和常驻采集同一个环境：能读 data/ 里的简报，能连本机的 Neo4j。"""

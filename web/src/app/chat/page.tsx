@@ -15,7 +15,7 @@ type Turn = {
   latency_ms: number;
   error: string | null;
 };
-type Message = { role: "user" | "assistant"; content: string; turn?: Turn };
+type Message = { role: "user" | "assistant"; content: string; turn?: Turn; verdict?: "good" | "bad" };
 
 const SHOWN_OPS = new Set(["add", "update", "schedule", "invalidate", "pending", "ask", "confirm", "reject", "forget"]);
 const OP_NAMES: Record<string, string> = {
@@ -24,7 +24,20 @@ const OP_NAMES: Record<string, string> = {
 };
 
 export default function Chat() {
-  const [thread] = useState("main");
+  // 当前会话编号记在浏览器里；"新对话"换一个编号（记忆是所有会话共用的，换会话只是清掉聊天记录）
+  const [thread, setThread] = useState(() => {
+    if (typeof window === "undefined") return "main";
+    try {
+      return localStorage.getItem("polaris-thread") ?? "main";
+    } catch {
+      return "main";  // 浏览器不让存就用默认的
+    }
+  });
+  function newThread() {
+    const id = `t-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
+    try { localStorage.setItem("polaris-thread", id); } catch { /* 忽略 */ }
+    setMessages([]); setApprovals([]); setThread(id);
+  }
   const [messages, setMessages] = useState<Message[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [input, setInput] = useState("");
@@ -41,6 +54,19 @@ export default function Chat() {
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });  // 新版 Chromium 的 scrollIntoView 返回 Promise，不能直接当 effect 的返回值
   }, [messages, approvals, busy]);
+
+  // 测试时用：给一条回答标"对 / 有问题"，存在本机，开发时逐条看
+  async function mark(index: number, verdict: "good" | "bad") {
+    const note = verdict === "bad" ? window.prompt("哪里有问题？（越具体越好：应该怎样、实际怎样）") : "";
+    if (note === null) return;
+    const question = [...messages.slice(0, index)].reverse().find((m) => m.role === "user")?.content ?? "";
+    try {
+      await api("feedback", { body: { thread_id: thread, question, answer: messages[index].content, verdict, note } });
+      setMessages((ms) => ms.map((m, i) => (i === index ? { ...m, verdict } : m)));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
 
   function take(turn: Turn) {
     if (turn.error) setError(turn.error);
@@ -82,7 +108,13 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
-      <h1 className="text-xl font-bold mb-3">对话</h1>
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-xl font-bold">对话</h1>
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span suppressHydrationWarning>会话 {thread}</span>
+          <button className="rounded border border-line px-2 py-0.5 hover:bg-card disabled:opacity-50" onClick={newThread} disabled={busy}>新对话</button>
+        </div>
+      </div>
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {messages.length === 0 && (
           <p className="text-sm text-muted">跟北极星说说你想找什么样的实习（方向、城市、每周能去几天、能实习多久），它会记下来，之后推荐和推送都按这个来。</p>
@@ -113,6 +145,18 @@ export default function Chat() {
                   </details>
                 )}
                 {m.content && <Markdown text={m.content} />}
+                {m.content && (
+                  <div className="flex gap-2 pt-1 text-xs">
+                    {m.verdict ? (
+                      <Badge tone={m.verdict === "good" ? "green" : "amber"}>{m.verdict === "good" ? "你标了：对" : "你标了：有问题"}</Badge>
+                    ) : (
+                      <>
+                        <button className="rounded border border-line px-2 py-0.5 hover:bg-background" onClick={() => mark(i, "good")}>对</button>
+                        <button className="rounded border border-line px-2 py-0.5 hover:bg-background" onClick={() => mark(i, "bad")}>有问题</button>
+                      </>
+                    )}
+                  </div>
+                )}
               </Card>
             )}
           </div>

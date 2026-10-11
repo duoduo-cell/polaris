@@ -69,3 +69,16 @@ def test_read_only_tools_and_reports(db):
     names = [x["name"] for x in client.get("/api/me/reports", headers=ME).json()]
     assert "M4" in names and client.get("/api/me/reports/M4", headers=ME).json()["markdown"].startswith("# M4")
     assert client.get("/api/me/reports/secret", headers=ME).status_code == 404
+
+
+def test_answer_feedback_is_saved_locally(db, tmp_path, monkeypatch):
+    import json
+
+    import polaris.config
+
+    monkeypatch.setattr(polaris.config, "ROOT", tmp_path)
+    r = client.post("/api/me/feedback", json={"thread_id": "main", "question": "推荐两个", "answer": "J-1、J-2",
+                                              "verdict": "bad", "note": "J-2 在上海，我只要北京"}, headers=ME)
+    assert r.json() == {"ok": True}
+    row = json.loads((tmp_path / "data/feedback/answers.jsonl").read_text(encoding="utf-8"))
+    assert row["verdict"] == "bad" and row["note"].startswith("J-2") and row["db"] == "polaris_test"

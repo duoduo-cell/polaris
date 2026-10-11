@@ -215,3 +215,31 @@ def messages_endpoint(thread_id: str) -> dict[str, Any]:
     # 等你批准的动作在检查点的 pending_writes 里：(任务编号, "__interrupt__", [Interrupt, ...])
     waiting = [i for _, channel, value in saved.pending_writes or [] if channel == "__interrupt__" for i in value]
     return {"thread_id": thread_id, "messages": out, "approvals": _interrupts({"__interrupt__": waiting})}
+
+
+class AnswerFeedbackIn(BaseModel):
+    thread_id: str = Field(..., max_length=64)
+    question: str = Field("", max_length=4000)
+    answer: str = Field("", max_length=20000)
+    verdict: Literal["good", "bad"]
+    note: str = Field("", max_length=2000)
+
+
+FEEDBACK_FILE = "data/feedback/answers.jsonl"
+
+
+@router.post("/feedback", summary="Mark one answer as good or bad (with a note); saved locally for review")
+def answer_feedback_endpoint(body: AnswerFeedbackIn) -> dict[str, Any]:
+    import json
+    from datetime import UTC, datetime
+
+    from polaris.config import ROOT
+
+    path = ROOT / FEEDBACK_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {"at": datetime.now(UTC).isoformat(timespec="seconds"), "db": get_settings().database_url.rsplit("/", 1)[-1],
+           **body.model_dump()}
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return {"ok": True}
+
