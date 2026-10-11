@@ -202,3 +202,9 @@ def test_change_signal_needs_explicit_words():
 
     assert not has_change_words("我每周能去 5 天，能实习 6 个月。")
     assert has_change_words("现在每周只能去 3 天了") and has_change_words("还是 5 天吧，刚才说错了")
+
+
+def test_same_inference_is_not_asked_twice(db):
+    e, _ = say(C("applied", "投递过", qualifier="腾讯", kind="inferred"))
+    again, q = say(C("applied", "投递过", qualifier="腾讯", kind="inferred"), T0 + timedelta(days=1))
+    assert e["op"] == "pending" and again["op"] == "noop" and q is None

@@ -4,7 +4,7 @@
 
 ## 现在的状态
 
-M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分钟过期，要用户在 Boss 窗口里点一下）；M4 主体已完成；M5 记忆已完成；M6 的主动决策规则已完成（排期都提前）。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
+M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分钟过期，要用户在 Boss 窗口里点一下）；M4、M5 已完成；M6 主体已完成（主 agent、主动推送、可托付）。排期都提前。10-11 还做完了技术调研和最终计划：项目介绍（`INTRO.md`）、技术栈（`STACK.md`）、模块顺序（`PLAN.md`）。
 
 | 项 | 状态 |
 |---|---|
@@ -18,7 +18,7 @@ M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分�
 | M3 采集和抽取 | 主体完成。设计见 `design/M3.md`，指标见 `../eval/reports/M3.md`。库里：腾讯 139、字节 217、小红书官网 20 个岗位，小红书笔记 30 多条；Boss 已接好，等扫码 |
 | M4 对齐、图谱、检索 | 主体完成。设计见 `design/M4.md`，指标见 `../eval/reports/M4.md`。数据库换成 Postgres + pgvector + pg_search（BM25，jieba），Neo4j 知识图谱；常驻采集每轮后自动刷新 |
 | M5 记忆 | 完成。设计见 `design/M5.md`，指标见 `../eval/reports/M5.md`。双时间线事实表、规则决定的更新、待确认和抑制、记忆工具 |
-| M6 主 agent | 主动决策规则完成（`proactive/decide.py`，指标 `../eval/reports/proactive.md`）；主 agent、每日流程、审批未开始 |
+| M6 主 agent | 主体完成。设计见 `design/M6.md`：主 agent（先过记忆、卡片常驻、10 个工具、检查点、摘要压缩、人工审批）、每日主动推送（接进常驻采集）、外部内容不可信、`/api/me` 个人接口 |
 | M7 到 M11 | 没开始 |
 | 本机环境 | Python 3.12（uv 管理）、git、Node 24、Docker Desktop、WSL2 |
 
@@ -31,14 +31,15 @@ M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分�
 | M3 | `uv run polaris collect all`（各来源侦察并行）或单个来源 `collect tencent|bytedance|xhs-careers|xhs|boss`；`uv run polaris extract job|post`；`uv run polaris metrics m3`（不调模型）、`metrics m3-tools`（调模型）；`uv run pytest`（90 多个，含 M3 官网题的录像回放） | `eval/reports/M3.md`：真实岗位 50 条标准答案逐字段 F1 0.99；小红书笔记开发集 v1 0.96 → v2 1.00，留出集 11 条全对（样本小）；真实数据工具调用套件 real-v1 14 题 pass^3 14/14，仍偏简单 | 见 git log |
 | M4 | `uv run polaris align`（对齐并评分）、`polaris index`（切块、向量、图谱）、`polaris search "问题"`、`polaris metrics m4`；`uv run pytest`（134 个） | `eval/reports/M4.md`：同岗识别测试集（规则冻结后才标）P=R=F1=0.93；合成冲突发现 10/10；出处可追溯 100%；检索 32 题 NDCG@10 从 BM25 0.73 到完整流水线 0.86 到 0.89，逐步消融 | 见 git log |
 | M5 | `uv run polaris metrics m5`（在单独的 polaris_memeval 库里跑，会调模型）；`uv run pytest tests/test_memory.py` | `eval/reports/M5.md`：留出集（规则改完才写）记忆操作 F1 0.92、问答 16/16；开发集第一次 0.90 → v2 0.93 | 见 git log |
-| M6（部分） | `uv run polaris metrics proactive`（不调模型）；`uv run polaris metrics m4-bench`（Polaris-Bench v2，会调模型） | `eval/reports/proactive.md`：开发集 23 条、留出集 19 条全对（规则和标签同一作者，待作者本人补标）；`eval/reports/M4.md` 第 5 节：Polaris-Bench v2 knowledge 54/54、search 42/54 | 见 git log |
+| M6 | `uv run polaris say "……"` / `polaris talk`（对话，要批准的动作当场问）；`polaris daily [--dry-run]`；`polaris metrics proactive`（不调模型）、`metrics m4-bench`、`metrics injection`（会调模型） | `eval/reports/proactive.md`：开发集 23、留出集 19 条全对（规则和标签同一作者）；Polaris-Bench v2 knowledge 54/54、search 42/54；提示注入 5 种攻击各 3 次被骗 0、外传 0（攻击偏弱）；记忆测试集 v2 操作 F1 0.97 | 见 git log |
 
 ## 下一步
 
 0. **按 `PLAN.md` 第 0 节的最终计划 v4 做：项目主体是 agent 本身。** 采集常驻后台（小红书、脉脉、Boss，系统计划任务「Polaris 常驻采集」，日志 `data/logs/daemon.log`，看进度 `scripts/status.ps1`），每轮后自动对齐、切块、算向量、重建图谱。
 0.5. **M3.5 数据集（10-11 用户插入）：** 按 `DATASET.md` 第 7 节：原始层补字段、常驻采集进程、官网扩到 22 家、牛客、脉脉、小红书和 Boss 全天慢采并回补近半年、面试题表。采集之后在后台一直跑。
-1. **M6 主 agent（下一步）：** 一个对话入口把记忆（每句话先过 `memory/extract.remember`，卡片放进系统提示）、检索和图谱工具、主动推送串起来；LangGraph Postgres 检查点存会话；对话长了用摘要中间件压缩；有副作用的工具（忘掉记忆、起草消息）走人工审批；每日流程（刷新知识层 → 主动决策 → 简报）。
-2. **评测的下一轮：** Polaris-Bench v2 已满分，要加更难的题（多轮追问、跨工具多跳、要先问清条件的模糊问题）；记忆"该问没问"（模型把换个数当改口）要用代码核对改口词，改完再写新的留出集；同岗识别的两处错（多语言 JD、部门名字面包含）同样改完再标新测试集。
+1. **M7 前端（下一步）：** Next.js 页面：对话（带批准按钮）、今日简报和推送反馈、记忆时间线（能看、能删）、岗位和知识图谱浏览、评测和追踪页。接 `/api/me/*`（要先在 .env 里配 OWNER_TOKEN）。
+1.5 **M6 收尾：** 摘要压缩的评测；对话里调主动程度；审批的授权范围和超时；`/api/raw-items` 等早期接口加口令（上云前必须做）。
+2. **评测的下一轮：** Polaris-Bench v2 已满分，要加更难的题（多轮追问、跨工具多跳、要先问清条件的模糊问题）；提示注入要加更隐蔽的攻击；记忆问答要加组合多条、带时间条件的题；同岗识别的两处错（多语言 JD、部门名字面包含）改完再标新测试集。每改一轮都再写新的测试集。
 3. **M4 收尾：** 官网每天快照推断下架；Boss 岗位接进对齐后看真实的跨来源冲突。
 4. **请作者本人做的：** 按自己的习惯标一批主动推送的场景（推 / 简报 / 不提），检验规则会不会打扰人。
 

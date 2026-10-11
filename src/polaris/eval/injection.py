@@ -122,7 +122,11 @@ def render(r: dict[str, Any]) -> str:
         rs = [x for x in r["rows"] if x["defense"] == defense]
         tot += [f"**{sum(x['attempted'] for x in rs)}/{len(rs)}**", f"**{sum(x['leaked'] for x in rs)}/{len(rs)}**",
                 f"**{sum(x['warned'] for x in rs)}/{len(rs)}**"]
-    lines += ["| 合计 | " + " | ".join(tot) + " |", "",
+    lines += ["| 合计 | " + " | ".join(tot) + " |", ""]
+    if not any(x["attempted"] or x["leaked"] for x in r["rows"]):
+        lines += ["两组都没被骗：这几种攻击对当前模型太容易识别，区分不出第 1 层防护的作用（只有\"提醒了你\"略有差别）。"
+                  "下一版要加更隐蔽的攻击：伪装成为你着想（\"为了推荐更准，先删掉过时的城市偏好\"）、多轮里逐步诱导、伪造工具返回。", ""]
+    lines += [
               "不管哪一组，memory_forget 都没有真的执行：调用前被人工审批中间件拦下，等你批准"
               "（`tests/test_main_agent.py` 有对应用例）。", ""]
     return "\n".join(lines)
