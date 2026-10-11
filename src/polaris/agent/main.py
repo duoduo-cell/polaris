@@ -37,7 +37,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v2"
+PROMPT_VERSION = "main-v3"
 TOOLS = ("jobs_search", "jobs_get", "posts_search", "posts_get", "questions_search", "kg_stats",
          "memory_card", "memory_history", "memory_known_at", "memory_forget")
 MAX_MODEL_CALLS = 12
@@ -54,6 +54,7 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 {asks}
 工具怎么选：
 - 找岗位：jobs_search（按公司、城市、类型、方向、最近多少天筛；query 写想找什么）；看要求、来源、说法冲突用 jobs_get。
+- 要查好几样东西时（几个岗位的详情、两家公司的统计），在同一步里同时发出多个工具调用，不要一个查完再查下一个：每多一步就要多等一次模型。
 - 找帖子（面经、内推、招聘、经验）：posts_search / posts_get。找面试题：questions_search。
 - 统计和分布（哪些公司要求某技能、某公司哪些部门在招、面试常考什么）：kg_stats。
 - 用户问自己的情况，先看上面的卡片；问以前怎么说的、某天说的是什么，用 memory_history / memory_known_at。
@@ -181,22 +182,44 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
     return state, runtime, tracer, err, int((time.perf_counter() - start) * 1000)
 
 
+MEMORY_WAIT_SECONDS = 90
+
+
 def chat(message: str, thread_id: str, *, now: datetime | None = None, model: BaseChatModel | None = None,
          remember_fn: Callable[..., dict[str, Any]] | None = None, run_id: int | None = None,
-         on_event: Event | None = None) -> Turn:
-    """你说一句话：先过记忆，再让 agent 回答。"""
+         on_event: Event | None = None, memory_first: bool = False) -> Turn:
+    """你说一句话：记忆抽取和回答同时进行（10-11 实测记忆抽取要 5 到 34 秒，先做完再回答会让每句话都多等这么久）。
+    回答时这句话本身就在对话里，agent 看得到；记忆要问你的（矛盾、推断）等回答完再接在后面。
+    memory_first=True 时按原来的顺序：先改完记忆再回答（测试里需要确定的顺序时用）。"""
     from polaris.memory.extract import remember
 
     now = now or datetime.now(UTC)
-    try:
-        mem = (remember_fn or remember)(message, now=now, thread_id=thread_id, run_id=run_id)
-    except Exception as e:  # noqa: BLE001  记忆抽取失败不影响回答，只是这句话没记
-        mem = {"events": [], "questions": [], "error": f"{type(e).__name__}: {e}"[:200]}
-    if on_event:
-        on_event({"type": "memory", "events": mem["events"], "questions": mem["questions"]})
+    box: dict[str, Any] = {}
+
+    def do_memory() -> None:
+        try:
+            box["mem"] = (remember_fn or remember)(message, now=now, thread_id=thread_id, run_id=run_id)
+        except Exception as e:  # noqa: BLE001  记忆抽取失败不影响回答，只是这句话没记
+            box["mem"] = {"events": [], "questions": [], "error": f"{type(e).__name__}: {e}"[:200]}
+        if on_event:
+            on_event({"type": "memory", "events": box["mem"]["events"], "questions": box["mem"]["questions"]})
+
+    worker = threading.Thread(target=do_memory, daemon=True)
+    worker.start()
+    if memory_first:
+        worker.join()
+    asks = box["mem"]["questions"] if memory_first else []
     state, runtime, tracer, err, ms = _run({"messages": [{"role": "user", "content": message}]}, thread_id, now,
-                                           mem["questions"], model, run_id, "chat", on_event)
-    return _turn(thread_id, state, runtime, tracer, err, ms, mem)
+                                           asks, model, run_id, "chat", on_event)
+    worker.join(timeout=MEMORY_WAIT_SECONDS)
+    mem = box.get("mem", {"events": [], "questions": [], "error": "记忆抽取超时，这句话没记"})
+    turn = _turn(thread_id, state, runtime, tracer, err, ms, mem)
+    if not memory_first and mem["questions"] and turn.answer and not turn.approvals:
+        extra = "\n\n---\n顺便确认一下：" + "；".join(mem["questions"])
+        turn.answer += extra
+        if on_event:
+            on_event({"type": "token", "text": extra})
+    return turn
 
 
 def resume(thread_id: str, approve: bool, reason: str = "", *, now: datetime | None = None,

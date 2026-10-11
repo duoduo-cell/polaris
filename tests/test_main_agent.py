@@ -37,7 +37,7 @@ def fake_remember(text: str, **kw: Any) -> dict[str, Any]:
 
 def test_message_goes_through_memory_then_tools(db):
     tid = f"t-{uuid.uuid4().hex[:8]}"
-    turn = chat("我在某大学读书，帮我看看记着什么", tid, now=NOW, remember_fn=fake_remember,
+    turn = chat("我在某大学读书，帮我看看记着什么", tid, now=NOW, remember_fn=fake_remember, memory_first=True,
                 model=script(call("memory_card", {}), AIMessage(content="记着：学校 某大学（M-1）")))
     assert turn.error is None and turn.answer == "记着：学校 某大学（M-1）"
     assert [e["op"] for e in turn.memory_events] == ["add"]
@@ -110,7 +110,7 @@ def test_streamed_turn_emits_memory_tool_tokens_then_done(db):
     tid = f"t-{uuid.uuid4().hex[:8]}"
     model = script(call("memory_card", {}), AIMessage(content="记着：学校 某大学"))
     model.disable_streaming = True  # 假模型流式时会丢掉工具调用（真的 ChatOpenAI 不会），这里整条返回
-    events = list(streamed(chat, "看看记着什么", tid, now=NOW, remember_fn=fake_remember, model=model))
+    events = list(streamed(chat, "看看记着什么", tid, now=NOW, remember_fn=fake_remember, model=model, memory_first=True))
     kinds = [e["type"] for e in events]
     assert kinds[0] == "memory" and kinds[-1] == "done" and "tool" in kinds
     assert kinds.index("tool") < kinds.index("token")
@@ -129,3 +129,18 @@ def test_streamed_turn_emits_memory_tool_tokens_then_done(db):
         main.chat = real_chat
     lines = [json.loads(x[6:]) for x in r.text.split("\n\n") if x.startswith("data: ")]
     assert r.headers["content-type"].startswith("text/event-stream") and lines[-1]["turn"]["answer"] == "好的"
+
+
+
+def test_memory_runs_alongside_the_answer_and_questions_are_appended(db):
+    import time
+
+    def slow_remember(text, **kw):
+        time.sleep(0.5)
+        return {"events": [{"op": "ask", "attribute": "days_per_week", "value": "3"}], "questions": ["以 4 天还是 3 天为准？"]}
+
+    tid = f"t-{uuid.uuid4().hex[:8]}"
+    t0 = time.perf_counter()
+    turn = chat("每周 3 天", tid, now=NOW, remember_fn=slow_remember, model=script(AIMessage(content="好的。")))
+    assert turn.answer.startswith("好的。") and "以 4 天还是 3 天为准？" in turn.answer
+    assert turn.memory_events[0]["op"] == "ask" and time.perf_counter() - t0 < 5
