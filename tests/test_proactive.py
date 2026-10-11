@@ -50,3 +50,19 @@ def test_requirement_conflicts_and_prep_material_only_reach_the_brief():
 def test_repeated_dismissals_tone_it_down():
     hist = [Sent(f"k{i}", "快手", ["算法"], NOW - timedelta(days=3 + i), feedback="dismissed") for i in range(2)]
     assert channels([job("ks", company="快手")], hist) == {"ks": "brief"}
+
+
+def test_role_needs_concept_and_compatible_function():
+    from polaris.proactive.decide import role_hit
+
+    assert role_hit("Agent 开发", job("a", title="AI Agent开发实习生-TikTok搜索")) == 1.0
+    assert role_hit("Agent 开发", job("b", title="Agent 产品实习生")) == 0.0  # 职能不对
+    assert role_hit("Agent 开发", job("c", title="GUI Agent算法实习生 - 开发者服务")) == 0.0  # 部门名里的"开发"不算
+    assert role_hit("Agent 开发", job("d", title="大数据开发实习生", directions=["Agent"])) == 0.6  # 只在标签里
+
+
+def test_non_big_company_is_dropped_when_big_only():
+    from dataclasses import replace
+
+    out = {d.key: d for d in decide([job("x", company="某小公司")], replace(P, big_only=True), [], NOW)}
+    assert out["x"].channel == "drop" and "大厂名单" in out["x"].reasons[0]

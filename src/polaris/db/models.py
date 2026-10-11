@@ -352,3 +352,30 @@ class MemorySuppression(Base):
     value_key: Mapped[str] = mapped_column(String(200))
     reason: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at()
+
+
+class Notification(Base):
+    """主动决策的每一个决定（M6）：推给你的、放进简报的、不提的都记下，连同分数和理由。
+    推过、放进过简报的不会再提（新颖度）；你的反馈（有用 / 关掉）会让同公司、同方向的推送降一档（克制）。"""
+
+    __tablename__ = "notifications"
+    __table_args__ = (Index("ix_notifications_item", "item_key"), Index("ix_notifications_created", "created_at"))
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    item_key: Mapped[str] = mapped_column(String(300))
+    kind: Mapped[str] = mapped_column(String(8))  # job / post
+    cite: Mapped[str] = mapped_column(String(32))  # J-12 / P-3
+    title: Mapped[str] = mapped_column(Text)
+    company: Mapped[str | None] = mapped_column(String(200))
+    directions: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    channel: Mapped[str] = mapped_column(String(8))  # push / brief / drop
+    score: Mapped[float] = mapped_column(Numeric(5, 3))
+    match: Mapped[float] = mapped_column(Numeric(5, 3))
+    novelty: Mapped[float] = mapped_column(Numeric(5, 3))
+    urgency: Mapped[float] = mapped_column(Numeric(5, 3))
+    reasons: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    simhash: Mapped[int | None] = mapped_column(BigInteger)
+    level: Mapped[str] = mapped_column(String(8))  # 当时的主动程度
+    feedback: Mapped[str | None] = mapped_column(String(16))  # useful / dismissed
+    feedback_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

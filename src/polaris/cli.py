@@ -427,6 +427,22 @@ def talk(thread: str = typer.Option("main", help="会话编号，同一个编号
         _approve_loop(turn, thread)
 
 
+@app.command()
+def daily(dry_run: bool = typer.Option(False, help="只看决定，不记、不推、不写简报")) -> None:
+    """主动推送：按你的卡片给最近的岗位和帖子打分，推 / 简报 / 不提，写今天的简报（data/briefs/）。"""
+    from polaris.proactive.daily import run_daily
+
+    r = run_daily(dry_run=dry_run)
+    if r.get("skipped"):
+        typer.echo(r["skipped"])
+        return
+    typer.echo(f"候选 {r['candidates']}：推 {r['push']}、简报 {r['brief']}、不提 {r['drop']}、放不下 {r['not_listed']}"
+               + ("（第一次跑，只出简报不推送）" if r["first_run"] else ""))
+    for d in r["decisions"]:
+        if d["channel"] != "drop":
+            typer.echo(f"  [{d['channel']}] {d['cite']} {d['title'][:40]}：{'；'.join(d['reasons'][:2])}")
+
+
 @metrics_app.command("m1")
 def metrics_m1() -> None:
     """M1：追踪完整率、结构化输出、延迟、合成数据核对、入库幂等、缓存。"""

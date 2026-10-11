@@ -80,7 +80,21 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
         chunks = k.get("chunks", {})
         echo(f"  [{source}] 知识层：新块 {chunks.get('new', 0)}、改动 {chunks.get('changed', 0)}，"
              f"算向量 {k.get('embed', {}).get('embedded', 0)}" + (f"；出错 {errors}"[:200] if errors else ""))
+        proactive(echo, f"  [{source}] ")
     return r
+
+
+def proactive(echo: Callable[[str], None], prefix: str = "") -> None:
+    """主动推送（M6）：新数据进来后判断值不值得打扰你；卡片里还没有方向和城市时什么也不做。出错不影响采集。"""
+    from polaris.proactive.daily import run_daily
+
+    try:
+        r = run_daily()
+    except Exception as e:  # noqa: BLE001
+        echo(f"{prefix}主动推送出错（采集继续）：{e}"[:200])
+        return
+    if not r.get("skipped"):
+        echo(f"{prefix}主动推送：推 {r['push']}、进简报 {r['brief']}、不提 {r['drop']}")
 
 
 def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) -> bool:
@@ -167,9 +181,14 @@ def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
         echo("已经有一个常驻采集在跑了（可能是开机自启的），这个不再启动。看进度：polaris status")
         return
     notified: set[str] = set()
+    morning_done: str | None = None
     keep_awake(True)
     echo("常驻采集开始，电脑开着时不会自己睡着。按 Ctrl+C 停止。")
     while True:
+        now = datetime.now(BEIJING)
+        if now.hour * 60 + now.minute >= 8 * 60 + 30 and morning_done != now.date().isoformat():
+            proactive(echo, "[早上的简报] ")  # 每天 8:30 以后第一次醒来时出一份
+            morning_done = now.date().isoformat()
         try:
             ran = tick(echo, notified)
         except Exception as e:  # noqa: BLE001  一轮出错不让整个常驻进程退出
