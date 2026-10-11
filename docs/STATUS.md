@@ -35,6 +35,8 @@ M0、M1、M2 已完成；M3 主体已完成，只差 Boss（令牌二三十分�
 | M6 | `uv run polaris say "……"` / `polaris talk`（对话，要批准的动作当场问）；`polaris daily [--dry-run]`；`polaris metrics proactive`（不调模型）、`metrics m4-bench`、`metrics injection`（会调模型） | `eval/reports/proactive.md`：开发集 23、留出集 19 条全对（规则和标签同一作者）；Polaris-Bench v2 knowledge 54/54、search 42/54；提示注入 5 种攻击各 3 次被骗 0、外传 0（攻击偏弱）；记忆测试集 v2 操作 F1 0.97 | 见 git log |
 | M7 | `uv run polaris serve` + `npm --prefix web run dev`，打开 http://localhost:3000 | 网页实测（复制出来的库）：对话里记下新城市、查 9 次、给出 2 个上海岗位并写清哪里不完全符合；记忆页能看每条的原话和被取代的版本；图谱页统计正确 | 见 git log |
 
+**怎么用、怎么测：见 `GUIDE.md`（启动、沙盒、逐页说明、测试清单、怎么记问题、常见问题）。**
+
 ## 下一步
 
 0. **按 `PLAN.md` 第 0 节的最终计划 v4 做：项目主体是 agent 本身。** 采集常驻后台（小红书、脉脉、Boss，系统计划任务「Polaris 常驻采集」，日志 `data/logs/daemon.log`，看进度 `scripts/status.ps1`），每轮后自动对齐、切块、算向量、重建图谱。
