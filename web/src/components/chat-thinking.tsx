@@ -3,7 +3,7 @@
 // 对话里的过程展示：思考过程（查了什么、查到多少）、记忆提示（记住了什么、可以删）、上下文压缩分隔线、上下文用量。
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Archive, Brain, Check, ChevronRight, CircleAlert, CircleHelp, Loader2, Square, Undo2 } from "lucide-react";
+import { Archive, Brain, Check, ChevronRight, CircleAlert, CircleHelp, Globe, Loader2, Square, Undo2 } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { type Compacted, type Live, type MemoryEvent, type Step, type Turn, TOOL_NAMES } from "@/components/chat-session";
 import { api } from "@/lib/client";
@@ -19,6 +19,7 @@ const KEPT = new Set(["add", "update", "schedule", "confirm"]);
 const ASKED = new Set(["pending", "ask"]);
 const DROPPED = new Set(["invalidate", "reject", "forget"]);
 const NO_REFS = new Map<string, string>();
+const LIVE_TOOLS = new Set(["source_open", "platform_search"]);  // 真的去外面查的步骤，用强调色标出来
 
 function MemoryLine({ e }: { e: MemoryEvent }) {
   const [state, setState] = useState<"idle" | "confirm" | "busy" | "gone" | "error">("idle");
@@ -78,7 +79,8 @@ function StepRow({ step, sources, running }: { step: Step; sources?: string[]; r
           : step.ok === false ? <CircleAlert size={13} className="text-bad" aria-hidden />
           : <motion.span initial={{ scale: 0.4 }} animate={{ scale: 1 }}><Check size={13} className="text-ok" aria-hidden /></motion.span>}
       </span>
-      <span className="text-foreground/90">{hideRefs(step.desc)}</span>
+      {LIVE_TOOLS.has(step.tool) && <Globe size={12} className="inline -mt-0.5 mr-1 text-accent" aria-label="现查" />}
+      <span className={LIVE_TOOLS.has(step.tool) ? "text-accent" : "text-foreground/90"}>{hideRefs(step.desc)}</span>
       {step.summary && <span className="text-muted"> · {step.summary}</span>}
       {!!sources?.length && <span className="text-faint"> · {sources.join("、")}</span>}
       {args.length > 0 && step.done && (
