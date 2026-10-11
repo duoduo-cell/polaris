@@ -50,3 +50,9 @@ def test_blocked_today_means_zero(db):
 def test_login_expiry_is_not_a_block(db):
     add_run(NOW - timedelta(hours=1), calls=1, stopped="not_authenticated")
     assert budget.today_cap("xhs", NOW)[0] > 0  # 令牌过期不是被拦，不清零
+
+
+def test_hourly_limit(db):
+    add_run(NOW - timedelta(minutes=30), calls=budget.policy()["xhs"]["per_hour"])
+    assert budget.hour_left("xhs", NOW) == 0
+    assert budget.hour_left("xhs", NOW + timedelta(minutes=40)) == budget.policy()["xhs"]["per_hour"]

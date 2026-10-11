@@ -21,3 +21,9 @@ def test_write_tools_refused_without_touching_browser():
     for name in ("post_comment_to_feed", "like_feed", "publish_content"):
         with pytest.raises(PermissionError):
             caller(name, {})
+
+
+def test_rate_limit_page_is_a_block():
+    url = "https://www.xiaohongshu.com/website-login/error?redirectPath=https%3A%2F%2Fwww.xiaohongshu.com%2Fexplore%2F1"
+    problem = page_problem(url, "安全限制\n访问频繁，请稍后再试\n300013\n我要反馈")
+    assert "website-login" in problem and "访问频繁" in problem  # 10-11 实际碰到的页面

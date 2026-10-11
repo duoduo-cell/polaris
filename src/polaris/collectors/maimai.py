@@ -100,6 +100,14 @@ class MaimaiCollector:
             self._page = self.context.new_page()
         return self._page
 
+    def close(self) -> None:
+        if self._page is not None:
+            try:
+                self._page.close()
+            except Exception:  # noqa: BLE001
+                pass
+            self._page = None
+
     def _budget_left(self) -> bool:
         if self.stats.stopped or self.stats.calls >= self.max_calls:
             return False

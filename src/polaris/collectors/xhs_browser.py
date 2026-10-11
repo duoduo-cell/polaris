@@ -47,9 +47,10 @@ def profile_url(user_id: str, token: str) -> str:
 def page_problem(url: str, text: str) -> str | None:
     """被拦或掉登录的迹象：跳到验证或登录页、页面上出现验证或频繁字样。"""
     if any(w in url for w in ("captcha", "website-login", "/login")):
-        return f"跳到了 {url[:80]}"
+        brief = " ".join(text[:40].split())
+        return f"跳到了 {url[:80]}" + (f"（{brief}）" if brief else "")
     head = text[:1500]
-    for w in ("安全验证", "请完成验证", "访问频繁", "操作频繁", "账号异常", "登录后查看", "扫码登录"):
+    for w in ("安全限制", "访问频繁", "300013", "安全验证", "请完成验证", "操作频繁", "账号异常", "登录后查看", "扫码登录"):
         if w in head:
             return f"页面出现「{w}」"
     return None
@@ -68,6 +69,14 @@ class BrowserCaller:
             self._page = self.context.new_page()
         return self._page
 
+    def close(self) -> None:
+        if self._page is not None:
+            try:
+                self._page.close()
+            except Exception:  # noqa: BLE001
+                pass
+            self._page = None
+
     def __call__(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         handler = {"search_feeds": self.search, "get_feed_detail": self.detail, "user_profile": self.profile}.get(name)
         if handler is None:
@@ -76,7 +85,14 @@ class BrowserCaller:
 
     def _goto(self, url: str) -> None:
         self.page.goto(url, wait_until="domcontentloaded", timeout=45000)
-        self.page.wait_for_function("() => window.__INITIAL_STATE__ !== undefined", timeout=20000)
+        try:
+            self.page.wait_for_function("() => window.__INITIAL_STATE__ !== undefined", timeout=20000)
+        except Exception:
+            # 等不到页面数据时先看页面上写了什么：10-11 小红书的"安全限制｜访问频繁 300013"页就是这样，当时被误记成超时
+            problem = page_problem(self.page.url, self.page.inner_text("body"))
+            if problem:
+                raise BrowserCallFailed(f"疑似被拦：{problem}") from None
+            raise
         self.sleep(random.uniform(1.0, 2.5))  # 页面加载完先停一下，像人在看
         problem = page_problem(self.page.url, self.page.inner_text("body"))
         if problem:

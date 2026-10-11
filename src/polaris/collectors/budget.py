@@ -81,3 +81,14 @@ def in_window(source: str, now: datetime | None = None) -> bool:
     start, end = policy()[source]["window"]
     t = (now or datetime.now(BEIJING)).astimezone(BEIJING).strftime("%H:%M")
     return start <= t < end
+
+
+def hour_left(source: str, now: datetime | None = None) -> int:
+    """这一小时还能用几次（config 里的 per_hour；没配就不限）。10-11 小红书在约每小时 150 次的速度下出了"访问频繁"，
+    所以限制很可能按速度算，不只看每天总量。按最近 60 分钟内开始的各轮用掉的次数算。"""
+    per_hour = policy()[source].get("per_hour")
+    if not per_hour:
+        return 10**6
+    now = now or datetime.now(BEIJING)
+    used = sum(st.get("calls", 0) or 0 for _, st, _ in _runs(source, now - timedelta(hours=1), now + timedelta(minutes=1)))
+    return max(0, per_hour - used)

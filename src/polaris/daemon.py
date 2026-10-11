@@ -56,9 +56,15 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
     cfg = budget.policy()[source]
     per_query = {"xhs": 3 * 3 + 20, "boss": 30, "maimai": 10}[source]
     left = min(cap - used, cfg["round_queries"] * per_query)
+    left = min(left, budget.hour_left(source))
     collector = FACTORIES[source](context, left, cfg)
-    r = collect_round(source, collector, cfg["round_queries"],
-                      {"max_calls": left, "cap": cap, "via": cfg.get("via", "browser"), "mode": "daemon"}, echo=echo)
+    try:
+        r = collect_round(source, collector, cfg["round_queries"],
+                          {"max_calls": left, "cap": cap, "via": cfg.get("via", "browser"), "mode": "daemon"}, echo=echo)
+    finally:  # 每轮结束关掉自己开的标签页
+        for obj in (collector, getattr(collector, "caller", None)):
+            if hasattr(obj, "close"):
+                obj.close()
     if r["new_ids"]:
         try:  # 抽取或提词出错不影响继续采
             kind, raw_source = POST_SOURCES[source]
@@ -80,7 +86,7 @@ def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) 
             continue
         cap, why = budget.today_cap(source)
         used = budget.used_today(source)
-        if used < cap:
+        if used < cap and budget.hour_left(source) > 0:
             due.append((source, cap, used, why))
     if not due:
         return False
