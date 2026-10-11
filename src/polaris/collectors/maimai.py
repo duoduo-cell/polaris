@@ -168,10 +168,10 @@ class MaimaiCollector:
 
     def collect(self, query: Query) -> Iterator[RawItemIn]:
         for keyword in query.keywords:
+            self._query_start = self.stats.calls  # 先换成这个词的起点，再看预算（10-11 第二个词被误判成预算用完）
             if not self._budget_left():
                 return
             self.stats.queries += 1
-            self._query_start = self.stats.calls
             batch = self._open_search(keyword)
             if batch is None:
                 if self.stats.stopped:
