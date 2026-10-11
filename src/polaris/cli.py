@@ -18,6 +18,8 @@ metrics_app = typer.Typer(help="各模块的指标，结果写到 eval/reports/"
 app.add_typer(metrics_app, name="metrics")
 agent_app = typer.Typer(help="agent", no_args_is_help=True)
 app.add_typer(agent_app, name="agent")
+browser_app = typer.Typer(help="采集专用的浏览器（Edge，单独的资料夹）", no_args_is_help=True)
+app.add_typer(browser_app, name="browser")
 collect_app = typer.Typer(help="采集：每轮挑最久没搜过的查询词，采到的写进 raw_items", no_args_is_help=True)
 app.add_typer(collect_app, name="collect")
 
@@ -106,20 +108,45 @@ def collect_xhs_day(max_calls: int = typer.Option(800, help="今天最多调用�
 
 @collect_app.command("boss")
 def collect_boss(queries: int = typer.Option(2, help="本轮搜几个查询词"),
-                 max_calls: int = typer.Option(40, help="本轮最多调用 boss-cli 几次（搜索和详情都算）"),
-                 max_pages: int = typer.Option(1, help="每个 城市×规模 组合翻几页（每页 15 条）"),
+                 max_calls: int = typer.Option(40, help="本轮最多打开几个页面（搜索页和详情页都算）"),
                  cities: str = typer.Option("北京,上海,深圳,杭州", help="逗号分隔"),
-                 job_type: str = typer.Option("实习", help="实习、全职；填 不限 表示不筛")) -> None:
-    """Boss直聘：按 城市×公司规模 搜，只留大厂名单里的岗位并打开详情。需要本机 boss-cli 已扫码登录。"""
-    from polaris.collectors.boss import BossCollector
+                 via: str = typer.Option("browser", help="browser：在采集专用的 Edge 里浏览（推荐）；cli：用 boss-cli")) -> None:
+    """Boss直聘：按 城市×公司规模 搜，只留大厂名单里的岗位并打开详情。"""
+    city_list = tuple(c.strip() for c in cities.split(",") if c.strip())
+    params = {"max_calls": max_calls, "cities": cities, "via": via}
+    if via == "cli":
+        from polaris.collectors.boss import BossCollector
 
-    collector = BossCollector(cities=tuple(c.strip() for c in cities.split(",") if c.strip()), max_calls=max_calls,
-                              job_type=None if job_type == "不限" else job_type)
-    _collect("boss", collector, queries, {"max_calls": max_calls, "max_pages": max_pages, "cities": cities,
-                                          "job_type": job_type})
+        collector = BossCollector(cities=city_list, max_calls=max_calls)
+        _collect("boss", collector, queries, params)
+    else:
+        from polaris.browser import attached
+        from polaris.collectors.boss_web import BossWebCollector
+
+        with attached() as context:
+            collector = BossWebCollector(context, cities=city_list, max_calls=max_calls)
+            _collect("boss", collector, queries, params)
     if collector.stats.stopped:
-        typer.echo(f"本轮提前停下：{collector.stats.stopped}"
-                   + ("（登录过期，请重新运行 boss login --qrcode）" if collector.stats.stopped == "not_authenticated" else ""))
+        typer.echo(f"本轮提前停下：{collector.stats.stopped}。请在采集浏览器里看一眼 Boss 页面是否正常，"
+                   "有验证就你自己完成，然后再继续。")
+
+
+@browser_app.command("open")
+def browser_open() -> None:
+    """打开采集专用的 Edge（单独的资料夹）。第一次用时在里面登录 Boss、脉脉；之后保持开着即可。"""
+    from polaris.browser import PROFILE_DIR, open_browser
+
+    started = open_browser(["https://www.zhipin.com/", "https://maimai.cn/"])
+    typer.echo(("已打开" if started else "已经开着") + f"采集专用的 Edge（资料夹 {PROFILE_DIR}）。"
+               "请在这个窗口里登录 Boss直聘和脉脉（扫码或验证码都行，你自己操作）；登录后保持窗口开着，可以最小化。")
+
+
+@browser_app.command("status")
+def browser_status() -> None:
+    """采集浏览器是否开着。"""
+    from polaris.browser import is_running
+
+    typer.echo("开着" if is_running() else "没开，运行 polaris browser open")
 
 
 @app.command()

@@ -61,9 +61,12 @@ def _xhs(p: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _boss(p: dict[str, Any]) -> list[dict[str, Any]]:
-    from polaris.collectors.boss import BossCollector
+    from polaris.browser import attached
+    from polaris.collectors.boss_web import BossWebCollector
     max_calls = p.get("max_calls", 30)
-    return [collect_round("boss", BossCollector(max_calls=max_calls), p.get("queries", 2), {"max_calls": max_calls})]
+    with attached() as context:  # 在采集专用的 Edge 里浏览，见 browser.py
+        return [collect_round("boss", BossWebCollector(context, max_calls=max_calls), p.get("queries", 2),
+                              {"max_calls": max_calls, "via": "browser"})]
 
 
 ROUNDS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
