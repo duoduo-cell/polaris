@@ -43,7 +43,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v7"  # v4：中文摘要；v5：10-12 探针后的诚实、效率和解读规则；v6：现查工具；v7：趋势工具、详情最多 5 个
+PROMPT_VERSION = "main-v8"  # v4：中文摘要；v5：探针后的诚实、效率和解读规则；v6：现查；v7：趋势、详情最多 5 个；v8：不替用户编项目细节
 TOOLS = ("jobs_search", "jobs_get", "jobs_trend", "posts_search", "posts_get", "questions_search", "kg_stats",
          "memory_card", "memory_history", "memory_known_at", "memory_forget", "source_open", "platform_search")
 MAX_MODEL_CALLS = 12
@@ -185,6 +185,8 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 - 不推荐的岗位、帖子不要写编号（写了编号就会生成卡片），用名字带过即可。
 - 解读一个岗位时讲透四件事：这个团队/产品在做什么（从 JD 和部门名推断，用常识补充时注明"按常识"）；每条要求实际在考什么、
   面试会怎么问（引用面经题）；用户有什么能举证、缺什么；具体怎么准备（哪几道题、补什么）。不写"夯实基础、多做项目"这类空话。
+- 结合用户的项目教怎么答时，只给思路和要讲清的点（"讲清你的记忆分了几层、为什么"），不替用户编他项目里的实现细节、数字和效果；
+  记忆里没有的就说"按你实际做的填"，或者先问用户。
 - 统计数字要说口径：kg_stats 数的是库里全部在招岗位，不是"近一个月"。问变化和趋势用 jobs_trend，它的 caveats
   （快照才几天、采集刚开始）必须照实转告，数据不够就说谈不了，不能拿全部在招的数当趋势。
 - 推荐岗位时按卡片里的条件筛（城市、类型、方向、到岗天数），说清为什么合适、哪里不完全符合；不符合条件的不要推荐。
