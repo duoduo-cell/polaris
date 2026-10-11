@@ -20,7 +20,7 @@ from polaris.report import BEIJING
 LOCK_FILE = ROOT / "data" / "daemon.lock"
 
 # Boss 走 boss-cli（调搜索和详情接口），登录从 Boss 专用的 Edge 窗口拿；我们的程序不接管那个窗口（browser.py）。
-IMPLEMENTED = ("xhs", "boss", "maimai")
+IMPLEMENTED = ("maimai", "boss", "xhs")  # 一轮快的先跑：脉脉几分钟、Boss 看令牌、小红书最慢
 POST_SOURCES = {"xhs": ("post", "xhs"), "boss": ("job", "boss"), "maimai": ("post", "maimai")}
 
 
