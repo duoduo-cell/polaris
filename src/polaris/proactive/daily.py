@@ -7,7 +7,7 @@
 """
 import re
 import tomllib
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -18,6 +18,7 @@ from polaris.db.models import Job, Notification, Post, RawItem
 from polaris.db.session import session_scope
 from polaris.memory.update import card
 from polaris.proactive.decide import Decision, Item, Level, Profile, Sent, decide
+from polaris.report import BEIJING
 
 SETTINGS = ROOT / "config" / "proactive.toml"
 BRIEFS = ROOT / "data" / "briefs"
@@ -99,7 +100,7 @@ def _ever_ran() -> bool:
 
 def run_daily(now: datetime | None = None, *, level: Level | None = None, dry_run: bool = False,
               notify_fn=None) -> dict[str, Any]:
-    now = now or datetime.now(UTC)
+    now = (now or datetime.now(BEIJING)).astimezone(BEIJING)
     level = level or settings().get("level", "normal")
     p = profile_from_memory(now)
     if not p.roles and not p.cities:
@@ -143,7 +144,7 @@ def run_daily(now: datetime | None = None, *, level: Level | None = None, dry_ru
 def write_brief(now: datetime, decisions: list[Decision], by_key: dict[str, Item]) -> None:
     from collections import Counter
 
-    day = now.date().isoformat()
+    day = now.astimezone(BEIJING).date().isoformat()
     lines = [f"# 北极星简报 {day}", ""]
     for channel, title in (("push", "已经推给你的"), ("brief", "今天值得看的")):
         ds = sorted((d for d in decisions if d.channel == channel), key=lambda d: (-d.score, d.key))

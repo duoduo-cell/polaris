@@ -15,12 +15,13 @@
 据此加了上面"城市、方向不沾边直接不提""面经只在正在面时推""条件对不上只进简报"三条。
 """
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, Literal
 
 from polaris.align.normalize import split_title
 from polaris.companies import match as big_company
 from polaris.dedup import hamming
+from polaris.report import BEIJING
 
 Level = Literal["off", "low", "normal", "high"]
 PUSH_THRESHOLD = {"low": 0.75, "normal": 0.65, "high": 0.55}
@@ -226,6 +227,7 @@ def urgency_score(item: Item, p: Profile, now: datetime) -> tuple[float, str | N
 
 def decide(items: list[Item], p: Profile, history: list[Sent], now: datetime, level: Level = "normal") -> list[Decision]:
     """一批候选一起决定：先各自打分，再按分数从高到低占每天的推送名额。"""
+    now = now.astimezone(BEIJING)  # 静默时段、每日名额和截止日统一按北京时间
     out: list[Decision] = []
     by_key = {it.key: it for it in items}
     interviewing = {_company(c) for c in p.interviewing}
@@ -248,7 +250,7 @@ def decide(items: list[Item], p: Profile, history: list[Sent], now: datetime, le
         else:
             out.append(Decision(it.key, "drop", score, m, n, u, reasons + ["和你的情况关系不大"]))
     # 推送名额：今天已经推过的算进去；分数高的先占
-    pushed_today = sum(1 for s in history if s.sent_at.astimezone(now.tzinfo or UTC).date() == now.date())
+    pushed_today = sum(1 for s in history if s.sent_at.astimezone(BEIJING).date() == now.date())
     budget = max(0, DAILY_PUSHES[level] - pushed_today)
     quiet = now.time() >= QUIET[0] or now.time() < QUIET[1]
     for d in sorted((d for d in out if d.channel == "brief"), key=lambda d: (-d.score, d.key)):

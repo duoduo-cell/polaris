@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import select
 
 from polaris.align.build import run_align
-from polaris.db.models import Post, Posting
+from polaris.db.models import Post, Posting, SearchChunk
 from polaris.db.session import session_scope
 from polaris.ingest import RawItemIn, ingest_raw_items
 from polaris.tools import REGISTRY
@@ -104,3 +104,43 @@ def test_chunks_sync_keyword_search_and_graph_rows(db):
     g = collect()
     assert {"job": ids["tx"], "city": "新加坡"} in g["job_city"]
     assert any(r["company"] == "滴滴" for r in g["question_company"])
+
+
+def test_graph_recall_obeys_all_filters_before_fusion(db, monkeypatch):
+    from polaris.search import retrieve
+
+    recent = datetime(2026, 10, 10, tzinfo=UTC)
+    specs = {
+        "old": {"published_at": datetime(2026, 9, 1, tzinfo=UTC)},
+        "undated": {"published_at": None},
+        "synthetic": {"is_synthetic": True},
+        "other_company": {"companies": ["字节跳动"]},
+        "job": {"kind": "job"},
+        "valid": {},
+    }
+    ids = {}
+    with session_scope() as s:
+        for key, overrides in specs.items():
+            fields = dict(kind="question", companies=["腾讯"], published_at=recent, is_synthetic=False)
+            chunk = SearchChunk(key=key, header="面试题", body="RAG", content="RAG", content_hash=key,
+                                **{**fields, **overrides})
+            s.add(chunk)
+            s.flush()
+            ids[key] = chunk.id
+    monkeypatch.setattr(retrieve, "graph", lambda q: [(cid, 1.0) for cid in ids.values()])
+    q = retrieve.SearchQuery("RAG", scope="questions", company="Tencent", since=recent,
+                             channels=("graph",), rerank=False, mmr=False)
+    hits, trace = retrieve.search(q)
+    assert [h.key for h in hits] == ["valid"]
+    assert hits[0].ranks == {"graph": 1} and hits[0].fused == 1.0
+    assert trace["recall"] == {"graph": 1}
+
+    q.include_synthetic = True
+    hits, _ = retrieve.search(q)
+    assert [h.key for h in hits] == ["synthetic", "valid"]
+    q.since = None
+    hits, _ = retrieve.search(q)
+    assert [h.key for h in hits] == ["old", "undated", "synthetic", "valid"]
+    q.company = "美团"
+    hits, trace = retrieve.search(q)
+    assert hits == [] and trace["recall"] == {} and trace["fused"] == 0

@@ -219,7 +219,12 @@ def search(q: SearchQuery, llm: LLM | None = None) -> tuple[list[Hit], dict[str,
             except LLMError as e:
                 trace["vector_error"] = str(e)[:120]
         if "graph" in q.channels:
-            channels["graph"] = graph(q)
+            recalled = graph(q)
+            # 图谱只负责找关联；日期、类型、公司和合成标记仍以 Postgres 为准。
+            # 必须在融合前过滤，否则无效候选还会占名次、影响 RRF 分数。
+            allowed = set(s.scalars(select(SearchChunk.id).where(
+                SearchChunk.id.in_([cid for cid, _ in recalled]), *_filters(q)))) if recalled else set()
+            channels["graph"] = [(cid, score) for cid, score in recalled if cid in allowed]
         channels = {k: v for k, v in channels.items() if v}
         trace["recall"] = {k: len(v) for k, v in channels.items()}
         fused = rrf(channels)

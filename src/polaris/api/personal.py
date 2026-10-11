@@ -3,7 +3,7 @@
 对话和记忆是个人数据，所以和公开的追踪、岗位接口分开，单独一个口令。
 """
 import hmac
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -13,6 +13,7 @@ from sqlalchemy import select
 from polaris.config import get_settings
 from polaris.db.models import Notification
 from polaris.db.session import session_scope
+from polaris.report import BEIJING
 
 
 def require_owner(authorization: Annotated[str | None, Header()] = None) -> None:
@@ -140,7 +141,7 @@ def feedback_endpoint(notification_id: int, body: FeedbackIn) -> dict[str, Any]:
 def brief_endpoint(day: date | None = None) -> dict[str, Any]:
     from polaris.proactive.daily import BRIEFS
 
-    day = day or date.today()
+    day = day or datetime.now(BEIJING).date()
     path = BRIEFS / f"{day.isoformat()}.md"
     return {"day": day.isoformat(), "markdown": path.read_text(encoding="utf-8") if path.exists() else None}
 

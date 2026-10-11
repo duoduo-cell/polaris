@@ -82,3 +82,24 @@ def test_answer_feedback_is_saved_locally(db, tmp_path, monkeypatch):
     assert r.json() == {"ok": True}
     row = json.loads((tmp_path / "data/feedback/answers.jsonl").read_text(encoding="utf-8"))
     assert row["verdict"] == "bad" and row["note"].startswith("J-2") and row["db"] == "polaris_test"
+
+
+def test_today_brief_uses_beijing_date_and_allows_explicit_day(tmp_path, monkeypatch):
+    from polaris.api import personal
+    from polaris.proactive import daily
+    from polaris.report import BEIJING
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz == BEIJING
+            return datetime(2026, 10, 11, 16, 30, tzinfo=UTC).astimezone(tz)
+
+    monkeypatch.setattr(personal, "datetime", Clock)
+    monkeypatch.setattr(daily, "BRIEFS", tmp_path)
+    daily.write_brief(datetime(2026, 10, 11, 16, 30, tzinfo=UTC), [], {})
+    (tmp_path / "2026-10-11.md").write_text("昨天的简报", encoding="utf-8")
+    today = client.get("/api/me/brief", headers=ME).json()
+    assert today["day"] == "2026-10-12" and "2026-10-12" in today["markdown"]
+    yesterday = client.get("/api/me/brief", params={"day": "2026-10-11"}, headers=ME).json()
+    assert yesterday == {"day": "2026-10-11", "markdown": "昨天的简报"}
