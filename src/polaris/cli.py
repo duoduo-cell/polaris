@@ -374,6 +374,59 @@ def align() -> None:
     typer.echo(f"合成冲突发现 {c['found']}/{c['total']}；出处可追溯 {p['traceable']}/{p['fields']}")
 
 
+def _show_turn(turn) -> None:
+    for e in turn.memory_events:
+        if e["op"] not in ("noop", "skip"):
+            typer.secho(f"  [记忆] {e['op']} {e['attribute']}={e.get('value')}（{e['reason']}）", fg="cyan")
+    for c in turn.tool_calls:
+        typer.secho(f"  [工具] {c['tool']} {json.dumps(c['args'], ensure_ascii=False)[:120]}", fg="bright_black")
+    if turn.error:
+        typer.secho(f"  [出错] {turn.error[:300]}", fg="red")
+    if turn.answer:
+        typer.echo(turn.answer)
+
+
+def _approve_loop(turn, thread: str):
+    from polaris.agent.main import resume
+
+    while turn.approvals:
+        for a in turn.approvals:
+            typer.secho(f"北极星想执行：{a['name']} {json.dumps(a['args'], ensure_ascii=False)}", fg="yellow")
+        ok = typer.confirm("批准吗？", default=False)
+        reason = "" if ok else typer.prompt("不批准的理由（可以留空）", default="", show_default=False)
+        turn = resume(thread, ok, reason)
+        _show_turn(turn)
+    return turn
+
+
+@app.command()
+def say(message: str, thread: str = typer.Option("main", help="会话编号，同一个编号接着聊")) -> None:
+    """和北极星说一句话（先过记忆，再回答）。要批准的动作会在这里问你。"""
+    from polaris.agent.main import chat
+
+    turn = chat(message, thread)
+    _show_turn(turn)
+    _approve_loop(turn, thread)
+
+
+@app.command()
+def talk(thread: str = typer.Option("main", help="会话编号，同一个编号接着聊")) -> None:
+    """和北极星连续对话。空行或 Ctrl+C 结束。"""
+    from polaris.agent.main import chat
+
+    typer.echo(f"会话 {thread}（空行结束）")
+    while True:
+        try:
+            message = typer.prompt("你", default="", show_default=False)
+        except (KeyboardInterrupt, EOFError):
+            break
+        if not message.strip():
+            break
+        turn = chat(message, thread)
+        _show_turn(turn)
+        _approve_loop(turn, thread)
+
+
 @metrics_app.command("m1")
 def metrics_m1() -> None:
     """M1：追踪完整率、结构化输出、延迟、合成数据核对、入库幂等、缓存。"""
@@ -469,8 +522,7 @@ def metrics_m5(k: int = typer.Option(1, help="每个问题问几次")) -> None:
     """M5：记忆评测（会调模型）。在单独的 polaris_memeval 库里跑，不碰你自己的记忆。"""
     from polaris.eval import memory_eval
 
-    results = {name: memory_eval.run(k=k, gold_path=path)
-               for name, path in (("dev", memory_eval.GOLD), ("holdout", memory_eval.HOLDOUT))}
+    results = {name: memory_eval.run(k=k, gold_path=path) for name, path in memory_eval.SETS}
     memory_eval.write_report(results)
     typer.echo((memory_eval.REPORT_DIR / "M5.md").read_text(encoding="utf-8"))
 

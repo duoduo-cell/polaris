@@ -185,3 +185,20 @@ def test_progress_with_a_future_date_still_takes_effect_now(db):
     say(C("interview_stage", "一面", qualifier="字节"))
     e, _ = say(C("interview_stage", "一面已过，等二面", qualifier="字节", valid_from=date(2026, 10, 13)), T0 + timedelta(days=4))
     assert e["op"] == "update" and values_on(T0.date() + timedelta(days=4), "interview_stage") == ["一面已过，等二面"]
+
+
+def test_restating_the_old_value_rejects_the_pending_one(db):
+    say(C("days_per_week", "5"))
+    e, _ = say(C("days_per_week", "4"), T0 + timedelta(days=1))
+    assert e["op"] == "ask"
+    back, _ = say(C("days_per_week", "5", change_signal=True), T0 + timedelta(days=1, minutes=2))
+    assert back["op"] == "reject" and values_on(T0.date() + timedelta(days=2), "days_per_week") == ["5"]
+    with session_scope() as s:
+        assert pending(s) == []
+
+
+def test_change_signal_needs_explicit_words():
+    from polaris.memory.extract import has_change_words
+
+    assert not has_change_words("我每周能去 5 天，能实习 6 个月。")
+    assert has_change_words("现在每周只能去 3 天了") and has_change_words("还是 5 天吧，刚才说错了")

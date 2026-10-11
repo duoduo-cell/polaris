@@ -79,6 +79,9 @@ def decide(c: Candidate, slot: list[MemoryFact], suppressed: bool, now: datetime
         if same:
             return Decision("noop", "已经记着，不用再推断")
         return Decision("pending", "是推断出来的，先等你确认", question=f"我理解的是：{c.statement}。对吗？")
+    if same and waiting and not attr.multi and c.polarity == "assert":
+        # 问你"以哪个为准"时你重申了原来的（"还是 5 天吧"）：待确认的新说法作废
+        return Decision("reject", "你重申了原来的说法，待确认的那条作废", waiting[:1])
     if same:
         return Decision("noop", "和记着的一样", same)
     if attr.multi or not slot:

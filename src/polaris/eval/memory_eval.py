@@ -22,7 +22,10 @@ from polaris.config import ROOT
 
 GOLD = ROOT / "eval" / "gold" / "memory_v1.json"  # 开发集：第一次跑完按它改过规则和提示词
 HOLDOUT = ROOT / "eval" / "gold" / "memory_holdout_v1.json"  # 留出集：改完之后才写，只评不调
+TEST = ROOT / "eval" / "gold" / "memory_test_v2.json"  # 测试集：第三版规则改完之后才写，只评不调
 FIRST_RUN = ROOT / "eval" / "reports" / "M5-v1.json"  # 开发集第一次跑的结果（规则和提示词 v1），留作对比
+SECOND_RUN = ROOT / "eval" / "reports" / "M5-v2.json"  # 第二版规则在开发集、留出集上的结果
+SETS = (("dev", GOLD), ("holdout", HOLDOUT), ("test", TEST))
 REPORT_DIR = ROOT / "eval" / "reports"
 SIGNIFICANT = {"add", "update", "schedule", "invalidate", "pending", "ask", "suppressed", "confirm", "reject", "forget"}
 # "你没说过"一类的说法（10-11 第一次跑时，"你没跟我说过期望薪资"被漏判成答错，补上"没跟我……过"这类）
@@ -233,10 +236,19 @@ def render(results: dict[str, dict[str, Any]]) -> str:
              "和同岗识别一样分开发集和留出集：开发集第一次跑完后按它改过规则和提示词，留出集是改完之后才写的。", ""]
     if FIRST_RUN.exists():
         v1 = json.loads(FIRST_RUN.read_text(encoding="utf-8"))
-        lines += [f"开发集第一次跑（规则和提示词 v1）：操作 F1 {fmt(v1['ops']['f1'])}，整句完全对 {v1['turns_exact']}/{v1['turns']}，"
+        lines += [f"**第一版**（开发集）：操作 F1 {fmt(v1['ops']['f1'])}，整句完全对 {v1['turns_exact']}/{v1['turns']}，"
                   f"问答 {v1['answers_ok']}/{v1['answers']}（其中 2 题其实答对了，是评分没认出\"你没跟我说过\"这种说法，已修评分）。"
                   "据此改了：进度类属性不排到将来、否认某公司时牵连的推断一并作废并按公司抑制、提示词说清\"研二\"这类算亲口说的。", ""]
-    names = {"memory-v1": "开发集", "memory-holdout-v1": "留出集"}
+    if SECOND_RUN.exists():
+        v2 = json.loads(SECOND_RUN.read_text(encoding="utf-8"))
+        h = v2["holdout"]
+        lines += [f"**第二版**：开发集操作 F1 {fmt(v2['dev']['ops']['f1'])}；留出集（改完第一版才写）操作 F1 {fmt(h['ops']['f1'])}、"
+                  f"整句全对 {h['turns_exact']}/{h['turns']}、问答 {h['answers_ok']}/{h['answers']}。"
+                  "两份里都出现\"该问没问\"：用户换了个数但没说要改，模型标成改口，规则直接覆盖了；实测时也遇到。据此改了第三版："
+                  "是否改口由代码再核对一遍明确的改口词（改、现在、其实、还是、说错……），"
+                  "以及问\"以哪个为准\"时用户重申原来的说法，待确认的新说法作废。改完才写了测试集 v2。", ""]
+    names = {"memory-v1": "开发集（第一版之后用来改过规则）", "memory-holdout-v1": "留出集（第二版之后用来改过规则）",
+             "memory-test-v2": "**测试集**（第三版改完才写，只评不调）"}
     for r in results.values():
         lines += render_set(r, names.get(r["suite"], r["suite"]))
     return "\n".join(lines)

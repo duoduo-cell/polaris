@@ -1,0 +1,108 @@
+{
+  "version": "memory-test-v2",
+  "about": "记忆评测测试集 v2：第三版规则（代码核对改口词、重申原来的说法时作废待确认的新说法）改完之后才写，写完才跑；之前的开发集和留出集都已经用来改过规则。三个新的虚构求职者，格式同 memory_v1.json。",
+  "asked_at": "2026-10-11T20:00:00+08:00",
+  "personas": [
+    {
+      "id": "feng",
+      "sessions": [
+        {"at": "2026-09-17T20:00:00+08:00", "turns": [
+          {"user": "我是同济计算机硕士一年级，28 届，想找上海的 AI 应用开发实习。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["同济"]},
+             {"op": "add", "attr": "major", "value": ["计算机"], "optional": true},
+             {"op": "add", "attr": "degree", "value": ["硕士"]},
+             {"op": "add", "attr": "grad_year", "value": ["2028", "28"]},
+             {"op": "add", "attr": "target_city", "value": ["上海"]},
+             {"op": "add", "attr": "target_role", "value": ["ai应用"]},
+             {"op": "add", "attr": "job_type", "value": ["实习"], "optional": true}]},
+          {"user": "每周可以去 3 天，最少实习 4 个月。",
+           "expect": [
+             {"op": "add", "attr": "days_per_week", "value": ["3"]},
+             {"op": "add", "attr": "duration_months", "value": ["4"]}]}]},
+        {"at": "2026-09-21T21:00:00+08:00", "turns": [
+          {"user": "我每周能去 4 天。",
+           "expect": [{"op": "ask", "attr": "days_per_week", "value": ["4"]}]},
+          {"user": "嗯，按 4 天算。",
+           "expect": [{"op": "confirm", "attr": "days_per_week", "value": ["4"]}]}]},
+        {"at": "2026-10-03T20:00:00+08:00", "turns": [
+          {"user": "只想去大厂，小公司就不考虑了。",
+           "expect": [
+             {"op": "add", "attr": "constraint", "value": ["大厂", "小公司"]},
+             {"op": "add", "attr": "company_avoid", "value": ["小公司"], "optional": true}]},
+          {"user": "下周三腾讯二面。",
+           "expect": [
+             {"op": "add", "attr": "interview_stage", "q": "腾讯", "value": ["二面"]},
+             {"op": "pending", "attr": "applied", "q": "腾讯", "value": [""]}]}]},
+        {"at": "2026-10-08T20:00:00+08:00", "turns": [
+          {"user": "腾讯二面过了，等 HR 面。",
+           "expect": [{"op": "update", "attr": "interview_stage", "q": "腾讯", "value": ["hr"]}]}]}
+      ],
+      "questions": [
+        {"id": "feng-ku-days", "ability": "KU", "q": "我现在每周能去几天？", "must": [["4"]]},
+        {"id": "feng-tr-days", "ability": "TR", "q": "9 月 18 号那天，我说的每周能去几天？", "must": [["3"]]},
+        {"id": "feng-mr-next", "ability": "MR", "q": "我在面的那家公司，下一轮是什么？", "must": [["腾讯"], ["HR", "hr"]]},
+        {"id": "feng-ie-duration", "ability": "IE", "q": "我最少能实习多久？", "must": [["4"]]},
+        {"id": "feng-abs-salary", "ability": "ABS", "q": "我说过期望薪资吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "he",
+      "sessions": [
+        {"at": "2026-09-19T20:00:00+08:00", "turns": [
+          {"user": "我是武大本科大四，想找北京或深圳的 RAG 方向实习。",
+           "expect": [
+             {"op": "add", "attr": "school", "value": ["武大", "武汉大学"]},
+             {"op": "add", "attr": "degree", "value": ["本科"]},
+             {"op": "add", "attr": "grad_year", "value": ["2027"], "optional": true},
+             {"op": "add", "attr": "target_role", "value": ["rag"]},
+             {"op": "add", "attr": "target_city", "value": ["北京"]},
+             {"op": "add", "attr": "target_city", "value": ["深圳"]},
+             {"op": "add", "attr": "job_type", "value": ["实习"], "optional": true}]}]},
+        {"at": "2026-09-25T20:00:00+08:00", "turns": [
+          {"user": "深圳不去了，就北京。",
+           "expect": [{"op": "invalidate", "attr": "target_city", "value": ["深圳"]}]},
+          {"user": "每周 5 天没问题。",
+           "expect": [{"op": "add", "attr": "days_per_week", "value": ["5"]}]}]},
+        {"at": "2026-10-06T20:00:00+08:00", "turns": [
+          {"user": "每周 3 天。",
+           "expect": [{"op": "ask", "attr": "days_per_week", "value": ["3"]}]},
+          {"user": "不对，还是 5 天。",
+           "expect": [{"op": "reject", "attr": "days_per_week", "value": ["3"]}]}]}
+      ],
+      "questions": [
+        {"id": "he-ku-city", "ability": "KU", "q": "我现在考虑哪些城市？", "must": [["北京"]]},
+        {"id": "he-ku-days", "ability": "KU", "q": "我每周能去几天？", "must": [["5"]]},
+        {"id": "he-ie-school", "ability": "IE", "q": "我在哪个学校？", "must": [["武大", "武汉大学"]]},
+        {"id": "he-abs-skill", "ability": "ABS", "q": "我跟你说过会哪些技术吗？", "abstain": true}
+      ]
+    },
+    {
+      "id": "luo",
+      "sessions": [
+        {"at": "2026-09-20T20:00:00+08:00", "turns": [
+          {"user": "我在准备美团的笔试。",
+           "expect": [
+             {"op": "pending", "attr": "applied", "q": "美团", "value": [""]},
+             {"op": "add", "attr": "interview_stage", "q": "美团", "value": ["笔试"], "optional": true}]},
+          {"user": "嗯，投的是美团的 Agent 实习。",
+           "expect": [{"op": "confirm", "attr": "applied", "q": "美团", "value": ["agent"]}]}]},
+        {"at": "2026-10-01T20:00:00+08:00", "turns": [
+          {"user": "现在每周只能去 2 天，从 11 月开始每周能去 4 天。",
+           "expect": [
+             {"op": "add", "attr": "days_per_week", "value": ["2"]},
+             {"op": "schedule", "attr": "days_per_week", "value": ["4"]}]},
+          {"user": "我会 PyTorch 和 LangGraph。",
+           "expect": [
+             {"op": "add", "attr": "skill", "value": ["pytorch"]},
+             {"op": "add", "attr": "skill", "value": ["langgraph"]}]}]}
+      ],
+      "questions": [
+        {"id": "luo-ku-days", "ability": "KU", "q": "我现在每周能去几天？", "must": [["2"]]},
+        {"id": "luo-tr-nov", "ability": "TR", "q": "11 月中旬我每周能去几天？", "must": [["4"]]},
+        {"id": "luo-mr-applied", "ability": "MR", "q": "我投了哪家，什么岗位？", "must": [["美团"], ["Agent", "agent"]]},
+        {"id": "luo-abs-bytedance", "ability": "ABS", "q": "我投过字节吗？", "abstain": true}
+      ]
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 模型只回答"这句话里说了关于你的哪些事、是你亲口说的还是推断的、是不是在改口、从哪天起成立"；
 新增、更新、作废、追问这些决定不交给模型，免得同一句话两次跑出不同的记忆。
 """
+import re
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
@@ -15,6 +16,13 @@ from polaris.memory.schema import ATTRIBUTES
 from polaris.memory.update import Candidate, Context, apply, card, render_card
 
 PROMPT_VERSION = "memory-extract-v2"
+# 改口要有明确的说法。模型常把"换了个数"也标成改口（10-11 开发集、留出集和实测里都出现过："我每周能去 5 天"被当成改口，
+# 直接覆盖了刚说过的 4 天），所以代码再核对一遍：这句话里没有这些词，就不算改口，规则会先问你以哪个为准。
+CHANGE_WORDS = re.compile(r"改|变|换|现在|目前|其实|不再|不能|不考虑|算了|还是|说错|更正|纠正|调整|以后|之后|重新|不想|只能")
+
+
+def has_change_words(message: str) -> bool:
+    return CHANGE_WORDS.search(message) is not None
 AttrName = Literal[tuple(ATTRIBUTES)]  # type: ignore[valid-type]
 
 
@@ -74,7 +82,9 @@ def remember(message: str, *, llm: LLM | None = None, now: datetime | None = Non
         candidates = extract(llm, message, render_card(card(s, now.date())), now.date(), run_id)
         ctx = Context(s, now, message, thread_id, run_id)
         events, questions = [], []
+        explicit = has_change_words(message)
         for c in candidates:
+            c.change_signal = c.change_signal and explicit
             e, q = apply(ctx, c)
             events.append(e)
             if q:
