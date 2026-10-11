@@ -216,3 +216,9 @@ def test_last_allowed_model_call_gets_no_tools():
     main.LastCallAnswers().wrap_model_call(Req(2), seen.append)
     assert seen[0]["tools"] == [] and seen[0]["system_message"].text.endswith(main.LAST_CALL_NOTE.strip())
     assert isinstance(seen[1], Req)  # 没到最后一次，原样交给模型
+
+
+def test_model_outage_is_reported_as_an_error_not_an_answer(db):
+    turn = main.chat("在吗", tid(), model=script(AIMessage(content="Model call failed after 4 attempts with OpenAIConnectionError")),
+                     **NO_MEMORY)
+    assert turn.answer == "" and "连不上" in turn.error

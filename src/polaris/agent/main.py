@@ -470,6 +470,8 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
         answer = text_of(state["messages"][-1].content)
         if answer.startswith("Model call limits exceeded"):  # 保险：万一还是撞了上限，不把英文报错当回答
             answer, err = "", err or "这次查得太多没能收尾，请把问题说得具体一点再问一次（比如只看某家公司、某个城市）。"
+        elif answer.startswith("Model call failed after"):  # 重试中间件用尽重试后把报错当成了回复（10-12 中转断连时实测）
+            answer, err = "", err or "模型服务暂时连不上（重试几次都失败了）。你的原话已经保存，过一会儿重新发送就行。"
     from polaris.agent.steps import describe, outcome
     from polaris.results import activity, presentation
     with session_scope() as s:
