@@ -180,6 +180,13 @@ class RawItem(Base):
     raw_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     content_hash: Mapped[str] = mapped_column(String(64))
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # 来源上写的发布或更新时间
+    # 第一次、最后一次采到同一份内容；官网岗位据此推出挂出和下架时间（DATASET 2.1）
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    fetch_method: Mapped[str | None] = mapped_column(String(16))  # api / browser / mcp / cli / sitemap / archive / manual
+    collector_version: Mapped[str | None] = mapped_column(String(32))
+    simhash: Mapped[int | None] = mapped_column(BigInteger)  # 近似重复指纹（64 位，存成有符号整数）
     run_id: Mapped[int | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"))
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = created_at()

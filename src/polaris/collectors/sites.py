@@ -75,7 +75,10 @@ class ByteDanceCollector:
                         seen.add(jid)
                         yield RawItemIn(source="bytedance:campus", tier="A", kind="job",
                                         url=f"{BYTEDANCE_LIST}/{jid}/detail", external_id=jid, query=keyword,
-                                        raw_text=bytedance_text(job), raw_json=job, fetched_at=datetime.now(UTC))
+                                        raw_text=bytedance_text(job), raw_json=job, fetched_at=datetime.now(UTC),
+                                        fetch_method="browser", collector_version="bytedance-1",
+                                        published_at=datetime.fromtimestamp(int(job["publish_time"]) / 1000, UTC)
+                                        if str(job.get("publish_time") or "").isdigit() else None)
                     time.sleep(random.uniform(*self.pause))
                     if len(jobs) < self.page_size or n * self.page_size >= (data.get("count") or 0):
                         break
@@ -145,4 +148,5 @@ class XhsCareersCollector:
                     jid = href.rstrip("/").split("/")[-1]
                     yield RawItemIn(source="xhs:careers", tier="A", kind="job", url=XHS_JOBS + href, external_id=jid,
                                     query=keyword, raw_text=f"{text}\n公司：小红书", raw_json={"title": title, "href": href},
-                                    fetched_at=datetime.now(UTC))
+                                    fetched_at=datetime.now(UTC), fetch_method="browser",
+                                    collector_version="xhs-careers-1")

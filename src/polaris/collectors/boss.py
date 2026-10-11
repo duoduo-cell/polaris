@@ -213,4 +213,4 @@ class BossCollector:
             yield RawItemIn(source="boss", tier="B", kind="job", url=f"https://www.zhipin.com/job_detail/{jid}.html",
                             external_id=jid, query=keyword, raw_text=to_text(card, detail),
                             raw_json={"card": card, "detail": slim_detail(detail), "big_company": big.name},
-                            fetched_at=datetime.now(UTC))
+                            fetched_at=datetime.now(UTC), fetch_method="cli", collector_version="boss-1")

@@ -51,3 +51,28 @@ def test_db_recorder_and_cache_lookup(db):
     assert rec.find_cached("other") is None
     with session_scope() as s:
         assert len(s.execute(select(Run)).all()) == 0
+
+
+def test_ingest_tracks_first_and_last_seen_and_simhash(db):
+    from sqlalchemy import select
+
+    from polaris.db.models import RawItem
+    from polaris.db.session import session_scope
+    from polaris.ingest import RawItemIn, ingest_raw_items
+
+    item = RawItemIn(source="tencent:careers", external_id="1", raw_text="Agent 开发工程师\n深圳", fetch_method="api")
+    first = ingest_raw_items([item])
+    again = ingest_raw_items([item, item])  # 同一批里重复的也只算一次
+    assert first.inserted == 1 and again.inserted == 0 and again.seen_again == 1
+    with session_scope() as s:
+        row = s.execute(select(RawItem)).scalar_one()
+        assert row.last_seen_at > row.first_seen_at and row.simhash is not None and row.fetch_method == "api"
+
+
+def test_simhash_separates_reposts_from_unrelated():
+    from polaris.dedup import near_duplicate, simhash64
+
+    a = "米哈游目前在紧急补招实习生，基础日薪260/天，接受无经验，可预订寒假！每周线下到岗至少4天，实习时长最低3个月，表现优秀有转正机会"
+    b = a + "！！#找实习[话题]# [飞吻R]"
+    c = "滴滴后端一面，主要拷打项目，四十分钟，无手撕。知识库怎么存储、建设、分层，RAG 的流程，怎么召回"
+    assert near_duplicate(simhash64(a), simhash64(b)) and not near_duplicate(simhash64(a), simhash64(c))

@@ -61,3 +61,41 @@ def test_boss_keeps_only_big_companies_and_drops_recruiter_names():
     assert c.stats.skipped_small == 1 and c.stats.rate_limited == 1 and c.stats.stopped == "rate_limited"
     assert all(a[0] != "search" or a[1] == "Agent 实习" for a in calls)  # 限流后第二个词不再搜
     assert ["--job-type", "实习"] == calls[0][-2:]
+
+
+def test_xhs_stops_on_block_signal_and_dedupes_across_sorts():
+    from polaris.collectors.base import Query
+    from polaris.collectors.xhs import XhsCollector
+
+    feeds = [{"id": "n1", "xsecToken": "t", "modelType": "note", "noteCard": {"displayTitle": "字节 Agent 实习内推"}}]
+    calls: list[str] = []
+
+    def caller(name, args):
+        calls.append(name)
+        if name == "search_feeds":
+            return {"feeds": feeds}
+        return {"data": {"note": {"noteId": "n1", "title": "t", "desc": "面试官频繁追问验证细节"}, "comments": {}}}
+
+    c = XhsCollector(pause=(0, 0), known=set(), caller=caller, sorts=("最新", "最多点赞"), open_profiles=False)
+    items = list(c.collect(Query(keywords=["字节 Agent"])))
+    assert [i.external_id for i in items] == ["n1"]  # 两种排序都搜到同一条，只打开一次
+    assert calls == ["search_feeds", "get_feed_detail", "search_feeds"] and c.stats.stopped is None  # 正文里的"频繁""验证"不算被拦
+
+    def blocked(name, args):
+        raise RuntimeError("访问频繁，请稍后再试")
+
+    c2 = XhsCollector(pause=(0, 0), known=set(), caller=blocked)
+    assert list(c2.collect(Query(keywords=["a", "b", "c"]))) == []
+    assert c2.stats.stopped and "疑似被拦" in c2.stats.stopped and c2.stats.calls == 1  # 第一次就停，不再试
+
+
+def test_xhs_stops_after_consecutive_failures():
+    from polaris.collectors.base import Query
+    from polaris.collectors.xhs import XhsCollector
+
+    def flaky(name, args):
+        raise RuntimeError("context deadline exceeded")
+
+    c = XhsCollector(pause=(0, 0), known=set(), caller=flaky)
+    list(c.collect(Query(keywords=["a", "b", "c", "d", "e"])))
+    assert c.stats.calls == 3 and "连续失败" in c.stats.stopped

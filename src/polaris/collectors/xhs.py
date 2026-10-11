@@ -31,6 +31,12 @@ READ_ONLY_TOOLS = frozenset({"check_login_status", "get_login_qrcode",
                              "search_feeds", "get_feed_detail", "user_profile", "list_feeds"})
 VERTICAL_WORDS = ("实习", "内推", "面经", "招聘", "hc", "HC", "offer", "日常实习", "暑期", "校招", "转正", "base")
 RECRUITER_WORDS = ("内推", "招聘", "招人", "hc", "HC", "直招", "收简历")
+# 出现这些字样说明平台在拦：验证码、操作频繁、登录失效、账号异常。碰到一次就停下当天的采集
+BLOCK_WORDS = ("验证", "频繁", "安全限制", "账号异常", "未登录", "登录失效", "请登录", "captcha", "too many", "风控")
+PAYLOAD_KEYS = ("feeds", "data", "note", "notes", "userBasicInfo")
+MAX_CONSECUTIVE_FAILURES = 3
+COLLECTOR_VERSION = "xhs-2"  # 2：半年内、多种排序、遇阻即停
+MAX_CONSECUTIVE_EMPTY = 5
 
 
 class BlockedTool(PermissionError):
@@ -159,6 +165,7 @@ class XhsStats:
     failures: int = 0
     calls: int = 0
     seconds: float = 0.0
+    stopped: str | None = None
     errors: list[str] = field(default_factory=list)
 
 
@@ -176,27 +183,47 @@ class XhsCollector:
 
     def __init__(self, max_calls: int = 30, pause: tuple[float, float] = (3.0, 8.0), publish_time: str = "一周内",
                  open_profiles: bool = True, known: set[str] | None = None,
-                 caller: Callable[[str, dict[str, Any]], dict[str, Any]] = call_json):
-        self.max_calls, self.pause, self.publish_time = max_calls, pause, publish_time
+                 caller: Callable[[str, dict[str, Any]], dict[str, Any]] = call_json,
+                 sorts: tuple[str, ...] = ("最新",)):
+        self.max_calls, self.pause, self.publish_time, self.sorts = max_calls, pause, publish_time, sorts
         self.open_profiles = open_profiles
         self.known = known if known is not None else known_note_ids()
         self.caller = caller
         self.per_query_calls: int | None = None  # 每个查询词最多用几次调用，免得第一个词把预算用光
         self.stats = XhsStats()
         self._query_start = 0
+        self._fails_in_a_row = 0
+        self._empty_in_a_row = 0
+        self._seen_feeds: set[str] = set()  # 本次已经看过（打开或按规则跳过）的，换个排序再搜到不重复判断
+
+    def _stop(self, reason: str) -> None:
+        if not self.stats.stopped:
+            self.stats.stopped = reason
 
     def _call(self, name: str, args: dict[str, Any]) -> dict[str, Any] | None:
-        if self.stats.calls >= self.max_calls:
+        if self.stats.stopped or self.stats.calls >= self.max_calls:
             return None
         if self.per_query_calls is not None and self.stats.calls - self._query_start >= self.per_query_calls:
             return None
         self.stats.calls += 1
         start = time.perf_counter()
         try:
-            return self.caller(name, args)
+            result = self.caller(name, args)
+            self._fails_in_a_row = 0
+            # 只在没有正常内容时才看拦截字样：笔记正文里出现"验证""频繁"不算
+            has_payload = isinstance(result, dict) and any(result.get(k) for k in PAYLOAD_KEYS)
+            if not has_payload and any(w in str(result)[:2000] for w in BLOCK_WORDS):
+                self._stop(f"疑似被拦：{name} 返回 {str(result)[:120]}")
+            return result
         except Exception as e:  # noqa: BLE001  单次失败不影响整轮
             self.stats.failures += 1
-            self.stats.errors.append(f"{name}: {e}"[:200])
+            self._fails_in_a_row += 1
+            msg = f"{name}: {e}"[:200]
+            self.stats.errors.append(msg)
+            if any(w in str(e) for w in BLOCK_WORDS):
+                self._stop(f"疑似被拦：{msg}")
+            elif self._fails_in_a_row >= MAX_CONSECUTIVE_FAILURES:
+                self._stop(f"连续失败 {self._fails_in_a_row} 次：{msg}")
             return None
         finally:
             self.stats.seconds += time.perf_counter() - start
@@ -218,35 +245,43 @@ class XhsCollector:
         kept["user"] = {k: (note.get("user") or {}).get(k) for k in ("userId", "nickname")}
         return RawItemIn(source="xhs", tier="B", kind="post", url=note_url(feed_id, token), external_id=feed_id,
                          query=query, raw_text=to_text(note, comments), raw_json={"note": kept, "comments": comments},
-                         fetched_at=datetime.now(UTC))
+                         fetched_at=datetime.now(UTC), fetch_method="mcp", collector_version=COLLECTOR_VERSION,
+                         published_at=datetime.fromtimestamp(note["time"] / 1000, UTC) if note.get("time") else None)
 
     def collect(self, query: Query) -> Iterator[RawItemIn]:
         for keyword in query.keywords:
-            if self.stats.calls >= self.max_calls:
+            if self.stats.stopped or self.stats.calls >= self.max_calls:
                 return
             self.stats.queries += 1
             self._query_start = self.stats.calls
-            result = self._call("search_feeds", {"keyword": keyword,
-                                                 "filters": {"sort_by": "最新", "publish_time": self.publish_time}})
-            if not result:
-                continue
-            self.stats.searched += 1
-            for feed in result.get("feeds") or []:
-                self.stats.feeds_seen += 1
-                fid, token = feed.get("id"), feed.get("xsecToken")
-                if not fid or not token:
+            for sort in self.sorts:  # 同一个词换几种排序搜：最新的、最多点赞的、最多收藏的，覆盖更全
+                result = self._call("search_feeds", {"keyword": keyword,
+                                                     "filters": {"sort_by": sort, "publish_time": self.publish_time}})
+                if not result:
                     continue
-                if fid in self.known:
-                    self.stats.skipped_known += 1
-                    continue
-                if not worth_opening(feed):
-                    self.stats.skipped_rule += 1
-                    continue
-                item = self._open(fid, token, keyword)
-                if item is None:
-                    continue
-                yield item
-                yield from self._author_posts(feed, keyword)
+                self.stats.searched += 1
+                feeds = result.get("feeds") or []
+                self._empty_in_a_row = 0 if feeds else self._empty_in_a_row + 1
+                if self._empty_in_a_row >= MAX_CONSECUTIVE_EMPTY:
+                    self._stop(f"连续 {self._empty_in_a_row} 次搜索一条结果都没有，可能被限制")
+                    return
+                for feed in feeds:
+                    self.stats.feeds_seen += 1
+                    fid, token = feed.get("id"), feed.get("xsecToken")
+                    if not fid or not token or fid in self._seen_feeds:
+                        continue
+                    self._seen_feeds.add(fid)
+                    if fid in self.known:
+                        self.stats.skipped_known += 1
+                        continue
+                    if not worth_opening(feed):
+                        self.stats.skipped_rule += 1
+                        continue
+                    item = self._open(fid, token, keyword)
+                    if item is None:
+                        continue
+                    yield item
+                    yield from self._author_posts(feed, keyword)
 
     def _author_posts(self, feed: dict[str, Any], keyword: str) -> Iterator[RawItemIn]:
         """作者发的是内推或招聘帖时，再看他主页上的其他同类笔记（纵向再深一层）。"""

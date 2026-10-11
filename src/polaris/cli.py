@@ -61,6 +61,46 @@ def collect_xhs(queries: int = typer.Option(3, help="本轮搜几个查询词"),
              {"max_calls": max_calls, "publish_time": publish_time})
 
 
+@collect_app.command("xhs-day")
+def collect_xhs_day(max_calls: int = typer.Option(800, help="今天最多调用小红书工具几次（每次约 40 秒，一次一个）"),
+                    until: str = typer.Option("23:00", help="几点停，本机时间"),
+                    round_queries: int = typer.Option(4, help="每轮搜几个查询词"),
+                    publish_time: str = typer.Option("半年内", help="一天内、一周内、半年内、不限"),
+                    sorts: str = typer.Option("最新,最多点赞,最多收藏", help="每个词按哪几种排序各搜一次")) -> None:
+    """小红书连续采一天：一轮一轮地搜，每轮采完就抽取、提新查询词；到上限、到点或出现被拦的迹象就停。"""
+    from datetime import datetime
+
+    from polaris.agent.scouts import discover_queries
+    from polaris.collectors.rounds import collect_round
+    from polaris.collectors.xhs import XhsCollector, known_note_ids
+    from polaris.extract import run_extract
+
+    hh, mm = (int(x) for x in until.split(":"))
+    deadline = datetime.now().replace(hour=hh, minute=mm, second=0, microsecond=0)
+    known, used, rounds, total_new, stop = known_note_ids(), 0, 0, 0, None
+    sort_list = tuple(x.strip() for x in sorts.split(",") if x.strip())
+    per_query = 3 * len(sort_list) + 20  # 每个词：几次搜索 + 最多打开二十来条
+    while used < max_calls and datetime.now() < deadline and stop is None:
+        budget = min(round_queries * per_query, max_calls - used)
+        c = XhsCollector(max_calls=budget, publish_time=publish_time, sorts=sort_list, pause=(2.0, 5.0), known=known)
+        rounds += 1
+        typer.echo(f"第 {rounds} 轮（已用 {used}/{max_calls} 次）{datetime.now():%H:%M}")
+        r = collect_round("xhs", c, round_queries, {"max_calls": budget, "publish_time": publish_time,
+                                                     "sorts": list(sort_list), "mode": "day"}, echo=typer.echo)
+        used += c.stats.calls
+        total_new += len(r["new_ids"])
+        stop = c.stats.stopped
+        if r["new_ids"]:
+            out = run_extract("post", len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, "xhs")
+            added = discover_queries(r["new_ids"], r["run_id"])
+            typer.echo(f"  抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
+        if c.stats.calls == 0 and stop is None:
+            stop = "这一轮一次都没调用（查询词用完或预算为 0）"
+    typer.echo(f"今天共 {rounds} 轮，调用 {used} 次，新采到 {total_new} 条笔记。")
+    if stop:
+        typer.echo(f"提前停下：{stop}。请在手机上看一眼小红书账号是否正常，没问题再继续。")
+
+
 @collect_app.command("boss")
 def collect_boss(queries: int = typer.Option(2, help="本轮搜几个查询词"),
                  max_calls: int = typer.Option(40, help="本轮最多调用 boss-cli 几次（搜索和详情都算）"),
@@ -174,6 +214,14 @@ def seed(file: Path = typer.Option(FIXTURE, help="合成数据文件")) -> None:
         result = seed_records(file, run_id)
         stats.update(result.model_dump(exclude={"ids"}))
     typer.echo(f"读到 {result.received} 条，新写入 {result.inserted} 条，已存在 {result.duplicates} 条。")
+
+
+@app.command()
+def report() -> None:
+    """今天的采集日报：各来源新增多少、涉及哪些大厂、有没有被拦。"""
+    from polaris.report import daily, render
+
+    typer.echo(render(daily()))
 
 
 @metrics_app.command("m1")

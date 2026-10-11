@@ -3,9 +3,10 @@
 列表接口给岗位名、事业群、地点、职责；详情接口再给任职要求。请求之间随机间隔，不给对方添负担。
 """
 import random
+import re
 import time
 from collections.abc import Iterable, Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, ClassVar, Literal
 
 import httpx
@@ -19,6 +20,14 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Polaris job-search agent; personal use)"}
 
 def _ts() -> str:
     return str(int(time.time() * 1000))
+
+
+def parse_cn_date(text: str | None) -> datetime | None:
+    """"2026年08月13日" → 北京时间当天零点。"""
+    m = re.fullmatch(r"(\d{4})年(\d{1,2})月(\d{1,2})日", (text or "").strip())
+    if not m:
+        return None
+    return datetime(*map(int, m.groups()), tzinfo=timezone(timedelta(hours=8)))
 
 
 def to_text(post: dict[str, Any]) -> str:
@@ -75,4 +84,5 @@ class TencentCollector:
                 full = {**post, **(self.detail(pid) if self.with_detail else {})}
                 yield RawItemIn(source="tencent:careers", tier="A", kind="job", url=full.get("PostURL"),
                                 external_id=pid, query=keyword, raw_text=to_text(full), raw_json=full,
-                                fetched_at=datetime.now(UTC))
+                                fetched_at=datetime.now(UTC), fetch_method="api", collector_version="tencent-1",
+                                published_at=parse_cn_date(full.get("LastUpdateTime")))
