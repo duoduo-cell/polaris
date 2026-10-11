@@ -8,13 +8,13 @@
 2. `docs/STATUS.md`：现在做到哪一步，下一步做什么。每完成一个模块更新它
 3. `docs/PLAN.md`：总体框架、统一决定、模块顺序和验收方式。讲"怎么做"的文档互相冲突时以它为准
 4. `docs/INTRO.md`：项目介绍、对标产品、每日流程、围绕工具调用的核心技术点、评测设计，每条都附依据
-5. `docs/STACK.md`：技术栈定稿和选型依据
+5. `docs/TECH.md`：**唯一的技术方案文档**（10-11 重写）：架构、选型、十个环节、检索和 Agent 规则、评测
 6. `docs/PRODUCT.md`：功能清单和数据源
 7. `docs/DATASET.md`：数据集计划——格式、各来源怎么采、不被封的规矩、用户要提供什么
 8. `docs/HACKATHON.md`：比赛的硬性要求和截止时间
 9. `docs/FINDINGS.md`：联网核对和实测过的结论
 10. `docs/research/`：岗位调研（字节、小红书）
-11. `docs/TECH.md`：规划阶段的初稿，已被 `STACK.md` 取代，只作参考
+11. `docs/STACK.md`：选型的调研过程记录；`docs/REFERENCE_WEKNORA.md`：参考答案腾讯 WeKnora 的逐项对照
 
 技术判断要有依据：查官方文档、GitHub、工程团队的公开文章或论文，并在文档里注明出处；拿不准的先做小实验。
 
