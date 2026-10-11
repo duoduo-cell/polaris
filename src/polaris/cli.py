@@ -454,6 +454,16 @@ def search(query: str, scope: str = typer.Option("all", help="all / jobs / posts
         typer.echo(f"{h.final:.3f}  重排 {rr}  融合 {h.fused:.2f}  {h.ranks}  {h.header}")
 
 
+@metrics_app.command("m4-bench")
+def metrics_m4_bench(k: int = typer.Option(3, help="每题跑几次，用来算 pass^k")) -> None:
+    """M4b：Polaris-Bench v2 难题（会调模型），knowledge 和 search 两种配置对比，然后重出 M4 报告。"""
+    from polaris.eval import m4
+
+    m4.run_bench(k=k)
+    m4.REPORT.write_text(m4.render(json.loads(m4.REPORT_JSON.read_text(encoding="utf-8"))), encoding="utf-8")
+    typer.echo(m4.REPORT.read_text(encoding="utf-8"))
+
+
 @metrics_app.command("market")
 def metrics_market() -> None:
     """大厂 Agent 岗位要什么技术、面经里问什么（按采到的数据统计，不调模型）。"""

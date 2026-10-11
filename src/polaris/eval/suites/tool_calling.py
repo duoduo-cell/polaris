@@ -25,6 +25,8 @@ class Task:
     cite: list[str] = field(default_factory=list)  # 回答里要写出的条目编号（任一即可）
     expect_tools: bool = True
     faults: dict[str, list[str]] = field(default_factory=dict)
+    cite_min: int = 1  # 至少写出几个 cite 里的编号（推荐类题要多个）
+    cite_only: str | None = None  # 给前缀（如 "J-"）时，回答里这类编号必须都在 cite 里：推荐了不符合条件的岗位算错
 
 
 def date_forms(d: date) -> list[str]:
@@ -104,8 +106,15 @@ def check(task: Task, answer: str, tool_calls: list[dict[str, Any]], error: str 
     tools_ok = used_tools if task.expect_tools else not used_tools
     if task.category == "conflict":  # 两个来源的说法都要指出来
         cite_ok = all(cited(c, answer) for c in task.cite)
+    stray: list[str] = []
+    if task.cite_min > 1 or task.cite_only:
+        cite_ok = sum(cited(c, answer) for c in task.cite) >= task.cite_min
+        if task.cite_only:
+            mentioned = set(re.findall(rf"(?<![A-Za-z0-9-]){re.escape(task.cite_only)}\d+", answer))
+            stray = sorted(mentioned - set(task.cite))
+            cite_ok = cite_ok and not stray
     success = error is None and values_ok and cite_ok and tools_ok
-    return {"success": success, "values_ok": values_ok, "cite_ok": cite_ok, "tools_ok": tools_ok,
+    return {"success": success, "values_ok": values_ok, "cite_ok": cite_ok, "tools_ok": tools_ok, "stray": stray,
             "n_tool_calls": len(tool_calls),
             "invalid_args": sum(1 for c in tool_calls if c["error_kind"] == "invalid_args"),
             "injected": sum(1 for c in tool_calls if c["error_kind"] == "injected")}

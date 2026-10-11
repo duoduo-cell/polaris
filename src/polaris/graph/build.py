@@ -54,12 +54,13 @@ def _iso(v: Any) -> str | None:
 
 def _unit_path(company: str, unit: str | None) -> list[dict[str, str]]:
     """"CSIG/腾讯地图" → [{key: 腾讯|csig, name: CSIG}, {key: 腾讯|csig/腾讯地图, name: 腾讯地图}]。"""
-    path, out = [], []
+    path, names, out = [], [], []
     for seg in (unit or "").split("/"):
         if not key(seg):
             continue
         path.append(key(seg))
-        out.append({"key": f"{company}|{'/'.join(path)}", "name": seg.strip(), "company": company})
+        names.append(seg.strip())
+        out.append({"key": f"{company}|{'/'.join(path)}", "name": seg.strip(), "label": "/".join(names), "company": company})
     return out
 
 
@@ -124,7 +125,7 @@ CYPHER = {
         MERGE (c:Company {name: r.company})
         MERGE (j:Job {id: r.id}) SET j.key = r.key, j.title = r.title, j.job_type = r.job_type, j.posted_at = r.posted_at
         MERGE (j)-[e:AT]->(c) SET e.source = r.source, e.at = r.at""",
-    "units": "UNWIND $rows AS r MERGE (u:Unit {key: r.key}) SET u.name = r.name, u.company = r.company",
+    "units": "UNWIND $rows AS r MERGE (u:Unit {key: r.key}) SET u.name = r.name, u.label = r.label, u.company = r.company",
     "unit_parent": """UNWIND $rows AS r MATCH (u:Unit {key: r.child})
         CALL (u, r) { WITH u, r WHERE r.parent IS NULL MERGE (c:Company {name: r.company}) MERGE (u)-[:PART_OF]->(c) }
         CALL (u, r) { WITH u, r WHERE r.parent IS NOT NULL MATCH (p:Unit {key: r.parent}) MERGE (u)-[:PART_OF]->(p) }""",

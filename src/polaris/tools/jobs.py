@@ -7,6 +7,7 @@
 M4 起编号 J- 指合并后的岗位（之前指单条挂牌），参数不变。
 """
 import re
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -56,6 +57,7 @@ class JobsSearchArgs(Page):
     job_type: Literal["intern", "campus", "social"] | None = Field(None, description="intern 实习、campus 校招、social 社招")
     direction: str | None = Field(None, description="方向，如 Agent、RAG、大模型、后端、算法")
     big_only: bool = Field(True, description="只看风向标大厂名单里的公司")
+    since_days: int | None = Field(None, ge=1, le=365, description="只看最近多少天发布的岗位（没写发布日期的岗位会被排除）")
 
 
 def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
@@ -90,6 +92,8 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             stmt = stmt.where(or_(any_(Job.directions) == args.direction, Job.title.ilike(f"%{args.direction}%")))
         if args.big_only:
             stmt = stmt.where(Job.company_id.is_not(None))
+        if args.since_days:
+            stmt = stmt.where(Job.posted_at >= date.today() - timedelta(days=args.since_days))
         if order is None:
             rows = s.execute(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)
                              .limit(args.limit + 1).offset(args.offset)).scalars().all()
@@ -138,6 +142,7 @@ class PostsSearchArgs(Page):
     company: str | None = Field(None, description="帖子涉及的公司，如 字节、滴滴、米哈游")
     post_type: Literal["内推", "招聘", "面经", "经验", "求助", "其他"] | None = Field(None, description="帖子类型")
     has_referral: bool | None = Field(None, description="true 只看明确能内推的")
+    since_days: int | None = Field(None, ge=1, le=365, description="只看最近多少天发的帖子")
 
 
 def _post_row(p: Post, r: RawItem, detailed: bool) -> dict[str, Any]:
@@ -168,6 +173,8 @@ def posts_search(args: PostsSearchArgs) -> dict:
             stmt = stmt.where(Post.post_type == args.post_type)
         if args.has_referral is not None:
             stmt = stmt.where(Post.has_referral.is_(args.has_referral))
+        if args.since_days:
+            stmt = stmt.where(Post.published_at >= datetime.now(UTC) - timedelta(days=args.since_days))
         if order is None:
             rows = s.execute(stmt.order_by(Post.published_at.desc().nulls_last(), Post.id)
                              .limit(args.limit + 1).offset(args.offset)).all()

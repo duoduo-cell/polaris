@@ -21,7 +21,8 @@ from polaris.runs import git_commit, run_scope
 
 CATEGORY_NAMES = {"lookup": "单查", "english": "英文", "conflict": "冲突识别", "irrelevant": "不该调工具",
                   "abstain": "找不到要说找不到", "recovery": "出错恢复", "posts": "查笔记", "alias": "公司别名",
-                  "multi": "多条件"}
+                  "multi": "多条件", "kg": "图谱统计", "compare": "比较", "questions": "面试题", "time": "按时间筛",
+                  "recommend": "带条件推荐"}
 
 
 def percentile(values: list[int], q: float) -> int | None:
@@ -108,7 +109,7 @@ def run_suite(tasks: list[Task], *, k: int, module: str, suite: str, cassette_di
             "completion_tokens": sum(c.completion_tokens or 0 for c in answered),
             "replay_identical": sum(replay_ok.values()), "replay_total": len(replay_ok),
             "failures": [{k_: r[k_] for k_ in ("task", "k", "values_ok", "cite_ok", "tools_ok", "error")}
-                         | {"answer": r["answer"][:200]} for r in results if not r["success"]],
+                         | {"stray": r.get("stray", []), "answer": r["answer"][:200]} for r in results if not r["success"]],
             "results": results,
         })
     return dict(stats)

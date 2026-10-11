@@ -59,6 +59,92 @@ def index_stats() -> dict[str, Any]:
             "rerank_model": s_.rerank_model, "graph": graph}
 
 
+BENCH_JSON = REPORT_DIR / "M4-bench.json"
+BENCH_PRIVATE = ROOT / "data" / "eval" / "M4-bench.json"
+BENCH_CASSETTES = ROOT / "data" / "eval" / "cassettes" / "m4b"
+PRIVATE_TOOLS = ("posts_search", "posts_get", "questions_search")
+HIDDEN = "（查过帖子或面试题，回答原文只在本机）"
+
+
+def run_bench(k: int = 3) -> dict[str, Any]:
+    """Polaris-Bench v2：同一套难题，knowledge 配置（加面试题检索和图谱统计）对比 search 配置（M3 的四个工具）。
+    录像和完整回答只在本机（会涉及帖子原文）；公开的 JSON 里，查过帖子或面试题的回答换成占位。"""
+    from polaris.agent.minimal import KNOWLEDGE, SEARCH
+    from polaris.eval.runner import run_suite
+    from polaris.eval.suites.bench_v2 import SUITE_VERSION, build_tasks
+
+    tasks = build_tasks()
+    full: dict[str, Any] = {"suite": SUITE_VERSION, "k": k, "profiles": {}}
+    for profile in (KNOWLEDGE, SEARCH):
+        cassettes = BENCH_CASSETTES / profile.name
+        cassettes.mkdir(parents=True, exist_ok=True)
+        for old in cassettes.glob("*.jsonl"):
+            old.unlink()
+        full["profiles"][profile.name] = run_suite(tasks, k=k, module="M4", suite=SUITE_VERSION, cassette_dir=cassettes,
+                                                   profile=profile, purpose="m4_bench")
+    BENCH_PRIVATE.parent.mkdir(parents=True, exist_ok=True)
+    BENCH_PRIVATE.write_text(json.dumps(full, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    public: dict[str, Any] = {"suite": SUITE_VERSION, "k": k, "profiles": {}}
+    for name, st in full["profiles"].items():
+        touched = {r["task"] for r in st["results"] if any(t in PRIVATE_TOOLS for t in r["tools"])}
+        public["profiles"][name] = {
+            **st, "results": [{**r, "answer": HIDDEN} if r["task"] in touched else r for r in st["results"]],
+            "failures": [{**f, "answer": HIDDEN} if f["task"] in touched else f for f in st["failures"]]}
+    BENCH_JSON.write_text(json.dumps(public, ensure_ascii=False, indent=2, default=str), encoding="utf-8", newline="\n")
+    return public
+
+
+def _metric(st: dict[str, Any], key: str | None) -> str:
+    if key is None:
+        return f"{st['replay_identical']}/{st['replay_total']}"
+    v = st.get(key)
+    if v is None:
+        return "—"
+    if key == "avg_tool_calls":
+        return f"{v:.1f}"
+    if key == "arg_valid_rate":
+        return pct(v, 1)
+    return str(v)
+
+
+def render_bench(b: dict[str, Any]) -> list[str]:
+    from polaris.eval.runner import CATEGORY_NAMES
+
+    k, profiles = b["k"], b["profiles"]
+    names = list(profiles)
+    first = profiles[names[0]]
+    lines = [f"## 5. Polaris-Bench v2：工具调用难题（{first['tasks']} 题，每题跑 {k} 次）", "",
+             "比较、图谱统计、面试题、按时间筛、跨来源冲突（合成数据）、带条件的推荐（推荐了不符合条件的岗位算错）、"
+             "找不到、出错恢复。标准答案建题时从库里现算（`src/polaris/eval/suites/bench_v2.py`）。"
+             f"模型 `{first['model']}`，生成于 {first['generated_at']}。对比两种配置："
+             "**knowledge**（6 个工具，含 questions_search、kg_stats）和 **search**（M3 的 4 个工具）。", "",
+             "| 类别 | 题数 | " + " | ".join(f"{n} 单次成功 | {n} pass^{k}" for n in names) + " |",
+             "|---|---|" + "---|---|" * len(names)]
+    for cat in first["categories"]:
+        cells = [f"{profiles[n]['categories'][cat]['success']}/{profiles[n]['categories'][cat]['runs']} | "
+                 f"{profiles[n]['categories'][cat]['pass_k']}/{profiles[n]['categories'][cat]['tasks']}" for n in names]
+        lines.append(f"| {CATEGORY_NAMES.get(cat, cat)} | {first['categories'][cat]['tasks']} | " + " | ".join(cells) + " |")
+    totals = [f"{profiles[n]['success']}/{profiles[n]['runs']}（{pct(profiles[n]['success'], profiles[n]['runs'])}） | "
+              f"**{profiles[n]['pass_k']}/{profiles[n]['tasks']}**" for n in names]
+    lines.append(f"| **合计** | {first['tasks']} | " + " | ".join(totals) + " |")
+    lines += ["", "| 指标 | " + " | ".join(names) + " |", "|---|" + "---|" * len(names)]
+    for label, key in (("平均每题工具调用", "avg_tool_calls"), ("参数一次合格率（不含注入的故障）", "arg_valid_rate"),
+                       ("耗时中位数（毫秒）", "latency_p50_ms"), ("耗时 P95（毫秒）", "latency_p95_ms"),
+                       ("完整回放与原次一致", None)):
+        lines.append(f"| {label} | " + " | ".join(_metric(profiles[n], key) for n in names) + " |")
+    lines += ["", f"knowledge 各工具调用次数：{profiles[names[0]]['tool_usage']}", ""]
+    for n in names:
+        fails = profiles[n]["failures"]
+        if not fails:
+            continue
+        lines += [f"{n} 没通过的：", "", "| 题 | 第几次 | 值对 | 编号对 | 工具对 | 推荐了不合条件的 |", "|---|---|---|---|---|---|"]
+        for f in fails:
+            lines.append(f"| {f['task']} | {f['k'] + 1} | {'是' if f['values_ok'] else '否'} | {'是' if f['cite_ok'] else '否'} | "
+                         f"{'是' if f['tools_ok'] else '否'} | {'、'.join(f.get('stray') or []) or '—'} |")
+        lines.append("")
+    return lines
+
+
 def run() -> dict[str, Any]:
     stats = {"generated_at": datetime.now(UTC).isoformat(timespec="seconds"), "alignment": alignment_stats(),
              "index": index_stats(), "retrieval": retrieval.evaluate()}
@@ -130,4 +216,6 @@ def render(st: dict[str, Any]) -> str:
               "- 重排阈值：qwen3-rerank 的分数三档重叠很多（不相关中位数 0.49、部分相关 0.65、完全相关 0.84），"
               "阈值 0.35 只能修掉尾巴，而且是在评测用的同一批数据上选的。",
               "- 帖子和岗位的关联很保守（团队名要能对上部门名），目前只连上少数几条；多数帖子只连到公司、技能和方向。", ""]
+    if BENCH_JSON.exists():
+        lines += render_bench(json.loads(BENCH_JSON.read_text(encoding="utf-8")))
     return "\n".join(lines)

@@ -83,3 +83,27 @@ def test_ir_metrics():
     assert m["map"] == pytest.approx((1 / 2 + 2 / 4) / 3)
     assert 0 < m["ndcg"] < 1
     assert metrics(["a", "b", "d"], rel, k=3)["ndcg"] == pytest.approx(1.0)
+
+
+def test_kg_stats_validates_before_touching_the_graph():
+    from polaris.tools import REGISTRY
+    from polaris.tools.knowledge import canonical_skill
+    from polaris.tools.runtime import ToolRuntime
+
+    rt = ToolRuntime(record_db=False)
+    out = rt.invoke(REGISTRY["kg_stats"], {"of": "questions", "group_by": "city"})
+    assert out.startswith("出错了") and "company、skill" in out
+    assert "不认识技能" in rt.invoke(REGISTRY["kg_stats"], {"group_by": "company", "skill": "量子计算"})
+    assert "没有启用" in rt.invoke(REGISTRY["kg_stats"], {"group_by": "company", "skill": "rag"})  # 测试里不连图谱
+    assert canonical_skill("rag") == "RAG/检索增强" and canonical_skill("langgraph") == "LangGraph"
+
+
+def test_recommendation_check_rejects_jobs_outside_the_constraints():
+    from polaris.eval.suites.tool_calling import Task, check
+
+    t = Task("rec", "recommend", "北京 Agent 实习挑 2 个", [], ["J-1", "J-2", "J-3"], cite_min=2, cite_only="J-")
+    calls = [{"tool": "jobs_search", "error_kind": None}]
+    assert check(t, "推荐 J-1 和 J-3", calls, None)["success"]
+    bad = check(t, "推荐 J-1、J-3，还有 J-9", calls, None)
+    assert not bad["success"] and bad["stray"] == ["J-9"]
+    assert not check(t, "只推荐 J-2", calls, None)["success"]  # 不够两个
