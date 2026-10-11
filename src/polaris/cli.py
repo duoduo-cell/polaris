@@ -18,6 +18,111 @@ metrics_app = typer.Typer(help="各模块的指标，结果写到 eval/reports/"
 app.add_typer(metrics_app, name="metrics")
 agent_app = typer.Typer(help="agent", no_args_is_help=True)
 app.add_typer(agent_app, name="agent")
+collect_app = typer.Typer(help="采集：每轮挑最久没搜过的查询词，采到的写进 raw_items", no_args_is_help=True)
+app.add_typer(collect_app, name="collect")
+
+
+def _collect(source: str, collector, n_queries: int, params: dict) -> dict:
+    from polaris.collectors.rounds import collect_round
+
+    return collect_round(source, collector, n_queries, params, echo=typer.echo)
+
+
+@collect_app.command("all")
+def collect_all(sources: str = typer.Option("tencent,sites,xhs", help="逗号分隔：tencent、sites（字节和小红书官网）、xhs、boss"),
+                xhs_calls: int = typer.Option(20, help="小红书本轮最多调用几次"),
+                boss_calls: int = typer.Option(30, help="Boss 本轮最多调用几次")) -> None:
+    """每个来源一个侦察子 agent 并行采集，采完抽取，小红书侦察顺便提新查询词。"""
+    from polaris.agent.scouts import run_scouts
+
+    names = [x.strip() for x in sources.split(",") if x.strip()]
+    reports = run_scouts(names, {"xhs": {"max_calls": xhs_calls}, "boss": {"max_calls": boss_calls}})
+    for r in reports:
+        if not r["ok"]:
+            typer.echo(f"[{r['source']}] 失败：{r['error']}")
+            continue
+        line = (f"[{r['source']}] 新写入 {r['new']} 条，抽取 {r['extracted']} 条（失败 {r['extract_failed']}），"
+                f"提到大厂 {r['big_company_items']} 条，采集失败 {r['failures']} 次，限流 {r['rate_limited']} 次")
+        if r.get("stopped"):
+            line += f"，提前停下：{r['stopped']}"
+        if r.get("discovered_queries"):
+            line += f"；新查询词：{'、'.join(r['discovered_queries'])}"
+        typer.echo(line)
+
+
+@collect_app.command("xhs")
+def collect_xhs(queries: int = typer.Option(3, help="本轮搜几个查询词"),
+                max_calls: int = typer.Option(20, help="本轮最多调用小红书工具几次（每次约 48 秒）"),
+                publish_time: str = typer.Option("一周内", help="只看多久以内发布的：一天内、一周内、半年内、不限")) -> None:
+    """小红书：横向搜笔记，纵向挖正文、评论和作者主页。需要本机 xhs-mcp 已登录。"""
+    from polaris.collectors.xhs import XhsCollector
+
+    _collect("xhs", XhsCollector(max_calls=max_calls, publish_time=publish_time), queries,
+             {"max_calls": max_calls, "publish_time": publish_time})
+
+
+@collect_app.command("boss")
+def collect_boss(queries: int = typer.Option(2, help="本轮搜几个查询词"),
+                 max_calls: int = typer.Option(40, help="本轮最多调用 boss-cli 几次（搜索和详情都算）"),
+                 max_pages: int = typer.Option(1, help="每个 城市×规模 组合翻几页（每页 15 条）"),
+                 cities: str = typer.Option("北京,上海,深圳,杭州", help="逗号分隔"),
+                 job_type: str = typer.Option("实习", help="实习、全职；填 不限 表示不筛")) -> None:
+    """Boss直聘：按 城市×公司规模 搜，只留大厂名单里的岗位并打开详情。需要本机 boss-cli 已扫码登录。"""
+    from polaris.collectors.boss import BossCollector
+
+    collector = BossCollector(cities=tuple(c.strip() for c in cities.split(",") if c.strip()), max_calls=max_calls,
+                              job_type=None if job_type == "不限" else job_type)
+    _collect("boss", collector, queries, {"max_calls": max_calls, "max_pages": max_pages, "cities": cities,
+                                          "job_type": job_type})
+    if collector.stats.stopped:
+        typer.echo(f"本轮提前停下：{collector.stats.stopped}"
+                   + ("（登录过期，请重新运行 boss login --qrcode）" if collector.stats.stopped == "not_authenticated" else ""))
+
+
+@app.command()
+def extract(kind: str = typer.Argument(..., help="job（岗位）或 post（小红书笔记）"),
+            limit: int = typer.Option(50, help="本轮最多抽几条"),
+            source: str = typer.Option(None, help="只抽某个来源，如 tencent:careers、xhs"),
+            redo: bool = typer.Option(False, help="先删掉旧提示词版本抽的结果，再按当前版本重抽")) -> None:
+    """把还没抽过的原始条目抽成结构化信息（会调模型）。"""
+    from polaris.extract import drop_stale, run_extract
+
+    if kind not in ("job", "post"):
+        raise typer.BadParameter("只能是 job 或 post")
+    with run_scope("extract", {"kind": kind, "limit": limit, "source": source, "redo": redo}) as (run_id, stats):
+        if redo:
+            stats["dropped_stale"] = drop_stale(kind, source)
+            typer.echo(f"删掉旧版本抽取结果 {stats['dropped_stale']} 条")
+        stats.update(run_extract(kind, limit, run_id, get_settings().llm_concurrency, source))
+    typer.echo(f"待抽 {stats['pending']} 条，抽出 {stats['extracted']} 条，失败 {stats['failed']} 条，"
+               f"属于大厂的 {stats['big_company']} 条。")
+
+
+@collect_app.command("bytedance")
+def collect_bytedance(queries: int = typer.Option(3, help="本轮搜几个方向词"),
+                      max_pages: int = typer.Option(2, help="每个词翻几页（每页 50 条）")) -> None:
+    """字节跳动校招官网（研发类日常实习）。用系统自带的 Edge 加载页面、读取接口返回。"""
+    from polaris.collectors.sites import ByteDanceCollector
+
+    _collect("bytedance", ByteDanceCollector(), queries, {"max_pages": max_pages})
+
+
+@collect_app.command("xhs-careers")
+def collect_xhs_careers(queries: int = typer.Option(2, help="本轮搜几个方向词"),
+                        max_pages: int = typer.Option(3, help="列表翻几页（每页 10 条）")) -> None:
+    """小红书招聘官网（研发方向）。逐个打开详情页读职责和要求。"""
+    from polaris.collectors.sites import XhsCareersCollector
+
+    _collect("xhs_careers", XhsCareersCollector(), queries, {"max_pages": max_pages})
+
+
+@collect_app.command("tencent")
+def collect_tencent(queries: int = typer.Option(4, help="本轮搜几个查询词"),
+                    max_pages: int = typer.Option(2, help="每个查询词翻几页（每页 20 条）")) -> None:
+    """腾讯招聘公开接口。"""
+    from polaris.collectors.tencent import TencentCollector
+
+    _collect("tencent", TencentCollector(), queries, {"max_pages": max_pages})
 
 
 @app.command("db-upgrade")
@@ -88,6 +193,25 @@ def metrics_m2(k: int = typer.Option(3, help="每题跑几次，用来算 pass^k
 
     m2.run(k=k)
     typer.echo((m2.REPORT_DIR / "M2.md").read_text(encoding="utf-8"))
+
+
+@metrics_app.command("m3")
+def metrics_m3() -> None:
+    """M3：采集覆盖、重复、大厂占比、限流；抽取逐字段对标准答案（不调模型）。"""
+    from polaris.eval import m3
+
+    m3.run()
+    typer.echo((m3.REPORT_DIR / "M3.md").read_text(encoding="utf-8"))
+
+
+@metrics_app.command("m3-tools")
+def metrics_m3_tools(k: int = typer.Option(3, help="每题跑几次，用来算 pass^k")) -> None:
+    """M3：真实数据上的工具调用套件 real-v1（会调模型），然后重出 M3 报告。"""
+    from polaris.eval import m3
+
+    m3.run_tools(k=k)
+    m3.run()
+    typer.echo((m3.REPORT_DIR / "M3.md").read_text(encoding="utf-8"))
 
 
 @agent_app.command("ask")

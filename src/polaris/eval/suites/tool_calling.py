@@ -90,15 +90,20 @@ def base_question(r: dict[str, Any]) -> str:
     return f"{t['company']}的「{t['title']}」日薪是多少？请写出依据的原始条目编号。"
 
 
+def cited(short_id: str, answer: str) -> bool:
+    """编号是否出现在回答里。不用单词边界：中文紧挨着编号时（如"编号J-12"）不算边界，会漏判。"""
+    return re.search(rf"(?<![A-Za-z0-9-]){re.escape(short_id)}(?!\d)", answer) is not None
+
+
 def check(task: Task, answer: str, tool_calls: list[dict[str, Any]], error: str | None) -> dict[str, Any]:
     """按最终结果打分：回答里有没有正确的值、有没有写出依据编号、该不该调工具。"""
     flat = re.sub(r"\s+", "", answer)
     used_tools = len(tool_calls) > 0
     values_ok = all(any(re.sub(r"\s+", "", w) in flat for w in group) for group in task.must_contain)
-    cite_ok = not task.cite or any(re.search(rf"\b{re.escape(c)}\b", answer) for c in task.cite)
+    cite_ok = not task.cite or any(cited(c, answer) for c in task.cite)
     tools_ok = used_tools if task.expect_tools else not used_tools
     if task.category == "conflict":  # 两个来源的说法都要指出来
-        cite_ok = all(re.search(rf"\b{re.escape(c)}\b", answer) for c in task.cite)
+        cite_ok = all(cited(c, answer) for c in task.cite)
     success = error is None and values_ok and cite_ok and tools_ok
     return {"success": success, "values_ok": values_ok, "cite_ok": cite_ok, "tools_ok": tools_ok,
             "n_tool_calls": len(tool_calls),

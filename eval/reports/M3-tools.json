@@ -1,0 +1,962 @@
+{
+  "generated_at": "2026-10-11T03:29:02+00:00",
+  "git_commit": "f34b435-dirty",
+  "suite": "real-v1",
+  "prompt_version": "search-v1",
+  "k": 3,
+  "model": "deepseek-v4.1-flash",
+  "tasks": 14,
+  "runs": 42,
+  "success": 42,
+  "pass_k": 14,
+  "categories": {
+    "lookup": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    },
+    "english": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "conflict": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "irrelevant": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "abstain": {
+      "runs": 3,
+      "success": 3,
+      "tasks": 1,
+      "pass_k": 1
+    },
+    "recovery": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    },
+    "posts": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    },
+    "alias": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    },
+    "multi": {
+      "runs": 6,
+      "success": 6,
+      "tasks": 2,
+      "pass_k": 2
+    }
+  },
+  "tool_calls": 141,
+  "invalid_args": 0,
+  "tool_errors": 0,
+  "injected": 6,
+  "arg_valid_rate": 1.0,
+  "avg_tool_calls": 3.357142857142857,
+  "tool_usage": {
+    "jobs_get": 19,
+    "jobs_search": 58,
+    "posts_get": 28,
+    "posts_search": 36
+  },
+  "latency_p50_ms": 21226,
+  "latency_p95_ms": 31692,
+  "llm_calls": 127,
+  "llm_answered": 127,
+  "llm_trace_complete": 127,
+  "prompt_tokens": 321163,
+  "completion_tokens": 26046,
+  "replay_identical": 14,
+  "replay_total": 14,
+  "failures": [],
+  "results": [
+    {
+      "task": "bd-hangzhou",
+      "category": "multi",
+      "k": 0,
+      "answer": "字节在杭州的 Agent 方向实习岗位（共查到 9 个，均含杭州）：\n\n| 编号 | 岗位名 | 城市 |\n|---|---|---|\n| J-204 | AI Agent全栈研发实习生 - 开发者服务 | 杭州、北京、上海 |\n| J-206 | 豆包大模型Agent Harness算法实习生 | 上海、北京、深圳、杭州 |\n| J-207 | Agent开发实习生 - 泛抖音 | 杭州 |\n| J-215 | AI Agent开发实习生-App Infra | 杭州 |\n| J-218 | Agent全栈开发实习生 - 数据平台 | 上海、杭州 |\n| J-225 | AI Agent全栈工程师实习生-中国交易与广告 | 杭州 |\n| J-230 | 后端开发（创作Agent方向）实习生 | 深圳、北京、杭州、广州 |\n| J-237 | Agent数据工程实习生 - 抖音用户产品 | 杭州、北京 |\n| J-253 | AI Agent评测实习生-数据平台 | 杭州 |\n\n说明：以上是按「公司=字节 + 城市=杭州 + 类型=实习 + 方向/关键词=Agent」筛出来的，全是字节跳动主体，职位类型标注为实习（未区分日常/暑期）。其中只在北京/上海等地、不含杭州的岗位已排除。想看某个岗位的任职要求或职位描述，告诉我编号即可。",
+      "error": null,
+      "latency_ms": 24127,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "tx-singapore",
+      "category": "lookup",
+      "k": 0,
+      "answer": "有，腾讯在新加坡有两个 Coding Agent 方向的实习岗：\n\n- **J-2** Coding Agent Research Intern 108212（腾讯，新加坡，实习，发布 2026-10-09，方向：Agent / 大模型 / 算法）\n- **J-3** Coding Agent Research Intern 108097（腾讯，新加坡，实习，发布 2026-09-29，方向：Agent / 大模型 / 算法）\n\n两个岗位要求基本一致：面向计算机/AI/软工/机器学习等相关专业**硕士或博士在读**；熟悉 Python，有扎实编程与深度学习基础，理解大模型与智能体的基本原理；能独立做实验、调代码、优化模型；对游戏开发、程序化内容生成以及生成式 AI 在互动娱乐中的应用有兴趣。加分项：熟悉 Unity / Unreal 等游戏引擎，有 Coding Agent、代码大模型、工具使用或多智能体系统开发经验，或有 CVPR / ICCV / ECCV / ICLR / ICML / NeurIPS 等顶会论文（J-2、J-3）。\n\n两个岗位都在新加坡 CapitaSky，投递链接分别见 J-2（R108212）和 J-3（R108097）的 Workday 页面。\n\n依据编号：J-2、J-3。",
+      "error": null,
+      "latency_ms": 23377,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "bd-doubao-time",
+      "category": "lookup",
+      "k": 0,
+      "answer": "**「豆包大模型Agent算法实习生 - Data AML」（J-209，字节跳动）**\n\n- 每周到岗：**至少 4 天**（全勤或长期实习者优先）\n- 最短实习期：**不少于 6 个月**\n\n依据：J-209 的职位要求第2条原文「每周至少实习4天，实习期不少于6个月，能够全勤或长期实习者优先」。\n\n补充信息：该岗位工作地点为上海、北京，属日常实习（算法类），方向为 Agent/大模型/数据/评测，投递链接见 J-209 的字节跳动校招页面。",
+      "error": null,
+      "latency_ms": 20219,
+      "tools": [
+        "jobs_search",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "xhs-kefu",
+      "category": "multi",
+      "k": 0,
+      "answer": "找到了。\n\n**小红书校招有一个智能客服 Agent 开发方向的岗位：**\n\n- **J-419**｜Product Engineer-产品工程师（Agent开发方向）-智能客服｜**base 上海**｜校招｜方向：Agent、RAG、大模型、评测\n- 链接：https://job.xiaohongshu.com/campus/position/22481\n\n依据：J-419（来自 jobs_search，公司=小红书，job_type=校招，关键词\"客服 Agent\"）。\n\n补充说明：如果放宽到\"Agent 开发方向\"但不限智能客服，小红书校招还有 J-417（企业智能方向，上海、杭州）、J-418（AI Coding 基建，上海、杭州）、J-435（Agentic ops，上海、杭州）等，但这些不是智能客服业务线，供参考。",
+      "error": null,
+      "latency_ms": 14922,
+      "tools": [
+        "jobs_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "en-seed",
+      "category": "english",
+      "k": 0,
+      "answer": "是的，字节跳动确实有 Seed 团队的「Agent研发实习生」岗位，而且是**两个城市各一个**（同名岗位，日常实习，为期 3 个月及以上）：\n\n| 岗位编号 | 岗位名 | 城市 | 类型 |\n|---|---|---|---|\n| **J-217** | Agent研发实习生-Seed | **上海** | 实习（日常实习） |\n| **J-222** | Agent研发实习生-Seed | **北京** | 实习（日常实习） |\n\n所以如果你问的是\"在哪个城市\"，答案是**上海（J-217）和北京（J-222）都有**，你要投哪个城市可以自己选。\n\n两份 JD 内容基本一致，主要方向为：\n- 负责 Agent 架构设计开发，构建具备自主规划、工具调用、记忆管理、环境交互能力的高性能 Agent 系统\n- Agent 与外部 CLI/Skills、知识库、多模态数据的对接集成\n- 探索 Agent 在音视频大模型场景的应用（Harness Engineering、Auto Research、Model Self-improvement 等）\n\n硬性要求：本科及以上在读、熟悉主流 Agent 开发框架并有实战经验、熟练掌握 C/C++/Python/Go 至少一门、熟悉大模型研发中的数据/训练/评测流程。\n\n另外顺带一提，Seed 团队还有几个相近的实习生岗位（如 J-226 大模型Agent框架架构实习生-上海、J-234 大模型Agent框架架构实习生-北京、J-233 大语言模型通用Agent算法实习生-北京、J-256 多模态Agent算法实习生-北京），如果你是想找 Agent 方向，这些也可以一起看。需要我把某一个的完整 JD 或投递链接整理出来吗？",
+      "error": null,
+      "latency_ms": 18295,
+      "tools": [
+        "jobs_search",
+        "jobs_get",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "alias-tiktok",
+      "category": "alias",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 28902,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "alias-pdd",
+      "category": "alias",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 17184,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "didi-round2",
+      "category": "posts",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 23021,
+      "tools": [
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "mihoyo-pay",
+      "category": "posts",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 31692,
+      "tools": [
+        "jobs_search",
+        "posts_search",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "mihoyo-dup",
+      "category": "conflict",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 29520,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 5,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "abstain-meituan",
+      "category": "abstain",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 30328,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "posts_search",
+        "posts_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 7,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "irrelevant-translate",
+      "category": "irrelevant",
+      "k": 0,
+      "answer": "I'm looking for an Agent development internship.",
+      "error": null,
+      "latency_ms": 12888,
+      "tools": [],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 0,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "recovery-ratelimit",
+      "category": "recovery",
+      "k": 0,
+      "answer": "有，共 2 个，都是腾讯 IEG / Level Infinite 在新加坡的实习岗：\n\n**J-2｜Coding Agent Research Intern 108212**\n- 公司/城市/类型：腾讯（IEG，Level Infinite 品牌），新加坡 CapitaSky，技术类实习\n- 方向标签：Agent、大模型、算法\n- 更新时间：2026-10-09\n- 主要工作：做 AI Coding Agent / 全自动游戏生成 / 游戏世界模型方向的算法研究，包括基于 LLM 的游戏编码智能体（代码生成、逻辑开发、错误诊断、自动调试与迭代优化）、游戏 demo/核心玩法/关卡的程序化生成，跟踪 Coding Agent、代码大模型、世界模型等前沿方向\n- 要求要点：CS/AI/软件工程/机器学习等相关专业硕博在读；熟悉 Python，深度学习基础扎实，理解 LLM 与智能体原理；能独立做实验、调代码、优化模型\n- 加分项：熟悉 Unity/Unreal 等游戏引擎；有 Coding Agent、代码大模型、工具调用或多智能体系统经验；有 CVPR/ICCV/ECCV/ICLR/ICML/NeurIPS 等顶会论文\n- 链接：https://tencent.wd1.myworkdayjobs.com/Tencent_Careers/job/Singapore-CapitaSky/Coding-Agent-Research-Intern_R108212\n\n**J-3｜Coding Agent Research Intern 108097**\n- 岗位内容、要求与加分项和 J-2 基本一致，属同一方向的另一个职位编号\n- 更新时间：2026-09-29\n- 链接：https://tencent.wd1.myworkdayjobs.com/Tencent_Careers/job/Singapore-CapitaSky/Coding-Agent-Research-Intern_R108097\n\n补充说明：我按「腾讯 + 新加坡 + 实习 + Coding Agent」和「腾讯 + 新加坡 + 实习 + Agent 方向」两种条件查，返回的都是上面这两个岗位，没有其他结果。另外第一次「腾讯+新加坡+实习+Agent方向」查询遇到过一次来源限流（HTTP 429），重试后正常返回。\n\n对你可能有用的一点：这两个岗位都明确面向硕/博在读，且偏好有顶会论文或游戏引擎经验的人，如果是本科在读或者没有相关研究经历，命中率可能不高。需要我帮你查腾讯其他城市/其他方向的 Agent 实习，或者找找相关的面经帖吗？",
+      "error": null,
+      "latency_ms": 20251,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get",
+        "jobs_get",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 5,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "recovery-timeout",
+      "category": "recovery",
+      "k": 0,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 23233,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "bd-hangzhou",
+      "category": "multi",
+      "k": 1,
+      "answer": "字节跳动在杭州、Agent 方向的实习岗位，第一页结果里这些岗位名都带 Agent（依据编号如下）：\n\n**杭州为唯一城市的：**\n- **J-207** Agent开发实习生 - 泛抖音\n- **J-215** AI Agent开发实习生-App Infra\n- **J-225** AI Agent全栈工程师实习生-中国交易与广告\n- **J-253** AI Agent评测实习生-数据平台\n\n**杭州为可选城市之一的：**\n- **J-204** AI Agent全栈研发实习生 - 开发者服务（杭州、北京、上海）\n- **J-206** 豆包大模型Agent Harness算法实习生（上海、北京、深圳、杭州）\n- **J-218** Agent全栈开发实习生 - 数据平台（上海、杭州）\n- **J-230** 后端开发（创作Agent方向）实习生（深圳、北京、杭州、广州）\n- **J-237** Agent数据工程实习生 - 抖音用户产品（杭州、北京）\n\n说明：以上是用「公司=字节、城市=杭州、类型=实习、方向/关键词=Agent」筛出来的，共翻了 20 条。第二页还有 AI Coding、AI 应用开发、大模型评测等岗位（如 J-265、J-273、J-302），但岗位名里不带 Agent，方向偏向大模型/AI 应用，如果你要放宽口径我可以再列。\n\n要不要我调出某个岗位的任职要求和职位描述？",
+      "error": null,
+      "latency_ms": 42558,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "tx-singapore",
+      "category": "lookup",
+      "k": 1,
+      "answer": "有，找到 **2 个**腾讯新加坡的 Coding Agent 方向实习：\n\n| 编号 | 岗位 | 公司/团队 | 城市 | 类型 | 更新时间 |\n|---|---|---|---|---|---|\n| **J-2** | Coding Agent Research Intern 108212 | 腾讯 IEG（Level Infinite） | 新加坡 | 实习 | 2026-10-09 |\n| **J-3** | Coding Agent Research Intern 108097 | 腾讯 IEG（Level Infinite） | 新加坡 | 实习 | 2026-09-29 |\n\n两者方向标签都是 Agent / 大模型 / 算法，工作内容基本一致：做基于 LLM 的游戏 Coding Agent（代码生成、智能调试、迭代优化），以及 AI 全自动生成游戏 demo、核心玩法、关卡等程序化内容，产出技术报告/论文/专利。\n\n**要求（J-2、J-3 一致）：**\n- CS / AI / 软件工程 / 机器学习等相关专业**硕士或博士在读**\n- 熟悉 Python，编程能力扎实，懂深度学习和 LLM、智能体基本原理\n- 能独立做实验、调代码、优化模型\n- 对游戏开发、程序化内容生成、生成式 AI 在互动娱乐中的应用有兴趣\n- 加分：Unity / Unreal Engine 等游戏引擎；Coding Agent、代码大模型、工具调用、多智能体系统经验；CVPR/ICCV/ECCV/ICLR/ICML/NeurIPS 等顶会论文\n\n两者是同一个岗位的两个招聘编号（JD 内容完全相同），投递时选一个即可。申请链接（J-2）：https://tencent.wd1.myworkdayjobs.com/Tencent_Careers/job/Singapore-CapitaSky/Coding-Agent-Research-Intern_R108212\n\n依据编号：**J-2、J-3**。",
+      "error": null,
+      "latency_ms": 19622,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "bd-doubao-time",
+      "category": "lookup",
+      "k": 1,
+      "answer": "**字节「豆包大模型Agent算法实习生 - Data AML」（J-209）的到岗要求：**\n\n- **每周至少实习 4 天**\n- **实习期不少于 6 个月**，能够全勤或长期实习者优先\n\n依据：**J-209**（职位要求第 2 条原文：「每周至少实习4天，实习期不少于6个月，能够全勤或长期实习者优先」）。\n\n补充信息：岗位地点在上海、北京（J-209）；另外 JD 里写了日常实习\"为期3个月及以上的项目实践机会\"，但具体到该岗位的硬性要求仍是 4 天/周、6 个月起。",
+      "error": null,
+      "latency_ms": 14352,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "xhs-kefu",
+      "category": "multi",
+      "k": 1,
+      "answer": "有。小红书校招里有明确做智能客服 Agent 开发的岗位：\n\n**J-419** Product Engineer-产品工程师（Agent开发方向）-智能客服\n- 公司：小红书 | 类型：校招（2027 校园招聘）| 方向：Agent、RAG、大模型、评测\n- **base 城市：上海**（工作地点：上海市）\n- 链接：https://job.xiaohongshu.com/campus/position/22481\n\n岗位内容摘要：负责小红书客服与电商购后体验相关技术建设，参与智能客服 Agent、多智能体协作、智能托管等系统的设计与开发，建设知识检索、工具调用、任务规划、效果评估等 Agent 能力。要求本科及以上、计算机相关专业，熟悉前端或后端至少一个方向（Go/Java/Python/Node.js 或 JS/TS/React/Vue），加分项包括大模型应用、智能体、RAG、AI 评测等实践。\n\n顺带一提，同批校招里还有几个相邻的 Agent 方向岗位（如 J-417 企业智能方向，base 上海/杭州；J-435 Agentic ops，base 上海/杭州），但不是\"智能客服\"场景。若只看智能客服 Agent，就是 J-419 这一个岗位，base 上海。",
+      "error": null,
+      "latency_ms": 21484,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "en-seed",
+      "category": "english",
+      "k": 1,
+      "answer": "**是的，字节跳动有 Seed 团队的 Agent 研发实习生岗位，而且有两个城市：**\n\n| 岗位编号 | 岗位名称 | 城市 |\n|---|---|---|\n| **J-217** | Agent研发实习生-Seed | 上海 |\n| **J-222** | Agent研发实习生-Seed | 北京 |\n\n两个岗位都是实习、时长 3 个月，方向标签为 Agent / 大模型 / 多模态 / 数据 / 评测。也就是说同一个岗位分别在上海和北京招聘（J-217 上海的原始岗位链接为 `.../7646379615653677365/detail`，J-222 北京的为 `.../7646346667644340485/detail`）。\n\n另外 Seed 相关还有几个相近的实习岗位，供参考：\n- **J-226** 大模型Agent框架架构实习生 - Seed Model（上海）\n- **J-234** 大模型Agent框架架构实习生-Seed（北京）\n- **J-233** 大语言模型通用Agent算法实习生 - Seed Model（北京）\n- **J-256** 多模态Agent算法实习生-Seed（北京）\n\n依据：J-217、J-222（另有 J-226、J-233、J-234、J-256）。需要看具体任职要求和职位描述全文的话，告诉我编号我再拉详情。",
+      "error": null,
+      "latency_ms": 23925,
+      "tools": [
+        "jobs_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "alias-tiktok",
+      "category": "alias",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 16544,
+      "tools": [
+        "posts_search",
+        "posts_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "alias-pdd",
+      "category": "alias",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 19082,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "didi-round2",
+      "category": "posts",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 16725,
+      "tools": [
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "mihoyo-pay",
+      "category": "posts",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 25348,
+      "tools": [
+        "jobs_search",
+        "posts_search",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "mihoyo-dup",
+      "category": "conflict",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 21706,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 5,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "abstain-meituan",
+      "category": "abstain",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 22774,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "posts_search",
+        "posts_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 8,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "irrelevant-translate",
+      "category": "irrelevant",
+      "k": 1,
+      "answer": "I'm looking for an Agent development internship.",
+      "error": null,
+      "latency_ms": 3217,
+      "tools": [],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 0,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "recovery-ratelimit",
+      "category": "recovery",
+      "k": 1,
+      "answer": "有，腾讯在新加坡有两个 Coding Agent 方向的实习岗位在招：\n\n| 编号 | 岗位 | 城市 | 类型 | 发布时间 |\n|---|---|---|---|---|\n| **J-2** | Coding Agent Research Intern 108212 | 新加坡 | 实习 | 2026-10-09 |\n| **J-3** | Coding Agent Research Intern 108097 | 新加坡 | 实习 | 2026-09-29 |\n\n**依据：J-2、J-3**（来源腾讯 careers，归属 IEG / Level Infinite，地点 Singapore-CapitaSky，方向标注为 Agent / 大模型 / 算法）\n\n两个岗位职责基本一致，做的是 AI Coding Agent 的前沿算法研发，偏向游戏场景：\n- 研发基于 LLM 的游戏编码 Agent，做代码生成、逻辑开发、错误诊断、自动调试与迭代优化；\n- 探索 AI 全自动生成游戏 demo、核心玩法、关卡等程序化内容；\n- 跟踪 Coding Agents、代码大模型、世界模型等方向，做算法实验、论文复现与技术创新；\n- 与资深研究员和游戏开发团队协作，产出技术报告、论文或专利。\n\n**要求要点（J-2 / J-3 相同）：**\n- CS、AI、软件工程、机器学习等相关专业**硕士或博士在读**；\n- 熟悉 Python，编程能力扎实，有深度学习基础，理解大模型与智能体原理；\n- 能独立做实验、调代码、优化模型，跑通从方案设计到实验验证的完整流程；\n- 对游戏开发、程序化内容生成、生成式 AI 在互动娱乐中的应用有兴趣；\n- **加分项**：熟悉 Unity / Unreal Engine；有 Coding Agent、代码大模型、工具使用或多智能体系统开发经验；有 CVPR、ICCV、ECCV、ICLR、ICML、NeurIPS 等顶会顶刊论文。\n\n投递链接：J-2 为 .../Coding-Agent-Research-Intern_R108212，J-3 为 .../Coding-Agent-Research-Intern_R108097（均在 Tencent_Careers 的 Singapore-CapitaSky 站点）。\n\n补充说明：第一次按\"公司+城市+方向+实习\"检索时遇到限流报错，用相同参数重试后拿到了结果，所以结论以上面两条为准。",
+      "error": null,
+      "latency_ms": 23438,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_get",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 5,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "recovery-timeout",
+      "category": "recovery",
+      "k": 1,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 23175,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "bd-hangzhou",
+      "category": "multi",
+      "k": 2,
+      "answer": "字节（字节跳动）在杭州、方向标为 Agent 的实习岗位不少，挑几个岗位名最贴的给你（编号为 J- 编号）：\n\n**岗位名带 Agent 的：**\n- J-204 AI Agent全栈研发实习生 - 开发者服务（杭州、北京、上海）\n- J-207 Agent开发实习生 - 泛抖音（杭州）\n- J-215 AI Agent开发实习生-App Infra（杭州）\n- J-218 Agent全栈开发实习生 - 数据平台（上海、杭州）\n- J-225 AI Agent全栈工程师实习生-中国交易与广告（杭州）\n- J-230 后端开发（创作Agent方向）实习生（深圳、北京、杭州、广州）\n- J-237 Agent数据工程实习生 - 抖音用户产品（杭州、北京）\n- J-253 AI Agent评测实习生-数据平台（杭州）\n- J-206 豆包大模型Agent Harness算法实习生（上海、北京、深圳、杭州）\n\n**方向含 Agent、名字不带\"Agent\"的：**\n- J-265 AI Coding研发工程师实习生-抖音研发（杭州）\n- J-273 / J-274 AI应用开发实习生-财经业务（杭州，两个不同岗位链接）\n- J-276 大模型评测后端实习生 - 模型数据工程（北京、上海、杭州）\n- J-292 前端开发实习生-开发者AI（杭州）\n- J-302 大模型质量效能实习生 - 抖音（杭州）\n- J-306 NLP对话大模型算法实习生-电商业务（杭州）\n- J-289 算法实习生-中国交易与广告（杭州）\n- J-264 AI数据科学实习生 - TikTok Shop（杭州、珠海）\n\n以上均为实习（3–4 个月，部分要求每周 4 天），来源为字节校招实习岗。要不要我拉某个岗位的完整任职要求，或者再往后翻页？",
+      "error": null,
+      "latency_ms": 21187,
+      "tools": [
+        "jobs_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "tx-singapore",
+      "category": "lookup",
+      "k": 2,
+      "answer": "有，腾讯在新加坡有 2 个 Coding Agent 方向的实习岗：\n\n**J-2｜Coding Agent Research Intern 108212**\n- 公司/部门：腾讯 IEG（Level Infinite 全球游戏品牌），新加坡 CapitaSky\n- 类型：实习（技术类），更新时间 2026-10-09\n- 方向标签：Agent、大模型、算法\n- 主要工作：做 AI Coding Agent、全自动游戏生成、游戏世界模型的算法研究，包括基于 LLM 的游戏 coding agent（自动代码生成、游戏逻辑开发、错误诊断、自动调试、迭代优化）、程序化生成游戏 demo/关卡等\n- 要求：CS/AI/软件工程/机器学习等相关专业**硕博在读**；熟悉 Python、扎实编程与深度学习基础，理解 LLM 和智能体原理；能独立做实验、调代码、优化模型；对游戏开发、程序化内容生成、生成式 AI 在互动娱乐中的应用有兴趣\n- 加分：熟悉 Unity/Unreal 等游戏引擎；有 Coding Agent、代码大模型、工具调用或多智能体系统开发经验；有 CVPR/ICCV/ECCV/ICLR/ICML/NeurIPS 等顶会论文\n\n**J-3｜Coding Agent Research Intern 108097**\n- 公司和地点同上（腾讯 IEG，新加坡），更新时间 2026-09-29，方向标签同样是 Agent、大模型、算法\n- 职责和要求与 J-2 基本一致，是同一方向较早发布的另一个岗位编号\n\n说明：两个岗位都是\"研究型实习\"，明确要求硕博在读，且都偏向游戏场景（用 Agent 做游戏代码生成/关卡生成）。如果你想找更偏工程落地（非科研、本科也能投）的 Coding Agent 实习，我可以再按其他公司或方向筛一批。\n\n依据编号：J-2、J-3。",
+      "error": null,
+      "latency_ms": 20646,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "bd-doubao-time",
+      "category": "lookup",
+      "k": 2,
+      "answer": "**豆包大模型Agent算法实习生 - Data AML（J-209）**\n\n- 每周到岗：**至少 4 天**（全勤或长期实习者优先）\n- 实习时长：**不少于 6 个月**\n\n依据：J-209 的任职要求第 2 条原文「每周至少实习4天，实习期不少于6个月，能够全勤或长期实习者优先」，岗位字段也标注了 days_per_week: 4、duration_months: 6。\n\n补充两点说明：\n- 该岗位是**日常实习**（JD 里写「日常实习：面向全体在校生…为期3个月及以上的项目实践机会」），这里的 3 个月是日常实习的通用下限，具体到这个 Job 的要求仍以任职要求中的 6 个月为准。\n- 工作地点是上海、北京。\n\n注意同名/相近岗位不要混：**J-206 豆包大模型Agent Harness算法实习生**（上海、北京、深圳、杭州）标注时长为 3 个月，与 J-209 不是同一个岗位。",
+      "error": null,
+      "latency_ms": 25210,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "xhs-kefu",
+      "category": "multi",
+      "k": 2,
+      "answer": "有的，找到一个匹配的校招岗位：\n\n**J-419｜小红书 Product Engineer-产品工程师（Agent开发方向）-智能客服**（校招）\n- **Base城市：上海**\n- 方向标签：Agent、RAG、大模型、评测\n- 要求概要：本科及以上，计算机相关专业或扎实基础；熟悉前端/后端至少一个方向；对 AI、大模型、智能体有热情；加分项是有大模型应用、智能体、RAG、AI 评测等工程实践。[J-419]\n\n顺带一提，小红书校招里其他和 Agent 相关的岗位（非智能客服方向）还有：\n- J-417 AI全栈-企业智能方向（上海/杭州）\n- J-428 AI商业营销科学工程师（灵犀agent研发）（上海/北京）\n- J-435 Agentic ops 研发工程师（上海/杭州）\n\n以上结果来自按「公司=小红书 + 校招」检索，其中智能客服 Agent 方向只命中 J-419 这一个。",
+      "error": null,
+      "latency_ms": 19884,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "en-seed",
+      "category": "english",
+      "k": 2,
+      "answer": "Yes — ByteDance has **Agent研发实习生-Seed** (Agent R&D Intern – Seed) roles, in two cities:\n\n- **J-217** — Agent研发实习生-Seed, **上海 (Shanghai)**, 3-month internship\n- **J-222** — Agent研发实习生-Seed, **北京 (Beijing)**, 3-month internship\n\nBoth list directions: Agent, 大模型, 多模态, 数据, 评测.\n\nNote: it's the same role title posted for two cities, so the city depends on which posting you apply to. If you want, I can pull the full job descriptions and requirements (J-217 / J-222) — just say the word.",
+      "error": null,
+      "latency_ms": 17935,
+      "tools": [
+        "jobs_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "alias-tiktok",
+      "category": "alias",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 39404,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "alias-pdd",
+      "category": "alias",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 21226,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "didi-round2",
+      "category": "posts",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 16416,
+      "tools": [
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 2,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "mihoyo-pay",
+      "category": "posts",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 19812,
+      "tools": [
+        "jobs_search",
+        "posts_search",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "mihoyo-dup",
+      "category": "conflict",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 22719,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get",
+        "posts_get",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 5,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "abstain-meituan",
+      "category": "abstain",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 29995,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "jobs_search",
+        "posts_search",
+        "posts_search",
+        "jobs_search"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 8,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "irrelevant-translate",
+      "category": "irrelevant",
+      "k": 2,
+      "answer": "I'm looking for an Agent development internship.",
+      "error": null,
+      "latency_ms": 7314,
+      "tools": [],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 0,
+      "invalid_args": 0,
+      "injected": 0
+    },
+    {
+      "task": "recovery-ratelimit",
+      "category": "recovery",
+      "k": 2,
+      "answer": "有，腾讯在新加坡有两个 Coding Agent 方向的实习岗位：\n\n**J-2 · Coding Agent Research Intern 108212**\n- 公司/团队：腾讯 IEG（Level Infinite，全球游戏品牌）\n- 城市：新加坡（Singapore-CapitaSky）\n- 类型：实习｜方向：Agent、大模型、算法\n- 更新时间：2026-10-09\n- 链接：https://tencent.wd1.myworkdayjobs.com/Tencent_Careers/job/Singapore-CapitaSky/Coding-Agent-Research-Intern_R108212\n\n**J-3 · Coding Agent Research Intern 108097**\n- 公司/团队：腾讯 IEG（Level Infinite）\n- 城市：新加坡｜类型：实习｜方向：Agent、大模型、算法\n- 更新时间：2026-09-29\n- 链接：https://tencent.wd1.myworkdayjobs.com/Tencent_Careers/job/Singapore-CapitaSky/Coding-Agent-Research-Intern_R108097\n\n两个岗位内容基本一致，都是做 AI Coding Agent、全自动游戏生成、游戏世界模型等前沿算法研究（LLM 驱动的游戏编码 Agent：自动代码生成、逻辑开发、错误诊断、自动调试与迭代优化；程序化生成 demo/玩法/关卡等）。\n\n主要要求（两者相同）：\n- 计算机/AI/软件工程/机器学习等相关专业 **硕士或博士在读**\n- 熟悉 Python，编程与深度学习基础扎实，理解大模型与智能体原理\n- 能独立做实验、调代码、优化模型，完成从方案设计到实验验证的闭环\n- 对游戏开发、程序化内容生成、生成式 AI 在互动娱乐中的应用有浓厚兴趣\n- 加分项：熟悉 Unity/Unreal 等游戏引擎；有 Coding Agent、代码大模型、工具调用或多智能体系统经验；有 CVPR/ICCV/ECCV/ICLR/ICML/NeurIPS 等顶会论文\n\n说明：我按公司=腾讯 + 方向=Agent + 类型=实习 检索到这两条（J-2、J-3）；另一次「城市=新加坡」的检索遇到来源限流（HTTP 429）未返回结果，但上面两条本身城市就是新加坡，结论不受影响。",
+      "error": null,
+      "latency_ms": 18529,
+      "tools": [
+        "jobs_search",
+        "jobs_search",
+        "jobs_get",
+        "jobs_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 4,
+      "invalid_args": 0,
+      "injected": 1
+    },
+    {
+      "task": "recovery-timeout",
+      "category": "recovery",
+      "k": 2,
+      "answer": "（涉及小红书笔记，原文只在本机）",
+      "error": null,
+      "latency_ms": 25214,
+      "tools": [
+        "posts_search",
+        "posts_search",
+        "posts_get"
+      ],
+      "success": true,
+      "values_ok": true,
+      "cite_ok": true,
+      "tools_ok": true,
+      "n_tool_calls": 3,
+      "invalid_args": 0,
+      "injected": 1
+    }
+  ],
+  "private_tasks": [
+    "abstain-meituan",
+    "alias-pdd",
+    "alias-tiktok",
+    "didi-round2",
+    "mihoyo-dup",
+    "mihoyo-pay",
+    "recovery-timeout"
+  ],
+  "private_cassettes": [
+    "abstain-meituan",
+    "alias-pdd",
+    "alias-tiktok",
+    "didi-round2",
+    "mihoyo-dup",
+    "mihoyo-pay",
+    "recovery-timeout"
+  ]
+}

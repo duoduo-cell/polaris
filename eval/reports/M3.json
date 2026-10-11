@@ -1,0 +1,487 @@
+{
+  "generated_at": "2026-10-11T03:29:03+00:00",
+  "git_commit": "f34b435-dirty",
+  "collection": {
+    "xhs:careers": {
+      "items": 20,
+      "runs": 2,
+      "runs_failed": 0,
+      "seen": 40,
+      "inserted": 21,
+      "queries_total": 5,
+      "queries_searched": 1,
+      "extracted": 20,
+      "big": 20,
+      "dup_groups": 0,
+      "dup_items": 0
+    },
+    "bytedance:campus": {
+      "items": 217,
+      "runs": 1,
+      "runs_failed": 0,
+      "seen": 295,
+      "inserted": 217,
+      "queries_total": 5,
+      "queries_searched": 3,
+      "extracted": 217,
+      "big": 217,
+      "dup_groups": 8,
+      "dup_items": 10
+    },
+    "xhs": {
+      "items": 31,
+      "runs": 3,
+      "runs_failed": 1,
+      "seen": 24,
+      "inserted": 24,
+      "failures": 1,
+      "calls": 28,
+      "seconds": 1017.9482035002438,
+      "feeds_seen": 59,
+      "opened": 24,
+      "skipped_known": 5,
+      "skipped_rule": 18,
+      "queries_total": 147,
+      "queries_searched": 4,
+      "extracted": 24,
+      "big": 10,
+      "dup_items": 2,
+      "dup_pairs": 2
+    },
+    "tencent:careers": {
+      "items": 139,
+      "runs": 1,
+      "runs_failed": 0,
+      "seen": 160,
+      "inserted": 139,
+      "queries_total": 10,
+      "queries_searched": 4,
+      "extracted": 139,
+      "big": 139,
+      "dup_groups": 4,
+      "dup_items": 4
+    }
+  },
+  "extraction": [
+    {
+      "name": "真实岗位（腾讯、字节、小红书官网）",
+      "n": 50,
+      "private": false,
+      "extracted": 50,
+      "summary": {
+        "micro_f1": 0.9938398357289527,
+        "macro_f1": 0.9956998556998558,
+        "accuracy": 0.9966666666666667,
+        "hallucinated": 0
+      },
+      "fields": {
+        "company": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 50,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "title": {
+          "n": 50,
+          "accuracy": 0.98,
+          "f1": 0.98,
+          "tp": 49,
+          "fp": 1,
+          "fn": 1,
+          "hallucinated": 0,
+          "examples": [
+            {
+              "id": "tencent:careers#2097203095237996544",
+              "gold": "应用效能技术部agent开发工程师agent平台方向",
+              "pred": "agent开发工程师"
+            }
+          ]
+        },
+        "city": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 50,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "salary_min": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": null,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "salary_max": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": null,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "salary_unit": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": null,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "job_type": {
+          "n": 50,
+          "accuracy": 0.98,
+          "f1": 0.98989898989899,
+          "tp": 49,
+          "fp": 0,
+          "fn": 1,
+          "hallucinated": 0,
+          "examples": [
+            {
+              "id": "tencent:careers#2098252452842352640",
+              "gold": "social",
+              "pred": null
+            }
+          ]
+        },
+        "can_convert": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": null,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "posted_at": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "deadline": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": null,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "duration_months": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "days_per_week": {
+          "n": 50,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "name": "合成岗位",
+      "n": 60,
+      "private": false,
+      "extracted": 60,
+      "summary": {
+        "micro_f1": 0.9947916666666666,
+        "macro_f1": 0.9958333333333332,
+        "accuracy": 0.9958333333333333,
+        "hallucinated": 0
+      },
+      "fields": {
+        "company": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 60,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "title": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 60,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "city": {
+          "n": 60,
+          "accuracy": 0.9833333333333333,
+          "f1": 0.9833333333333333,
+          "tp": 59,
+          "fp": 1,
+          "fn": 1,
+          "hallucinated": 0,
+          "examples": [
+            {
+              "id": "synthetic:official#S029",
+              "gold": [
+                "远程"
+              ],
+              "pred": [
+                "北京"
+              ]
+            }
+          ]
+        },
+        "salary_min": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 41,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "salary_max": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 41,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "salary_unit": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 41,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "job_type": {
+          "n": 60,
+          "accuracy": 0.9666666666666667,
+          "f1": 0.9666666666666667,
+          "tp": 58,
+          "fp": 2,
+          "fn": 2,
+          "hallucinated": 0,
+          "examples": [
+            {
+              "id": "synthetic:official#S048",
+              "gold": "campus",
+              "pred": "intern"
+            },
+            {
+              "id": "synthetic:forum#S052",
+              "gold": "intern",
+              "pred": "campus"
+            }
+          ]
+        },
+        "can_convert": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 41,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "posted_at": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 46,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "deadline": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 47,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "duration_months": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 35,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        },
+        "days_per_week": {
+          "n": 60,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 44,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0,
+          "examples": []
+        }
+      }
+    },
+    {
+      "name": "小红书笔记·开发集（据它的错例改过提示词），B 档答案只在本机",
+      "n": 24,
+      "private": true,
+      "extracted": 24,
+      "summary": {
+        "micro_f1": 1.0,
+        "macro_f1": 1.0,
+        "accuracy": 1.0,
+        "hallucinated": 0
+      },
+      "fields": {
+        "post_type": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 24,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "big_companies": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 9,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "city": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "job_type": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 21,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "has_referral": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 24,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "can_convert": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "interview_rounds": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "days_per_week": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        },
+        "duration_months": {
+          "n": 24,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "hallucinated": 0
+        }
+      }
+    }
+  ],
+  "llm": {
+    "extract_job": {
+      "calls": 436,
+      "parsed_ok": 436,
+      "retries": 0,
+      "latency_p50_ms": 9515,
+      "latency_p95_ms": 17066,
+      "prompt_tokens_avg": 1475,
+      "completion_tokens_avg": 573,
+      "reasoning_tokens_avg": 324,
+      "cost_usd": "0"
+    },
+    "extract_post": {
+      "calls": 24,
+      "parsed_ok": 24,
+      "retries": 0,
+      "latency_p50_ms": 14990,
+      "latency_p95_ms": 33445,
+      "prompt_tokens_avg": 1637,
+      "completion_tokens_avg": 884,
+      "reasoning_tokens_avg": 648,
+      "cost_usd": "0"
+    }
+  }
+}

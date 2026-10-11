@@ -1,0 +1,2 @@
+{"kind": "meta", "meta": {"task": "irrelevant-translate", "category": "irrelevant", "question": "把这句话翻译成英文：我在找一份 Agent 开发实习。", "faults": {}, "suite": "real-v1", "profile": "search"}}
+{"kind": "llm", "message": {"role": "assistant", "content": "I'm looking for an Agent development internship."}}

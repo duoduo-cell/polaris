@@ -44,7 +44,7 @@ def test_mcp_lists_and_calls_read_only_tools(server, db):
         return sorted(tools), str(out)
 
     names, out = asyncio.run(go())
-    assert names == ["raw_items_get", "raw_items_search"]
+    assert names == ["jobs_get", "jobs_search", "posts_get", "posts_search", "raw_items_get", "raw_items_search"]
     assert f"R-{rid}" in out
 
 

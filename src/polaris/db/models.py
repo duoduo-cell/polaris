@@ -99,6 +99,54 @@ class ToolCall(Base):
     created_at: Mapped[datetime] = created_at()
 
 
+class Post(Base):
+    """小红书笔记（面经、内推、招聘、经验帖）抽出的信息，一条原文一行，可追溯到原文。"""
+
+    __tablename__ = "posts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    raw_item_id: Mapped[int] = mapped_column(ForeignKey("raw_items.id", ondelete="CASCADE"), unique=True)
+    post_type: Mapped[str] = mapped_column(String(16))
+    companies: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    big_companies: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # 按大厂名单归一后的
+    team: Mapped[str | None] = mapped_column(String(200))
+    roles: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    directions: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    city: Mapped[str | None] = mapped_column(String(100))
+    job_type: Mapped[str | None] = mapped_column(String(16))
+    grad_year: Mapped[str | None] = mapped_column(String(50))
+    days_per_week: Mapped[int | None] = mapped_column(Integer)
+    duration_months: Mapped[int | None] = mapped_column(Integer)
+    can_convert: Mapped[bool | None] = mapped_column(Boolean)
+    has_referral: Mapped[bool] = mapped_column(Boolean, default=False)
+    interview_rounds: Mapped[int | None] = mapped_column(Integer)
+    interview_questions: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    advice: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    summary: Mapped[str] = mapped_column(Text)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    likes: Mapped[int | None] = mapped_column(Integer)
+    llm_call_id: Mapped[int | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"))
+    prompt_version: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = created_at()
+
+
+class SearchQuery(Base):
+    """各来源的查询词。每轮挑最久没搜过的那批轮换着搜；从结果里发现的新说法也加进来（origin=discovered）。"""
+
+    __tablename__ = "search_queries"
+    __table_args__ = (UniqueConstraint("source", "query", name="uq_search_queries_source_query"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    source: Mapped[str] = mapped_column(String(32))
+    query: Mapped[str] = mapped_column(String(200))
+    origin: Mapped[str] = mapped_column(String(16), default="seed")  # seed / expanded / discovered
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    runs: Mapped[int] = mapped_column(Integer, default=0)
+    new_items: Mapped[int] = mapped_column(Integer, default=0)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at()
+
+
 class Company(Base):
     __tablename__ = "companies"
 
@@ -118,7 +166,8 @@ class RawItem(Base):
     """采集器的统一输出：来源、链接、抓取时间、原文、内容哈希（PLAN 第 4 节）。"""
 
     __tablename__ = "raw_items"
-    __table_args__ = (UniqueConstraint("source", "content_hash", name="uq_raw_items_source_hash"),)
+    __table_args__ = (UniqueConstraint("source", "content_hash", name="uq_raw_items_source_hash"),
+                      Index("ix_raw_items_source_external", "source", "external_id"))
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     source: Mapped[str] = mapped_column(String(64))
@@ -195,6 +244,7 @@ class Posting(JobFields, Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     raw_item_id: Mapped[int] = mapped_column(ForeignKey("raw_items.id", ondelete="CASCADE"), index=True)
     job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"), index=True)
+    big_company: Mapped[str | None] = mapped_column(String(100))  # 按大厂名单归一后的公司，名单外为空
     llm_call_id: Mapped[int | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"))
     prompt_version: Mapped[str | None] = mapped_column(String(64))
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)

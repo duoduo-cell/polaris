@@ -29,7 +29,7 @@ from polaris.db.session import get_engine  # noqa: E402
 get_settings.cache_clear()
 get_engine.cache_clear()
 
-TABLES = ["postings", "jobs", "raw_items", "companies", "tool_calls", "llm_calls", "runs"]
+TABLES = ["posts", "postings", "jobs", "raw_items", "companies", "search_queries", "tool_calls", "llm_calls", "runs"]
 
 
 def _ensure_test_database() -> None:
