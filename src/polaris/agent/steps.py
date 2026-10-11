@@ -12,7 +12,9 @@ OF = {"jobs": "岗位", "questions": "面试题", "posts": "帖子"}
 GROUP = {"company": "公司", "skill": "技能", "unit": "部门", "city": "城市", "direction": "方向"}
 VERBS = {"jobs_search": "搜岗位", "jobs_get": "看岗位详情", "posts_search": "搜帖子", "posts_get": "看帖子",
          "questions_search": "搜面试题", "kg_stats": "查知识图谱", "memory_card": "看你的记忆",
-         "memory_history": "查记忆的历史", "memory_known_at": "查当时记着什么", "memory_forget": "忘掉一条记忆"}
+         "memory_history": "查记忆的历史", "memory_known_at": "查当时记着什么", "memory_forget": "忘掉一条记忆",
+         "source_open": "打开原链接", "platform_search": "现搜", "jobs_trend": "看招聘变化"}
+PLATFORMS = {"xhs": "小红书", "maimai": "脉脉", "boss": "Boss直聘", "tencent": "腾讯招聘官网"}
 
 
 def _names(refs: list[str]) -> dict[str, str]:
@@ -45,8 +47,12 @@ def describe(tool: str, args: dict[str, Any]) -> str:
     if tool == "jobs_search":
         parts = [a.get("company"), a.get("city"), JOB_TYPES.get(a.get("job_type", "")), a.get("direction"),
                  f"近 {a['since_days']} 天" if a.get("since_days") else None, f"“{a['query']}”" if a.get("query") else None]
-    elif tool in ("jobs_get", "posts_get"):
-        ref = a.get("job_id") or a.get("post_id") or ""
+    elif tool == "jobs_trend":
+        parts = [f"近 {a.get('days', 14)} 天", a.get("company"), a.get("direction"), JOB_TYPES.get(a.get("job_type", ""))]
+    elif tool == "platform_search":
+        parts = [PLATFORMS.get(a.get("platform", ""), a.get("platform")), a.get("city"), f"“{a['query']}”" if a.get("query") else None]
+    elif tool in ("jobs_get", "posts_get", "source_open"):
+        ref = a.get("job_id") or a.get("post_id") or a.get("ref") or ""
         name = _names([ref]).get(ref)
         return f"{VERBS[tool]}「{name}」" if name else VERBS[tool]
     elif tool == "posts_search":
@@ -75,6 +81,16 @@ def outcome(tool: str, data: Any, ok: bool, output: str = "") -> str:
         return first.removeprefix("出错了：")[:60] or "没查成"
     if not isinstance(data, dict):
         return "完成"
+    if tool == "jobs_trend":
+        return f"新出现 {data.get('new', 0)} 个、下架 {data.get('gone', 0)} 个（每日快照 {data.get('snapshot_days', 0)} 天）"
+    if tool == "source_open":
+        if data.get("online") is False:
+            return "页面已经没了（下线或删除）"
+        return "和库里存的有变化" if data.get("changed") else "还在，和库里存的一致"
+    if tool == "platform_search":
+        n = data.get("returned") or 0
+        more = len(data.get("also_listed") or [])
+        return (f"带回 {n} 条" + (f"，另有 {more} 条只看了标题" if more else "")) if n or more else "平台上没搜到"
     if tool == "kg_stats":
         return f"符合条件的有 {data.get('matched', 0)} 个，分成 {len(data.get('groups') or [])} 组"
     if tool == "memory_card":

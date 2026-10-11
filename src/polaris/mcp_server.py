@@ -34,6 +34,6 @@ def build_mcp() -> FastMCP:
     mcp = FastMCP("polaris", stateless_http=True, json_response=True)
     mcp.settings.streamable_http_path = "/"
     for spec in REGISTRY.values():
-        if spec.read_only:
+        if spec.read_only and not spec.live:  # 现查会用你本人登录的浏览器，不对外
             mcp.add_tool(_mcp_function(spec), name=spec.name, description=spec.description)
     return mcp

@@ -1,6 +1,6 @@
-// 编号（J-12 岗位、P-3 帖子、Q-8 面试题、M-5 记忆）只在内部用：回答里查到的换成名字并能点开，其余的去掉。
+// 编号（J-12 岗位、P-3 帖子、Q-8 面试题、R-9 刚现查到的原文、M-5 记忆）只在内部用：回答里查到的换成名字并能点开，其余的去掉。
 
-export const REF = /(?<![A-Za-z0-9])([JPQM]-\d+)(?!\d)/g;
+export const REF = /(?<![A-Za-z0-9])([JPQRM]-\d+)(?!\d)/g;
 
 // 去掉编号后留下的空括号、多余的顿号
 export function tidy(text: string): string {

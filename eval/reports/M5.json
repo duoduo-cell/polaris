@@ -1,20 +1,20 @@
 {
   "dev": {
-    "generated_at": "2026-10-11T20:54:45+08:00",
-    "git_commit": "0469bda-dirty",
+    "generated_at": "2026-10-12T02:44:25+08:00",
+    "git_commit": "b69b0df-dirty",
     "suite": "memory-v1",
     "k": 1,
     "model": "deepseek-v4.1-flash",
     "turns": 28,
-    "turns_exact": 25,
+    "turns_exact": 26,
     "turn_errors": 0,
     "ops": {
-      "tp": 52,
-      "fp": 3,
-      "fn": 0,
-      "precision": 0.9454545454545454,
-      "recall": 1.0,
-      "f1": 0.9719626168224299
+      "tp": 51,
+      "fp": 2,
+      "fn": 1,
+      "precision": 0.9622641509433962,
+      "recall": 0.9807692307692307,
+      "f1": 0.9714285714285713
     },
     "by_op": {
       "add": {
@@ -58,12 +58,12 @@
         "f1": 1.0
       },
       "reject": {
-        "tp": 1,
+        "tp": 0,
         "fp": 0,
-        "fn": 0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
       },
       "schedule": {
         "tp": 1,
@@ -72,14 +72,6 @@
         "precision": 1.0,
         "recall": 1.0,
         "f1": 1.0
-      },
-      "suppressed": {
-        "tp": 0,
-        "fp": 1,
-        "fn": 0,
-        "precision": 0.0,
-        "recall": null,
-        "f1": null
       },
       "update": {
         "tp": 4,
@@ -380,7 +372,7 @@
             "op": "add",
             "attribute": "interview_stage",
             "qualifier": "字节跳动",
-            "value": "一面已约",
+            "value": "约了一面",
             "reason": "新信息"
           },
           {
@@ -457,7 +449,7 @@
             "op": "update",
             "attribute": "interview_stage",
             "qualifier": "字节跳动",
-            "value": "一面已过，二面待定",
+            "value": "一面已过，二面约在 2026-10-13",
             "reason": "面试进度往前走了"
           }
         ],
@@ -791,7 +783,7 @@
             "op": "add",
             "attribute": "salary_expect",
             "qualifier": null,
-            "value": "日薪 300 以上",
+            "value": "日薪300以上",
             "reason": "新信息"
           }
         ],
@@ -1011,6 +1003,8 @@
             "qualifier": "腾讯",
             "value": "准备面试",
             "reason": "新信息",
+            "label": "面试进度",
+            "old_value": null,
             "fact_id": 8,
             "old_fact_id": null
           }
@@ -1025,13 +1019,6 @@
         "error": null,
         "events": [
           {
-            "op": "reject",
-            "attribute": "applied",
-            "qualifier": "腾讯",
-            "value": "投递过",
-            "reason": "你说不对"
-          },
-          {
             "op": "invalidate",
             "attribute": "interview_stage",
             "qualifier": "腾讯",
@@ -1040,7 +1027,8 @@
           }
         ],
         "questions": [],
-        "tp": [
+        "tp": [],
+        "fn": [
           {
             "op": "reject",
             "attr": "applied",
@@ -1050,7 +1038,6 @@
             ]
           }
         ],
-        "fn": [],
         "fp": [
           {
             "op": "invalidate",
@@ -1058,6 +1045,8 @@
             "qualifier": "腾讯",
             "value": "准备面试",
             "reason": "你说这条不再成立",
+            "label": "面试进度",
+            "old_value": "准备面试",
             "fact_id": null,
             "old_fact_id": 8
           }
@@ -1099,37 +1088,12 @@
         "turn": 1,
         "user": "我又在看腾讯的面经了。",
         "error": null,
-        "events": [
-          {
-            "op": "suppressed",
-            "attribute": "interview_stage",
-            "qualifier": "腾讯",
-            "value": "准备中",
-            "reason": "你否认过同样的推断，不再提"
-          },
-          {
-            "op": "suppressed",
-            "attribute": "applied",
-            "qualifier": "腾讯",
-            "value": "投递过",
-            "reason": "你否认过同样的推断，不再提"
-          }
-        ],
+        "events": [],
         "questions": [],
         "tp": [],
         "fn": [],
-        "fp": [
-          {
-            "op": "suppressed",
-            "attribute": "interview_stage",
-            "qualifier": "腾讯",
-            "value": "准备中",
-            "reason": "你否认过同样的推断，不再提",
-            "fact_id": null,
-            "old_fact_id": null
-          }
-        ],
-        "exact": false
+        "fp": [],
+        "exact": true
       },
       {
         "persona": "wu",
@@ -1149,7 +1113,7 @@
             "op": "add",
             "attribute": "degree",
             "qualifier": null,
-            "value": "硕士",
+            "value": "硕士在读",
             "reason": "新信息"
           },
           {
@@ -1157,13 +1121,6 @@
             "attribute": "target_role",
             "qualifier": null,
             "value": "Agent 开发",
-            "reason": "新信息"
-          },
-          {
-            "op": "add",
-            "attribute": "job_type",
-            "qualifier": null,
-            "value": "实习",
             "reason": "新信息"
           },
           {
@@ -1339,7 +1296,7 @@
             "op": "update",
             "attribute": "interview_stage",
             "qualifier": "快手",
-            "value": "挂了",
+            "value": "已挂",
             "reason": "面试进度往前走了"
           },
           {
@@ -1384,7 +1341,7 @@
         "ability": "IE",
         "k": 0,
         "question": "我是哪个学校、哪年毕业的？",
-        "answer": "- 学校：浙江大学（M-1）\n- 毕业年份：2027 年（M-4）",
+        "answer": "- 学校：浙江大学 [M-1]\n- 毕业年份：2027 年 [M-4]",
         "ok": true,
         "error": null,
         "tools": []
@@ -1395,10 +1352,12 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在每周能去几天？",
-        "answer": "每周能到岗 **3 天**（M-17）。",
+        "answer": "每周能到岗 3 天（M-17）。",
         "ok": true,
         "error": null,
-        "tools": []
+        "tools": [
+          "memory_card"
+        ]
       },
       {
         "persona": "lin",
@@ -1406,7 +1365,7 @@
         "ability": "TR",
         "k": 0,
         "question": "我 9 月底的时候说的是每周能去几天？",
-        "answer": "9 月底时你说的是**每周能到岗 4 天**（M-9）。后来改成了 3 天（M-17）。",
+        "answer": "9 月底（9-30 时）你记的是**每周 4 天**（M-9）。这个说法有效期到 2026-10-05，之后改成了每周 3 天（M-17）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1419,7 +1378,7 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在考虑哪些城市？",
-        "answer": "你目前只记了 **北京** 一个城市（M-7），没有其他备选。\n\n如果还想考虑别的地方，可以告诉我。",
+        "answer": "目前只记着**北京**这一个城市（M-7）。没跟我说过别的城市。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1432,11 +1391,10 @@
         "ability": "MR",
         "k": 0,
         "question": "我投的那家公司现在面到第几轮了？",
-        "answer": "字节跳动：**一面已过，二面待定**（M-16，2026-10-05 记下）。\n\n再往前你这岗位的进度是\"一面已约\"（M-14，9-28 记、10-05 被取代）。10-05 那次你是说\"字节一面过了，下周二面\"，但卡片里存的仍是二面待定，没有更新的具体时间。",
+        "answer": "字节跳动：一面已过，二面约在 2026-10-13（后天），所以目前进展到第二轮（二面待进行）。（M-15、M-16）",
         "ok": true,
         "error": null,
         "tools": [
-          "memory_history",
           "memory_card"
         ]
       },
@@ -1446,7 +1404,7 @@
         "ability": "TR",
         "k": 0,
         "question": "我最早什么时候能开始实习？",
-        "answer": "你 2026-11-01 起可以开始实习（M-13，你 9 月 22 日说的：\"最早 11 月 1 号能开始实习\"）。",
+        "answer": "你之前说过：**最早 2026-11-01** 能开始实习（M-13，2026-09-22 记的）。\n\n注意这条是从 11-01 起才生效的安排，所以今天（10-11）的卡片上还没列出来。另外你每周能到岗 3 天（M-17）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1460,7 +1418,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "我说过期望薪资是多少吗？",
-        "answer": "你没跟我说过期望薪资——卡片和历史里都没有这条记录。",
+        "answer": "你没跟我说过期望薪资——卡片和历史里都没有记录。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1474,10 +1432,12 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在每周能去几天？",
-        "answer": "每周能到岗 **4 天**（M-9）。\n\n如果你最近改过这个安排，说一声我帮你更新。",
+        "answer": "你每周能到岗 4 天（M-9）。",
         "ok": true,
         "error": null,
-        "tools": []
+        "tools": [
+          "memory_card"
+        ]
       },
       {
         "persona": "zhou",
@@ -1511,7 +1471,7 @@
         "ability": "TR",
         "k": 0,
         "question": "9 月 20 号那天，我说的是每周能去几天？",
-        "answer": "9 月 20 号那天，你说的是每周能到岗 **5 天**（M-6）。这条在 9 月 21 日被新说法取代了，现在记的是 4 天（M-9）。",
+        "answer": "9 月 20 号那天记的是**每周 5 天**（M-6）。\n\n不过这条在 9 月 21 号之后就失效了，现在更新为每周 4 天（M-9）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1524,7 +1484,7 @@
         "ability": "IE",
         "k": 0,
         "question": "我期望的日薪是多少？",
-        "answer": "你的期望薪资是**日薪 300 以上**（M-10）。",
+        "answer": "日薪 300 以上（M-10）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1537,7 +1497,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "我跟你说过我会哪些技术吗？",
-        "answer": "你没跟我说过你会哪些技术——卡片和历史里都没有这方面的记录。",
+        "answer": "没有——关于你会哪些技术，你没跟我说过，我这边没有记录。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1551,7 +1511,7 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在每周能去几天？",
-        "answer": "每周能到岗 3 天（M-7，2026-09-10 起有效，到 2026-12-01）。",
+        "answer": "你现在每周能到岗 **3 天**（M-7，这条记到 2026-12-01 有效）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1564,7 +1524,7 @@
         "ability": "TR",
         "k": 0,
         "question": "到了 12 月，我每周能去几天？",
-        "answer": "12 月起每周能去 **5 天**（M-10，2026-12-01 起生效）。在那之前是每周 3 天（M-7，到 12-01 止）。",
+        "answer": "12 月开始每周能去 5 天（M-10，你 10-06 说的\"12 月开始课少了，每周能去 5 天\"）；在那之前是每周 3 天（M-7）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1578,12 +1538,10 @@
         "ability": "IE",
         "k": 0,
         "question": "我能实习多久？",
-        "answer": "6 个月（M-6）。",
+        "answer": "**6 个月**（M-6）。\n\n顺带一说，你每周能到岗 3 天（M-7），这两条一般是招聘方会一起问的。",
         "ok": true,
         "error": null,
-        "tools": [
-          "memory_card"
-        ]
+        "tools": []
       },
       {
         "persona": "chen",
@@ -1604,13 +1562,12 @@
         "ability": "ABS",
         "k": 0,
         "question": "我投过腾讯吗？",
-        "answer": "没有明确记录。9 月 25 日有过一条推断\"投递过腾讯\"（M-9），但当天就被作废了；同一天你原话是\"最近在准备腾讯的面试，刷了好多八股\"，对应的面试进度\"准备面试（腾讯）\"（M-8）也已作废。现在的卡片里没有腾讯的投递记录，所以准确说：你没跟我说过确认投过腾讯。",
+        "answer": "目前没有可靠的投递记录。\n\n只有一条：2026-09-25 从你那句「最近在准备腾讯的面试，刷了好多八股」推断出\"投递过腾讯\"（M-9，标注为**推断**），但**当天就被撤回了**——准备面试不等于投递，所以这条没保留。\n\n现在的记忆里没有任何\"投过腾讯\"的事实（M-9 已失效）。要我只保留确认过的投递记录的话，你可以直接说下投过哪些。",
         "ok": true,
         "error": null,
         "tools": [
+          "memory_history",
           "memory_card",
-          "memory_history",
-          "memory_history",
           "memory_known_at"
         ]
       },
@@ -1620,20 +1577,7 @@
         "ability": "MR",
         "k": 0,
         "question": "我投了几家公司？分别是哪几家？",
-        "answer": "3 家：快手、美团、腾讯，投的都是 Agent 实习（M-7、M-6、M-8）。进度上：快手挂了（M-11），美团一面已过、等二面（M-12），腾讯暂无进度记录。",
-        "ok": true,
-        "error": null,
-        "tools": [
-          "memory_card"
-        ]
-      },
-      {
-        "persona": "wu",
-        "id": "wu-mr-active",
-        "ability": "MR",
-        "k": 0,
-        "question": "哪家公司我还在面试流程里，在等哪一轮？",
-        "answer": "还在流程里的只有**美团**（Agent 实习）：一面已过，在等二面 [M-12]。\n\n另外快手已经挂了 [M-11]；腾讯你投过 Agent 实习 [M-8]，但没跟我说过面试进度。",
+        "answer": "3 家，都是 Agent 实习：\n\n- 美团（M-5）——一面已过，等二面（M-11）\n- 快手（M-6）——已挂（M-10）\n- 腾讯（M-7）——暂未记录进度",
         "ok": true,
         "error": null,
         "tools": [
@@ -1643,11 +1587,24 @@
       },
       {
         "persona": "wu",
+        "id": "wu-mr-active",
+        "ability": "MR",
+        "k": 0,
+        "question": "哪家公司我还在面试流程里，在等哪一轮？",
+        "answer": "还在流程里的是**美团**：一面已过，等二面（M-11）。\n\n另外快手已经挂了（M-10）；腾讯你投过 Agent 实习（M-7），但面试进度你没跟我说过。",
+        "ok": true,
+        "error": null,
+        "tools": [
+          "memory_card"
+        ]
+      },
+      {
+        "persona": "wu",
         "id": "wu-ku-kuaishou",
         "ability": "KU",
         "k": 0,
         "question": "快手现在是什么状态？",
-        "answer": "快手：投的是 Agent 实习（M-7），面试进度是「挂了」（M-11）。\n\n需要我帮你看别的公司或者复盘一下吗？",
+        "answer": "快手：投的是 Agent 实习（M-6），面试进度是**已挂**（M-10）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1660,12 +1617,10 @@
         "ability": "IE",
         "k": 0,
         "question": "我想在哪个城市实习？",
-        "answer": "深圳（M-5）。",
+        "answer": "深圳（M-4）。",
         "ok": true,
         "error": null,
-        "tools": [
-          "memory_card"
-        ]
+        "tools": []
       },
       {
         "persona": "wu",
@@ -1673,7 +1628,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "腾讯那边面试到哪一步了？",
-        "answer": "腾讯这边我只记着你投了 **Agent 实习**（M-8），面试进度你没跟我说过，所以我不知道到哪一步了。\n\n目前有进度记录的是：快手挂了（M-11）、美团一面已过等二面（M-12）。",
+        "answer": "腾讯你只跟我说过投了 Agent 实习（M-7），面试进度这块你没跟我说过，我这儿没记录。快手的进度是已挂（M-10），美团是一面已过、等二面（M-11）。腾讯有消息了随时告诉我，我帮你记上。",
         "ok": true,
         "error": null,
         "tools": [
@@ -1684,8 +1639,8 @@
     ]
   },
   "holdout": {
-    "generated_at": "2026-10-11T21:00:01+08:00",
-    "git_commit": "0469bda-dirty",
+    "generated_at": "2026-10-12T02:48:44+08:00",
+    "git_commit": "b69b0df-dirty",
     "suite": "memory-holdout-v1",
     "k": 1,
     "model": "deepseek-v4.1-flash",
@@ -1693,21 +1648,21 @@
     "turns_exact": 14,
     "turn_errors": 0,
     "ops": {
-      "tp": 37,
-      "fp": 3,
-      "fn": 1,
-      "precision": 0.925,
-      "recall": 0.9736842105263158,
-      "f1": 0.9487179487179489
+      "tp": 38,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.95,
+      "recall": 1.0,
+      "f1": 0.9743589743589743
     },
     "by_op": {
       "add": {
         "tp": 31,
-        "fp": 1,
+        "fp": 0,
         "fn": 0,
-        "precision": 0.96875,
+        "precision": 1.0,
         "recall": 1.0,
-        "f1": 0.9841269841269841
+        "f1": 1.0
       },
       "ask": {
         "tp": 1,
@@ -1750,12 +1705,12 @@
         "f1": 1.0
       },
       "update": {
-        "tp": 0,
+        "tp": 1,
         "fp": 0,
-        "fn": 1,
-        "precision": null,
-        "recall": 0.0,
-        "f1": null
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
       }
     },
     "questions": 16,
@@ -1817,18 +1772,18 @@
             "reason": "新信息"
           },
           {
+            "op": "pending",
+            "attribute": "grad_year",
+            "qualifier": null,
+            "value": "2027",
+            "reason": "是推断出来的，先等你确认"
+          },
+          {
             "op": "add",
             "attribute": "major",
             "qualifier": null,
             "value": "软件工程",
             "reason": "新信息"
-          },
-          {
-            "op": "pending",
-            "attribute": "grad_year",
-            "qualifier": null,
-            "value": "2028",
-            "reason": "是推断出来的，先等你确认"
           },
           {
             "op": "add",
@@ -1860,7 +1815,7 @@
           }
         ],
         "questions": [
-          "我理解的是：用户预计 2028 年毕业。对吗？"
+          "我理解的是：用户 2027 年本科毕业。对吗？"
         ],
         "tp": [
           {
@@ -1922,9 +1877,11 @@
             "op": "pending",
             "attribute": "grad_year",
             "qualifier": null,
-            "value": "2028",
+            "value": "2027",
             "reason": "是推断出来的，先等你确认",
-            "fact_id": 4,
+            "label": "毕业年份",
+            "old_value": null,
+            "fact_id": 3,
             "old_fact_id": null
           }
         ],
@@ -1981,23 +1938,22 @@
         "error": null,
         "events": [
           {
+            "op": "update",
+            "attribute": "job_type",
+            "qualifier": null,
+            "value": "日常实习",
+            "reason": "你明确说改了"
+          },
+          {
             "op": "invalidate",
             "attribute": "job_type",
             "qualifier": null,
             "value": "暑期实习",
             "reason": "你说这条不再成立"
-          },
-          {
-            "op": "add",
-            "attribute": "job_type",
-            "qualifier": null,
-            "value": "日常实习",
-            "reason": "新信息"
           }
         ],
         "questions": [],
-        "tp": [],
-        "fn": [
+        "tp": [
           {
             "op": "update",
             "attr": "job_type",
@@ -2006,6 +1962,7 @@
             ]
           }
         ],
+        "fn": [],
         "fp": [
           {
             "op": "invalidate",
@@ -2013,17 +1970,10 @@
             "qualifier": null,
             "value": "暑期实习",
             "reason": "你说这条不再成立",
+            "label": "找什么类型",
+            "old_value": "日常实习",
             "fact_id": null,
-            "old_fact_id": 6
-          },
-          {
-            "op": "add",
-            "attribute": "job_type",
-            "qualifier": null,
-            "value": "日常实习",
-            "reason": "新信息",
-            "fact_id": 11,
-            "old_fact_id": null
+            "old_fact_id": 11
           }
         ],
         "exact": false
@@ -2036,11 +1986,11 @@
         "error": null,
         "events": [
           {
-            "op": "noop",
-            "attribute": "company_like",
+            "op": "add",
+            "attribute": "company_avoid",
             "qualifier": null,
             "value": "阿里巴巴",
-            "reason": "要作废的说法本来就不在记忆里"
+            "reason": "新信息"
           },
           {
             "op": "add",
@@ -2075,7 +2025,7 @@
             "op": "add",
             "attribute": "interview_stage",
             "qualifier": "字节跳动",
-            "value": "一面已约",
+            "value": "一面已约（2026-10-11）",
             "reason": "新信息"
           },
           {
@@ -2359,7 +2309,7 @@
             "op": "add",
             "attribute": "school",
             "qualifier": null,
-            "value": "西安电子科技大学",
+            "value": "西电",
             "reason": "新信息"
           },
           {
@@ -2616,7 +2566,7 @@
           }
         ],
         "questions": [
-          "我理解的是：用户投递过快手的评测实习。对吗？"
+          "我理解的是：用户投递过快手的评测实习岗位。对吗？"
         ],
         "tp": [
           {
@@ -2648,11 +2598,13 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在找的是暑期实习还是日常实习？",
-        "answer": "你现在找的是**日常实习**（M-11），不是暑期实习。",
+        "answer": "你现在没有记录在案的实习类型。\n\n- 2026-09-14 你说过想找 **暑期实习**（M-6）；\n- 2026-09-26 你说\"改主意了，想找日常实习，暑期太晚了\"（M-11），但这条在同一天被撤回/作废了。\n\n所以目前这条是空的——你最新定的是哪种，要不要现在告诉我？",
         "ok": true,
         "error": null,
         "tools": [
-          "memory_card"
+          "memory_history",
+          "memory_card",
+          "memory_known_at"
         ]
       },
       {
@@ -2661,10 +2613,11 @@
         "ability": "IE",
         "k": 0,
         "question": "我考虑哪些城市？",
-        "answer": "你考虑的城市有两个：南京（M-7）和上海（M-8）。",
+        "answer": "你考虑两个城市：**南京**（M-7）和**上海**（M-8），都是 2026-09-14 记下的，原话是\"base 南京或者上海都可以\"。",
         "ok": true,
         "error": null,
         "tools": [
+          "memory_history",
           "memory_card"
         ]
       },
@@ -2674,7 +2627,7 @@
         "ability": "MR",
         "k": 0,
         "question": "我最想去的那家公司，现在面试到哪一步了？",
-        "answer": "你最想去的是字节跳动（M-12），面试进度：**一面已约**，2026-10-11 起有效（M-13）。\n\n按记录，你是 10-09 说\"面试官刚约了我后天一面\"，所以一面应该在 10-11 前后——注意别错过。",
+        "answer": "你最想去的是字节跳动（M-13），面试进度：**一面已约**，日期就是今天 2026-10-11（M-14）。加油！",
         "ok": true,
         "error": null,
         "tools": [
@@ -2688,12 +2641,12 @@
         "ability": "TR",
         "k": 0,
         "question": "9 月中旬的时候，我说的是找哪种实习？",
-        "answer": "9 月中旬你说的是**暑期实习**（M-6），方向是大模型应用，base 南京或上海。\n\n后来 9 月 26 日你改成了**日常实习**（M-11），这个现在还有效。",
+        "answer": "9 月中旬你说的是找**暑期实习**（M-6，2026-09-14 记下，原文：\"想找个大模型应用方向的暑期实习，base 南京或者上海都可以\"）。\n\n补充一句：这条后来在 2026-09-26 被改成过\"日常实习\"（M-11），但同一天又被撤回了，现在这条其实处于没定论的状态。",
         "ok": true,
         "error": null,
         "tools": [
-          "memory_known_at",
-          "memory_history"
+          "memory_history",
+          "memory_known_at"
         ]
       },
       {
@@ -2702,10 +2655,11 @@
         "ability": "ABS",
         "k": 0,
         "question": "我说过每周能去几天吗？",
-        "answer": "你没跟我说过每周能到岗几天——这条我没有记录。",
+        "answer": "你没跟我说过每周能到岗几天。卡片和历史里都没有这条记录（M- 里目前有方向、城市、学校、技能、公司偏好和字节一面进度，但没有到岗天数）。要现在补上吗？",
         "ok": true,
         "error": null,
         "tools": [
+          "memory_card",
           "memory_history"
         ]
       },
@@ -2728,12 +2682,12 @@
         "ability": "IE",
         "k": 0,
         "question": "我什么时候能入职？",
-        "answer": "你之前说最早 **2026 年 10 月 12 日（下周一）** 就能入职（M-8）。今天（10 月 11 日）还没到，所以从明天起就可以到岗；每周能到岗 5 天（M-4）。",
+        "answer": "最早 **2026-10-12（下周一）** 就能入职，每周能到岗 5 天。\n\n依据：M-8（你 10 月 2 日说\"下周一（10 月 12 号）开始就能入职了\"）、M-4。",
         "ok": true,
         "error": null,
         "tools": [
-          "memory_card",
-          "memory_history"
+          "memory_history",
+          "memory_card"
         ]
       },
       {
@@ -2742,10 +2696,11 @@
         "ability": "MR",
         "k": 0,
         "question": "我投了哪几家，各是什么岗位？",
-        "answer": "你投了两家：\n\n- 美团：RAG 实习（M-10）\n- 腾讯：搜索算法实习（M-9）",
+        "answer": "你投了两家：\n\n- 腾讯：搜索算法实习（M-9）\n- 美团：RAG 实习（M-10）\n\n两条都是 10-02 你说\"我投了腾讯的搜索算法实习和美团的 RAG 实习\"时记下的。",
         "ok": true,
         "error": null,
         "tools": [
+          "memory_history",
           "memory_card"
         ]
       },
@@ -2755,7 +2710,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "美团那边约面试了吗？",
-        "answer": "没有记录到美团的面试安排——我这边只有你投递过美团 RAG 实习（M-10），面试进度这块你没跟我说过，所以不清楚约没约。要不要我帮你记一下？",
+        "answer": "没有面试记录。只记着你投过美团的 RAG 实习（M-10），面试进度你没跟我说过。",
         "ok": true,
         "error": null,
         "tools": [
@@ -2769,7 +2724,7 @@
         "ability": "KU",
         "k": 0,
         "question": "你记着我做过哪些项目？",
-        "answer": "你跟我说过的项目只有一个：**RAG 知识库问答**（M-4）。",
+        "answer": "你记着的项目只有一个：**RAG 知识库问答**（M-4）。\n\n要不要我顺便帮你看看这个项目能往哪些岗位方向包装？",
         "ok": true,
         "error": null,
         "tools": [
@@ -2782,7 +2737,7 @@
         "ability": "IE",
         "k": 0,
         "question": "我找工作有什么硬性条件？",
-        "answer": "你有两条硬性条件：\n\n1. 不接受外包（M-5）\n2. 不接受单休（M-6）\n\n其他记着的都是背景信息（学校、学历、项目），不算硬条件。",
+        "answer": "你跟我说过的硬性条件有两条：\n\n- 不接受外包（M-5）\n- 不接受单休（M-6）\n\n其他像是方向、城市、薪资这些，你没跟我提过硬性要求。",
         "ok": true,
         "error": null,
         "tools": [
@@ -2795,7 +2750,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "我想去哪个城市？",
-        "answer": "你没跟我说过想去的城市，我这边没有记录（也没有历史版本）。",
+        "answer": "你没跟我说过想去的城市，我这儿没有相关记录。",
         "ok": true,
         "error": null,
         "tools": [
@@ -2809,12 +2764,10 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在每周能去几天？",
-        "answer": "你每周能到岗 **2 天**（M-1，2026-09-25 起生效）。",
+        "answer": "每周能到岗 **2 天**，2026-09-25 起就是这样 [M-1]。",
         "ok": true,
         "error": null,
-        "tools": [
-          "memory_card"
-        ]
+        "tools": []
       },
       {
         "persona": "xu",
@@ -2822,7 +2775,7 @@
         "ability": "TR",
         "k": 0,
         "question": "11 月下旬我每周能去几天？",
-        "answer": "11 月下旬每周能去 **4 天**（M-2）。\n\n依据：你 9 月 25 日说过\"从 11 月 15 号开始每周能去 4 天\"，之前是每周 2 天（M-1，到 11-15 失效）。",
+        "answer": "4 天/周。11 月 15 日起是每周 4 天（M-2），之前是 2 天（M-1）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -2836,7 +2789,7 @@
         "ability": "MR",
         "k": 0,
         "question": "我在面的那家公司在等第几轮？",
-        "answer": "快手：一面已过，在等二面（第二轮）。（M-6）",
+        "answer": "快手：一面已过，在等**二面**（第 2 轮）。依据 M-6。",
         "ok": true,
         "error": null,
         "tools": [
@@ -2859,30 +2812,30 @@
     ]
   },
   "test": {
-    "generated_at": "2026-10-11T21:07:22+08:00",
-    "git_commit": "d7b21b7",
+    "generated_at": "2026-10-12T02:52:18+08:00",
+    "git_commit": "b69b0df-dirty",
     "suite": "memory-test-v2",
     "k": 1,
     "model": "deepseek-v4.1-flash",
     "turns": 16,
-    "turns_exact": 14,
+    "turns_exact": 13,
     "turn_errors": 0,
     "ops": {
-      "tp": 28,
+      "tp": 26,
       "fp": 2,
-      "fn": 0,
-      "precision": 0.9333333333333333,
-      "recall": 1.0,
-      "f1": 0.9655172413793104
+      "fn": 2,
+      "precision": 0.9285714285714286,
+      "recall": 0.9285714285714286,
+      "f1": 0.9285714285714286
     },
     "by_op": {
       "add": {
         "tp": 18,
-        "fp": 0,
+        "fp": 1,
         "fn": 0,
-        "precision": 1.0,
+        "precision": 0.9473684210526315,
         "recall": 1.0,
-        "f1": 1.0
+        "f1": 0.972972972972973
       },
       "ask": {
         "tp": 2,
@@ -2893,12 +2846,12 @@
         "f1": 1.0
       },
       "confirm": {
-        "tp": 2,
+        "tp": 1,
         "fp": 0,
-        "fn": 0,
+        "fn": 1,
         "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
+        "recall": 0.5,
+        "f1": 0.6666666666666666
       },
       "invalidate": {
         "tp": 1,
@@ -2909,12 +2862,12 @@
         "f1": 1.0
       },
       "pending": {
-        "tp": 2,
-        "fp": 2,
-        "fn": 0,
+        "tp": 1,
+        "fp": 1,
+        "fn": 1,
         "precision": 0.5,
-        "recall": 1.0,
-        "f1": 0.6666666666666666
+        "recall": 0.5,
+        "f1": 0.5
       },
       "reject": {
         "tp": 1,
@@ -2994,16 +2947,16 @@
           },
           {
             "op": "add",
-            "attribute": "degree",
+            "attribute": "major",
             "qualifier": null,
-            "value": "硕士在读",
+            "value": "计算机",
             "reason": "新信息"
           },
           {
             "op": "add",
-            "attribute": "major",
+            "attribute": "degree",
             "qualifier": null,
-            "value": "计算机",
+            "value": "硕士在读",
             "reason": "新信息"
           },
           {
@@ -3025,13 +2978,6 @@
             "attribute": "target_role",
             "qualifier": null,
             "value": "AI 应用开发",
-            "reason": "新信息"
-          },
-          {
-            "op": "add",
-            "attribute": "job_type",
-            "qualifier": null,
-            "value": "实习",
             "reason": "新信息"
           }
         ],
@@ -3137,7 +3083,7 @@
           }
         ],
         "questions": [
-          "你之前说「用户每周可以去 3 天」，刚才说「用户每周能到岗 4 天」，以哪个为准？"
+          "你之前说「用户每周能到岗 3 天」，刚才说「用户每周能到岗 4 天」，以哪个为准？"
         ],
         "tp": [
           {
@@ -3192,7 +3138,7 @@
             "op": "add",
             "attribute": "constraint",
             "qualifier": null,
-            "value": "只考虑大厂，不考虑小公司",
+            "value": "只去大厂，不考虑小公司",
             "reason": "新信息"
           }
         ],
@@ -3273,16 +3219,14 @@
             "reason": "面试进度往前走了"
           },
           {
-            "op": "pending",
+            "op": "noop",
             "attribute": "applied",
             "qualifier": "腾讯",
             "value": "投递过",
-            "reason": "是推断出来的，先等你确认"
+            "reason": "同样的推断已经在等你确认"
           }
         ],
-        "questions": [
-          "我理解的是：用户投递过腾讯。对吗？"
-        ],
+        "questions": [],
         "tp": [
           {
             "op": "update",
@@ -3294,18 +3238,8 @@
           }
         ],
         "fn": [],
-        "fp": [
-          {
-            "op": "pending",
-            "attribute": "applied",
-            "qualifier": "腾讯",
-            "value": "投递过",
-            "reason": "是推断出来的，先等你确认",
-            "fact_id": 15,
-            "old_fact_id": null
-          }
-        ],
-        "exact": false
+        "fp": [],
+        "exact": true
       },
       {
         "persona": "he",
@@ -3337,6 +3271,13 @@
           },
           {
             "op": "add",
+            "attribute": "target_role",
+            "qualifier": null,
+            "value": "RAG",
+            "reason": "新信息"
+          },
+          {
+            "op": "add",
             "attribute": "target_city",
             "qualifier": null,
             "value": "北京",
@@ -3347,13 +3288,6 @@
             "attribute": "target_city",
             "qualifier": null,
             "value": "深圳",
-            "reason": "新信息"
-          },
-          {
-            "op": "add",
-            "attribute": "target_role",
-            "qualifier": null,
-            "value": "RAG",
             "reason": "新信息"
           }
         ],
@@ -3406,6 +3340,8 @@
             "qualifier": null,
             "value": "2027",
             "reason": "是推断出来的，先等你确认",
+            "label": "毕业年份",
+            "old_value": null,
             "fact_id": 3,
             "old_fact_id": null
           }
@@ -3543,26 +3479,10 @@
         "turn": 0,
         "user": "我在准备美团的笔试。",
         "error": null,
-        "events": [
-          {
-            "op": "add",
-            "attribute": "interview_stage",
-            "qualifier": "美团",
-            "value": "笔试准备中",
-            "reason": "新信息"
-          },
-          {
-            "op": "pending",
-            "attribute": "applied",
-            "qualifier": "美团",
-            "value": "投递过",
-            "reason": "是推断出来的，先等你确认"
-          }
-        ],
-        "questions": [
-          "我理解的是：用户投递过美团的岗位。对吗？"
-        ],
-        "tp": [
+        "events": [],
+        "questions": [],
+        "tp": [],
+        "fn": [
           {
             "op": "pending",
             "attr": "applied",
@@ -3572,9 +3492,8 @@
             ]
           }
         ],
-        "fn": [],
         "fp": [],
-        "exact": true
+        "exact": false
       },
       {
         "persona": "luo",
@@ -3584,15 +3503,16 @@
         "error": null,
         "events": [
           {
-            "op": "confirm",
+            "op": "add",
             "attribute": "applied",
             "qualifier": "美团",
             "value": "Agent 实习",
-            "reason": "你确认了"
+            "reason": "新信息"
           }
         ],
         "questions": [],
-        "tp": [
+        "tp": [],
+        "fn": [
           {
             "op": "confirm",
             "attr": "applied",
@@ -3602,9 +3522,20 @@
             ]
           }
         ],
-        "fn": [],
-        "fp": [],
-        "exact": true
+        "fp": [
+          {
+            "op": "add",
+            "attribute": "applied",
+            "qualifier": "美团",
+            "value": "Agent 实习",
+            "reason": "新信息",
+            "label": "投递过的岗位",
+            "old_value": null,
+            "fact_id": 1,
+            "old_fact_id": null
+          }
+        ],
+        "exact": false
       },
       {
         "persona": "luo",
@@ -3700,7 +3631,7 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在每周能去几天？",
-        "answer": "每周能到岗 4 天（M-10）。",
+        "answer": "每周能到岗 4 天（M-9）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -3713,7 +3644,7 @@
         "ability": "TR",
         "k": 0,
         "question": "9 月 18 号那天，我说的每周能去几天？",
-        "answer": "9 月 18 号那天记的是**每周 3 天**（M-8）；这条在 9 月 21 日之后被更新成了现在的 4 天（M-10）。",
+        "answer": "9 月 18 号那天你记的是**每周 3 天**（M-7）。这个说法在 2026-09-21 被改掉了，现在是每周 4 天（M-9）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -3726,11 +3657,10 @@
         "ability": "MR",
         "k": 0,
         "question": "我在面的那家公司，下一轮是什么？",
-        "answer": "你在面的是腾讯，二面已过，**下一轮是 HR 面**（M-14）。",
+        "answer": "你在面的是腾讯，二面已过，下一轮是 HR 面（M-13）。",
         "ok": true,
         "error": null,
         "tools": [
-          "memory_history",
           "memory_card"
         ]
       },
@@ -3740,10 +3670,12 @@
         "ability": "IE",
         "k": 0,
         "question": "我最少能实习多久？",
-        "answer": "你记录的是 **4 个月**（M-9）。\n\n这是按你\"能实习多久\"填的时长；如果实际可弹性到更长，跟我说一声我更新。",
+        "answer": "你说的是能实习 4 个月（M-8），这是你给的下限。",
         "ok": true,
         "error": null,
-        "tools": []
+        "tools": [
+          "memory_card"
+        ]
       },
       {
         "persona": "feng",
@@ -3751,12 +3683,12 @@
         "ability": "ABS",
         "k": 0,
         "question": "我说过期望薪资吗？",
-        "answer": "你没跟我说过期望薪资——卡片和历史里都没有这条记录。",
+        "answer": "你没跟我说过期望薪资。卡片里没有，历史上也没记过。\n\n如果你想加一个（比如日薪多少），告诉我，我记下来以后筛岗位用。",
         "ok": true,
         "error": null,
         "tools": [
-          "memory_card",
-          "memory_history"
+          "memory_history",
+          "memory_card"
         ]
       },
       {
@@ -3765,7 +3697,7 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在考虑哪些城市？",
-        "answer": "你现在考虑的城市是**北京**（M-4）。",
+        "answer": "你现在考虑的城市只有**北京**（M-5）。没有别的城市记录。",
         "ok": true,
         "error": null,
         "tools": [
@@ -3791,10 +3723,12 @@
         "ability": "IE",
         "k": 0,
         "question": "我在哪个学校？",
-        "answer": "武汉大学 [M-1]。",
+        "answer": "武汉大学（M-1），本科在读（M-2）。",
         "ok": true,
         "error": null,
-        "tools": []
+        "tools": [
+          "memory_card"
+        ]
       },
       {
         "persona": "he",
@@ -3802,7 +3736,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "我跟你说过会哪些技术吗？",
-        "answer": "你没跟我说过。卡片里没有\"会的技术\"这条，历史记录也是空的——我只记着你的方向（RAG，M-6）、城市（北京，M-4）、学校（武汉大学，M-1）、本科在读（M-2）和每周到岗 5 天（M-7）。",
+        "answer": "你没跟我说过你会哪些技术。卡片和历史里都没有记录（只记了方向 RAG M-4、城市北京 M-5、每周 5 天 M-7、武汉大学 M-1、本科在读 M-2）。要不要现在告诉我？",
         "ok": true,
         "error": null,
         "tools": [
@@ -3816,7 +3750,7 @@
         "ability": "KU",
         "k": 0,
         "question": "我现在每周能去几天？",
-        "answer": "你现在每周能到岗 **2 天**（2026-10-01 起生效，到 2026-11-01）——M-3。",
+        "answer": "每周能到岗 2 天（M-2）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -3829,7 +3763,7 @@
         "ability": "TR",
         "k": 0,
         "question": "11 月中旬我每周能去几天？",
-        "answer": "11 月中旬每周能到岗 **4 天**（11 月 1 日起生效，M-4）。现在到 10 月底还是每周 2 天（M-3）。",
+        "answer": "11 月中旬每周能去 **4 天**（从 2026-11-01 起生效，M-3；之前是 2 天，M-2）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -3843,7 +3777,7 @@
         "ability": "MR",
         "k": 0,
         "question": "我投了哪家，什么岗位？",
-        "answer": "你投的是**美团**的 **Agent 实习**（M-2），目前进度是**笔试准备中**（M-1）。",
+        "answer": "投的是**美团**的 **Agent 实习**（M-1）。",
         "ok": true,
         "error": null,
         "tools": [
@@ -3856,7 +3790,7 @@
         "ability": "ABS",
         "k": 0,
         "question": "我投过字节吗？",
-        "answer": "没有。你投递过的只有美团的 Agent 实习（M-2），字节没提过。",
+        "answer": "你没跟我说过投过字节。记录里只有一次投递：美团的 Agent 实习（M-1）。",
         "ok": true,
         "error": null,
         "tools": [

@@ -375,7 +375,7 @@ def tool_endpoint(name: str, body: ToolIn) -> dict[str, Any]:
     from polaris.tools.runtime import ToolRuntime
 
     spec = REGISTRY.get(name)
-    if spec is None or not spec.read_only:
+    if spec is None or not spec.read_only or spec.live:
         raise HTTPException(404, f"no read-only tool named {name}")
     runtime = ToolRuntime(agent="web")
     out = runtime.invoke(spec, body.args)

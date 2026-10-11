@@ -128,7 +128,7 @@ export default function Chat() {
                     <div className="group space-y-3">
                       {m.turn && <ThinkingDone turn={m.turn} />}
                       {m.turn && <MemoryNotes events={m.turn.memory_events} />}
-                      {m.content && <ResultCards text={m.content} results={m.turn?.results ?? []} />}
+                      {m.content && <ResultCards text={m.content} results={m.turn?.results ?? []} fold />}
                       {m.content && (
                         <div className="flex items-center gap-0.5 text-muted">
                           <Button variant="ghost" icon={copied === i ? Check : Copy} label="复制回答" title="复制" className="!px-1.5 !py-1"

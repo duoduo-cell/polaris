@@ -19,7 +19,7 @@ from typing import Any
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
-    ClearToolUsesEdit,
+    AgentMiddleware,
     ContextEditingMiddleware,
     HumanInTheLoopMiddleware,
     ModelCallLimitMiddleware,
@@ -29,7 +29,7 @@ from langchain.agents.middleware import (
 from langchain.agents.middleware._retry import default_retry_on
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.types import Command
 
@@ -43,15 +43,44 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v5"  # v4：上下文摘要改用中文提示词；v5：10-12 真实探针后补的诚实、效率和解读规则
-TOOLS = ("jobs_search", "jobs_get", "posts_search", "posts_get", "questions_search", "kg_stats",
-         "memory_card", "memory_history", "memory_known_at", "memory_forget")
+PROMPT_VERSION = "main-v7"  # v4：中文摘要；v5：10-12 探针后的诚实、效率和解读规则；v6：现查工具；v7：趋势工具、详情最多 5 个
+TOOLS = ("jobs_search", "jobs_get", "jobs_trend", "posts_search", "posts_get", "questions_search", "kg_stats",
+         "memory_card", "memory_history", "memory_known_at", "memory_forget", "source_open", "platform_search")
 MAX_MODEL_CALLS = 12
 # 上下文分两层管（10-12 探针：按 1.2 万 token 触发、保留 16 条消息时，工具结果很大，压完马上又超，几乎每轮都要多等一次摘要）：
-# 1. 发给模型前，超过 CLEAR_TRIGGER_TOKENS 就把较早的工具结果换成占位符，只留最近几次的——不调模型，聊天和卡片不受影响；
+# 1. 发给模型前，超过 CLEAR_TRIGGER_TOKENS 就把前几轮对话里的工具结果换成占位符——不调模型，聊天和卡片不受影响；
+#    这一轮刚查到的不动（10-12 第二轮探针：连这一轮的也清掉时，模型反复重查，5 题撞上调用上限）；
 # 2. 整段对话超过 SUMMARY_TRIGGER_TOKENS 才压成摘要，保留最近约 1.2 万 token。
 CLEAR_TRIGGER_TOKENS = 12000
-CLEAR_KEEP_TOOL_RESULTS = 6
+CLEARED = "（前面几轮的工具结果已从上下文里清掉；需要时重新查）"
+LAST_CALL_NOTE = "\n\n工具调用次数到上限了：这一步不能再调用工具，直接用上面已经查到的结果回答；没查到的如实说没查到。"
+
+
+class ClearEarlierTurns:
+    """ContextEdit：只清用户这句话之前的工具结果。"""
+
+    def __init__(self, trigger: int):
+        self.trigger = trigger
+
+    def apply(self, messages: list[Any], *, count_tokens: Callable[[list[Any]], int]) -> None:
+        if count_tokens(messages) <= self.trigger:
+            return
+        last_user = max((i for i, m in enumerate(messages) if getattr(m, "type", "") == "human"), default=-1)
+        for i in range(last_user):
+            m = messages[i]
+            if getattr(m, "type", "") == "tool" and m.content != CLEARED:
+                messages[i] = m.model_copy(update={"content": CLEARED})
+
+
+class LastCallAnswers(AgentMiddleware):
+    """最后一次允许的模型调用不给工具，逼它收尾写回答，而不是撞上限把报错当回答（10-12 探针）。"""
+
+    def wrap_model_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        if request.tools and request.state.get("run_model_call_count", 0) >= MAX_MODEL_CALLS - 1:
+            system = request.system_message
+            note = SystemMessage(content=(system.text if system else "") + LAST_CALL_NOTE)
+            return handler(request.override(tools=[], system_message=note))
+        return handler(request)
 SUMMARY_TRIGGER_TOKENS = 48000
 SUMMARY_KEEP: tuple[str, int] = ("tokens", 12000)
 SUMMARY_PREFIX = "Here is a summary of the conversation to date:"  # LangChain 摘要消息的固定开头，显示时去掉
@@ -145,16 +174,19 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 - 用户要你忘掉某件事，用 memory_forget（会先请用户批准）。
 - 用户这句话里的新条件（城市、天数、技能、偏好、进度……）由记忆模块自动记下，和你回答同时进行，你看不到这一步；
   不要说"我没有写记忆的工具""只在这轮生效"，直接说记下了。上面的卡片是这句话之前的状态，用户刚说的以这句话为准。
-- 你查到的岗位、帖子、面试题都来自本地库（常驻采集存下的副本，工具结果的 library 里有最近一次采集时间），
-  不是刚刚去网站或平台现搜的。用户要你"去小红书/脉脉/Boss 搜最新的""打开原链接看看"时，如实说现在只能查本地库、
-  库里最新的是哪天采的，不能说成"我搜了小红书""我核对了原链接"。
-- 同一个意思搜不到，最多换一种说法再试一次；不要为了"排除"去搜用户没问的公司。要看好几个详情时同一步并行发出。
+- jobs_search、posts_search 等查的是本地库（常驻采集存下的副本，结果的 library 里有最近一次采集时间和各来源条数）。
+  要最新的、本地库没有或太旧、用户点名要去某个平台搜时，用 platform_search 现搜；问"还在招吗""原文现在怎么写"
+  "内推还有效吗"时，用 source_open 打开原链接核对。这两个慢，每次回答最多 3 次，先想清楚查什么。
+  只有真的调用了它们并成功，才能说"我刚在小红书上搜了""我打开原链接核对了"；失败了照实说原因，再用本地库回答并说明是哪天采的。
+- 同一个意思搜不到，最多换一种说法再试一次；不要为了"排除"去搜用户没问的公司。要看详情时挑最相关的、一次最多 5 个，
+  同一步并行发出；已经查到的不要再查一遍。
 回答规则：
 - 只回答用户问的。不要在末尾附带没被要求的岗位推荐或清单；结尾最多一句"要不要我……"。
 - 不推荐的岗位、帖子不要写编号（写了编号就会生成卡片），用名字带过即可。
 - 解读一个岗位时讲透四件事：这个团队/产品在做什么（从 JD 和部门名推断，用常识补充时注明"按常识"）；每条要求实际在考什么、
   面试会怎么问（引用面经题）；用户有什么能举证、缺什么；具体怎么准备（哪几道题、补什么）。不写"夯实基础、多做项目"这类空话。
-- 统计数字要说口径：kg_stats 数的是库里全部在招岗位，不是"近一个月"；只有一次采集时谈不了趋势变化，要明说。
+- 统计数字要说口径：kg_stats 数的是库里全部在招岗位，不是"近一个月"。问变化和趋势用 jobs_trend，它的 caveats
+  （快照才几天、采集刚开始）必须照实转告，数据不够就说谈不了，不能拿全部在招的数当趋势。
 - 推荐岗位时按卡片里的条件筛（城市、类型、方向、到岗天数），说清为什么合适、哪里不完全符合；不符合条件的不要推荐。
 - 只根据工具返回的内容回答，结论写上编号（岗位 J-12，帖子 P-3，记忆 M-5）；找不到就如实说查了什么、没找到。
 - 推荐三个岗位时只选择三个结果，用公司和岗位名称介绍，每项引用 J- 编号以生成卡片；未选择的命中不要罗列编号。
@@ -233,9 +265,8 @@ def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_mo
                     ModelCallLimitMiddleware(run_limit=MAX_MODEL_CALLS, exit_behavior="end"),
                     SummarizationMiddleware(model=summary_model or model, trigger=("tokens", SUMMARY_TRIGGER_TOKENS),
                                             keep=SUMMARY_KEEP, summary_prompt=SUMMARY_PROMPT),
-                    ContextEditingMiddleware(edits=[ClearToolUsesEdit(
-                        trigger=CLEAR_TRIGGER_TOKENS, keep=CLEAR_KEEP_TOOL_RESULTS, exclude_tools=("memory_card",),
-                        placeholder="（较早的工具结果已从上下文里清掉；需要时重新查）")]),
+                    ContextEditingMiddleware(edits=[ClearEarlierTurns(CLEAR_TRIGGER_TOKENS)]),
+                    LastCallAnswers(),
                     HumanInTheLoopMiddleware(interrupt_on=approval_policy())])
 
 
@@ -435,6 +466,8 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
     answer = ""
     if state and not approvals:
         answer = text_of(state["messages"][-1].content)
+        if answer.startswith("Model call limits exceeded"):  # 保险：万一还是撞了上限，不把英文报错当回答
+            answer, err = "", err or "这次查得太多没能收尾，请把问题说得具体一点再问一次（比如只看某家公司、某个城市）。"
     from polaris.agent.steps import describe, outcome
     from polaris.results import activity, presentation
     with session_scope() as s:

@@ -155,5 +155,16 @@ class ResultCardsRegression(unittest.TestCase):
             "合成公司 · 岗位1 这个岗位要求 CUDA/算子，我还不会。面试常怎么考？我该怎么在短时间里补上？")
 
 
+    def test_chat_folds_question_references_into_a_list(self):
+        self.rows.append({"id": "Q-7", "kind": "question", "display_title": "如何设计 Agent 记忆？", "question": "如何设计 Agent 记忆？",
+                          "company": "合成公司", "round": "1面", "material_label": "面经记录", "sources": []})
+        self.page.reload()
+        expect(self.page.get_by_test_id("result-Q-7")).to_have_count(0)
+        self.page.get_by_text("回答里引用了 1 道面试题，点开看题目和出处").click()
+        expect(self.page.get_by_test_id("result-questions").get_by_text("如何设计 Agent 记忆？")).to_be_visible()
+        self.page.get_by_test_id("result-questions").get_by_role("button", name="出处").click()
+        expect(self.page.get_by_role("dialog", name="结果详情")).to_be_visible()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

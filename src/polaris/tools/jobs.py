@@ -7,11 +7,11 @@
 M4 起编号 J- 指合并后的岗位（之前指单条挂牌），参数不变。
 """
 import re
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-from sqlalchemy import any_, or_, select
+from sqlalchemy import any_, func, or_, select
 
 from polaris.companies import match
 from polaris.db.models import Job, Post, Posting, RawItem
@@ -114,6 +114,63 @@ def library_note(kind: str, dated: bool = False) -> dict[str, Any]:
             known = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active",
                                                                           Job.posted_at.is_not(None)))
             out["dated"] = f"在库岗位里写了发布日期的只有 {known}/{total} 个，按时间筛只能看这些"
+    return out
+
+
+class JobsTrendArgs(BaseModel):
+    days: int = Field(14, ge=3, le=90, description="看最近多少天")
+    group_by: Literal["company", "direction", "city"] = Field("company", description="按公司、方向还是城市分组")
+    company: str | None = Field(None, description="只看这家公司")
+    direction: str | None = Field(None, description="只看这个方向，如 Agent")
+    job_type: Literal["intern", "campus", "social"] | None = Field(None, description="intern 实习、campus 校招、social 社招")
+
+
+def jobs_trend(args: JobsTrendArgs) -> dict:
+    """最近一段时间新出现、下架了哪些岗位。数据来自官网每天的整批重采（daemon.official_daily），快照不够时如实说。"""
+    from collections import Counter
+
+    from polaris.align.build import official_snapshots
+    from polaris.db.models import Run
+
+    now = datetime.now(UTC)
+    since = now - timedelta(days=args.days)
+    with session_scope() as s:
+        stmt = select(Job).where(Job.is_synthetic.is_(False))
+        if args.company:
+            stmt = stmt.where(_company_filter(Job.company_name, Job.company, args.company))
+        if args.direction:
+            stmt = stmt.where(Job.directions.any(args.direction))
+        if args.job_type:
+            stmt = stmt.where(Job.job_type == args.job_type)
+        jobs = s.scalars(stmt).all()
+        runs = [t for p, t in s.execute(select(Run.params, Run.started_at).where(Run.kind == "collect", Run.status == "ok",
+                                                                            Run.started_at >= since))
+                if (p or {}).get("mode") == "official-daily"]
+        first_ever = s.scalar(select(func.min(RawItem.first_seen_at)).where(RawItem.kind == "job",
+                                                                           ~RawItem.source.like("synthetic%")))
+
+    def keys(j: Job) -> list[str]:
+        if args.group_by == "company":
+            return [j.company or j.company_name or "未知"]
+        return list((j.directions if args.group_by == "direction" else j.cities) or ["未写"])
+
+    new = [j for j in jobs if j.first_seen_at and j.first_seen_at >= since]
+    gone = [j for j in jobs if j.status == "gone" and j.last_seen_at and j.last_seen_at >= since]
+    by_new, by_gone = Counter(k for j in new for k in keys(j)), Counter(k for j in gone for k in keys(j))
+    days = sorted({t.astimezone(timezone(timedelta(hours=8))).date() for t in runs})
+    out: dict = {"days": args.days, "active_now": sum(j.status == "active" for j in jobs), "new": len(new), "gone": len(gone),
+                 "groups": [{"group": k, "new": by_new[k], "gone": by_gone[k]}
+                            for k in sorted(set(by_new) | set(by_gone), key=lambda k: -(by_new[k] + by_gone[k]))[:15]],
+                 "examples_new": [f"J-{j.id}" for j in sorted(new, key=lambda j: j.first_seen_at, reverse=True)[:5]],
+                 "snapshot_days": len(days), "official_snapshots": list(official_snapshots())}
+    notes = []
+    if first_ever and first_ever >= since:
+        notes.append(f"岗位采集从 {first_ever:%Y-%m-%d} 才开始，那之前就在招的岗位第一次被看到也算'新出现'，"
+                     "这段时间的'新出现'不代表公司在加招")
+    if len(days) < 7:
+        notes.append(f"这段时间官网每天整批重采只有 {len(days)} 天，下架判断和趋势都还不可靠；至少攒一周再谈变化")
+    if notes:
+        out["caveats"] = notes
     return out
 
 
@@ -289,6 +346,10 @@ def posts_get(args: PostsGetArgs) -> dict:
 
 
 TOOLS = [
+    ToolSpec(name="jobs_trend",
+             description="最近一段时间新出现、下架了哪些岗位（按公司、方向或城市分组），来自官网每天的整批重采。"
+                         "用户问'最近哪些公司在加招''Agent 岗多了还是少了'时用；结果里的 caveats 必须照实转告。",
+             args_schema=JobsTrendArgs, func=jobs_trend, example='{"days": 14, "group_by": "company", "direction": "Agent"}'),
     ToolSpec(name="jobs_search",
              description="查岗位（多来源合并后的）：按公司、城市、类型、方向筛，给 query 时按相关度排，默认只看大厂。"
                          "返回可读标题、关键字段和原始来源；各处说法不一致的字段会标出来。详情用 jobs_get。",

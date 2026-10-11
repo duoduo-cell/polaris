@@ -36,8 +36,35 @@ def ensure_companies() -> dict[str, int]:
         return dict(s.execute(select(Company.name, Company.id)).all())
 
 
+OFFICIAL_DAILY = {"tencent": "tencent:careers", "bytedance": "bytedance:campus", "xhs_careers": "xhs:careers"}
+
+
+def official_snapshots() -> dict[str, Any]:
+    """各官网最近一次成功的每日整批重采是什么时候开始的（daemon.official_daily）。"""
+    from polaris.db.models import Run
+
+    latest: dict[str, Any] = {}
+    with session_scope() as s:
+        for params, started in s.execute(select(Run.params, Run.started_at).where(Run.kind == "collect", Run.status == "ok")):
+            p = params or {}
+            if p.get("mode") == "official-daily" and p.get("source") in OFFICIAL_DAILY:
+                raw = OFFICIAL_DAILY[p["source"]]
+                latest[raw] = max(latest.get(raw, started), started)
+    return latest
+
+
+def status_of(group: list[Any], snapshots: dict[str, Any]) -> str:
+    """全是官网挂牌、而且每一条在它那个官网的每日重采里都超过一天没再出现，才算下架；别的来源没法判断，当作在招。"""
+    from datetime import timedelta
+
+    if not group or any(v.source not in snapshots or v.last_seen is None for v in group):
+        return "active"
+    return "gone" if all(v.last_seen < snapshots[v.source] - timedelta(days=1) for v in group) else "active"
+
+
 def run_align() -> dict[str, Any]:
     views = load_views()
+    snapshots = official_snapshots()
     groups = cluster(views)
     company_ids = ensure_companies()
     stats: Counter = Counter()
@@ -58,7 +85,7 @@ def run_align() -> dict[str, Any]:
                 "company_name": g[0].company, "directions": directions, "jd_text": longest.fields.get("jd_text"),
                 "requirements": longest.fields.get("requirements") or [],
                 "first_seen_at": min(v.first_seen for v in g), "last_seen_at": max(v.last_seen for v in g),
-                "status": "active", "is_synthetic": all(v.is_synthetic for v in g),
+                "status": status_of(g, snapshots), "is_synthetic": all(v.is_synthetic for v in g),
                 **{col: values.get(f) for f, col in FIELD_COLUMNS.items()},
             }
             stmt = insert(Job).values(row)
@@ -66,6 +93,7 @@ def run_align() -> dict[str, Any]:
             job_id = s.execute(stmt.returning(Job.id)).scalar_one()
             s.execute(update(Posting).where(Posting.id.in_([v.id for v in g])).values(job_id=job_id))
             stats["jobs"] += 1
+            stats["gone"] += row["status"] == "gone"
             stats["merged_jobs"] += len(g) > 1
             stats["conflicts"] += len(conflicts)
             for c in conflicts:

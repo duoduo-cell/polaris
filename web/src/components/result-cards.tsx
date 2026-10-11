@@ -290,15 +290,22 @@ function OtherCard({ r }: { r: Result }) {
   </>;
 }
 
-export function ResultCards({ results, text }: { results: Result[]; text?: string }) {
+// fold：聊天里用。岗位都给大卡片；面经、帖子超过 4 张先收起；面试题收成一个可点开的列表（10-12 一次回答引用了 9 道题，卡片太散）
+export function ResultCards({ results, text, fold = false }: { results: Result[]; text?: string; fold?: boolean }) {
   const [opened, setOpened] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Result>>({});
+  const [more, setMore] = useState(false);
   const cards = results.map((r) => overrides[r.id] ?? r);
   const refs = useMemo(() => new Map(cards.map((r) => [r.id, r.kind === "job" ? r.display_title : hideRefs(r.display_title)])), [cards]);
+  const questions = fold ? cards.filter((r) => r.kind === "question") : [];
+  const rest = fold ? cards.filter((r) => r.kind !== "question") : cards;
+  const others = rest.filter((r) => r.kind !== "job");
+  const shown = fold && !more ? [...rest.filter((r) => r.kind === "job"), ...others.slice(0, 4)] : rest;
+  const hidden = rest.length - shown.length;
   return <>
     {text && <Markdown text={text} refs={refs} onRef={setOpened} />}
-    {!!cards.length && <div className={`grid gap-3 ${cards.length > 1 ? "sm:grid-cols-2" : ""} ${text ? "mt-4" : ""}`} data-testid="result-cards">
-      {cards.map((r, i) => {
+    {!!shown.length && <div className={`grid gap-3 ${shown.length > 1 ? "sm:grid-cols-2" : ""} ${text ? "mt-4" : ""}`} data-testid="result-cards">
+      {shown.map((r, i) => {
         const source = r.sources?.find((s) => s.url);
         const day = when(r);
         return <motion.article key={r.id} data-testid={`result-${r.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -322,6 +329,20 @@ export function ResultCards({ results, text }: { results: Result[]; text?: strin
         </motion.article>;
       })}
     </div>}
+    {hidden > 0 && <button type="button" onClick={() => setMore(true)} className="mt-2 text-xs text-muted hover:text-foreground">
+      还有 {hidden} 个面经和帖子，展开看</button>}
+    {!!questions.length && <details className="mt-3 rounded-xl border border-line bg-card px-4 py-3 text-sm" data-testid="result-questions">
+      <summary className="cursor-pointer select-none text-muted hover:text-foreground">回答里引用了 {questions.length} 道面试题，点开看题目和出处</summary>
+      <ul className="mt-2 divide-y divide-line">
+        {questions.map((q) => <li key={q.id} className="flex items-start justify-between gap-3 py-2">
+          <span className="min-w-0">
+            <span className="block leading-relaxed">{hideRefs(q.question ?? q.display_title)}</span>
+            <span className="block text-xs text-muted">{[q.company ?? q.interview_company, q.role, q.round, q.material_label].filter(Boolean).join(" · ")}</span>
+          </span>
+          <button type="button" onClick={() => setOpened(q.id)} className="shrink-0 text-xs text-accent hover:underline">出处</button>
+        </li>)}
+      </ul>
+    </details>}
     {opened && <ResultPanel key={opened} reference={opened} close={() => setOpened(null)} onChanged={(r) => setOverrides((old) => ({ ...old, [r.id]: r }))} />}
   </>;
 }

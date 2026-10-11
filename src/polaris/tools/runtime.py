@@ -25,6 +25,10 @@ FAULT_MESSAGES: dict[str, str] = {
     "timeout": "出错了：来源超时没有响应。\n怎么改：用同样的参数再调用一次；连续失败就换个查询词。",
 }
 INTERNAL_ERROR = "出错了：工具内部错误（{name}）。\n怎么改：这不是参数的问题，可以再试一次，或者换一个工具。"
+# 和用户对话时一次回答里每种工具最多调几次（10-12 探针：提示词说了"最多换一次说法"，模型还是把帖子搜了 41 次）
+PER_ANSWER_CAPS = {"jobs_search": 8, "posts_search": 8, "questions_search": 6, "kg_stats": 8, "jobs_get": 10, "posts_get": 10}
+CAP_MESSAGE = ("出错了：这次回答已经调用 {name} {n} 次，不能再调。\n"
+               "怎么改：用已经查到的结果回答；没查到的如实说，并告诉用户可以换个更具体的问法。")
 
 
 class ToolRuntime:
@@ -47,6 +51,19 @@ class ToolRuntime:
         except ValidationError as e:
             return self._done(spec, raw_args, validation_error(spec, e).render(), False, "invalid_args", start)
         normalized = args.model_dump(mode="json")
+        if self.agent == "main":  # 和用户对话时的刹车；评测和 MCP 照旧
+            same = next((c for c in reversed(self.calls) if c["tool"] == spec.name and c["args"] == normalized and c["ok"]), None)
+            if same is not None and not spec.live:  # 参数一模一样、这次回答里刚查过：直接给上次的结果
+                return same["output"]
+            cap = PER_ANSWER_CAPS.get(spec.name)
+            if cap is not None and sum(1 for c in self.calls if c["tool"] == spec.name) >= cap:
+                return self._done(spec, normalized, CAP_MESSAGE.format(name=spec.name, n=cap), False, "per_answer_cap", start)
+        if spec.live:
+            from polaris.tools.live import LIVE_PER_ANSWER
+
+            if sum(1 for c in self.calls if c.get("live")) >= LIVE_PER_ANSWER:
+                return self._done(spec, normalized, f"出错了：这次回答已经现查了 {LIVE_PER_ANSWER} 次，不能再查。\n"
+                                  "怎么改：用已经查到的和本地库回答，告诉用户还想查什么可以下一句再说。", False, "live_cap", start)
 
         if self.faults[spec.name]:
             fault = self.faults[spec.name].popleft()
@@ -82,7 +99,7 @@ class ToolRuntime:
         row = {"run_id": self.run_id, "thread_id": self.thread_id, "agent": self.agent, "tool": spec.name,
                "args": args, "output": output, "ok": ok, "error_kind": kind,
                "latency_ms": int((time.perf_counter() - start) * 1000), "replayed": replayed}
-        self.calls.append(row)
+        self.calls.append({**row, "live": spec.live})
         if data is not None:
             self.results[len(self.calls) - 1] = data
         if self.record_db:

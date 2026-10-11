@@ -12,7 +12,7 @@ from polaris.interviews import MATERIAL_LABELS
 from polaris.tools.jobs import _job_row, _post_row, job_sources
 from polaris.tools.knowledge import question_row
 
-REF_RE = re.compile(r"(?<![A-Za-z0-9])([JPQ]-\d+)(?!\d)")
+REF_RE = re.compile(r"(?<![A-Za-z0-9])([JPQR]-\d+)(?!\d)")
 POST_KINDS = {"面经": "interview", "内推": "referral", "招聘": "recruitment", "经验": "study"}
 
 
@@ -25,7 +25,7 @@ def refs_from_output(output: str) -> set[str]:
     refs: set[str] = set()
     def walk(node):
         if isinstance(node, dict):
-            for k in ("id", "from"):
+            for k in ("id", "from", "new_version"):
                 if isinstance(node.get(k), str) and REF_RE.fullmatch(node[k]):
                     refs.add(node[k])
             for k in ("items", "groups"):
@@ -39,8 +39,16 @@ def refs_from_output(output: str) -> set[str]:
 
 
 def entities(s: Session, references: list[str], *, detailed: bool = False) -> list[dict[str, Any]]:
-    ids = {prefix: [int(r[2:]) for r in references if r.startswith(f"{prefix}-") and REF_RE.fullmatch(r)] for prefix in "JPQ"}
+    ids = {prefix: [int(r[2:]) for r in references if r.startswith(f"{prefix}-") and REF_RE.fullmatch(r)] for prefix in "JPQR"}
     found: dict[str, dict[str, Any]] = {}
+    if ids["R"]:
+        from polaris.live import raw_card
+
+        for raw in s.scalars(select(RawItem).where(RawItem.id.in_(ids["R"]))).all():
+            card = raw_card(raw)
+            if not detailed:
+                card.pop("text", None)
+            found[card["id"]] = card
     jobs = s.scalars(select(Job).where(Job.id.in_(ids["J"]))).all()
     sources = job_sources(s, [j.id for j in jobs])
     from polaris.match import matches

@@ -18,7 +18,7 @@ export type Match = {
   skills: { required: string[]; have: string[]; missing: string[]; known: boolean };
 };
 export type Result = {
-  id: string; kind: "job" | "interview" | "question" | "referral" | "recruitment" | "study" | "post";
+  id: string; kind: "job" | "interview" | "question" | "referral" | "recruitment" | "study" | "post" | "raw";
   display_title: string; title?: string; company?: string | null; unit?: string | null; city?: string | null;
   type?: string | null; job_type?: string | null; sources: Source[]; summary?: string; requirements?: string[];
   directions?: string[]; salary_text?: string; days_per_week?: number; duration_months?: number;
@@ -38,5 +38,5 @@ export const STATUSES: Record<string, string> = {
 };
 export const KINDS: Record<Result["kind"], string> = {
   job: "岗位", interview: "面经", question: "面试题", referral: "内推线索",
-  recruitment: "招聘线索", study: "备考整理", post: "求职资料",
+  recruitment: "招聘线索", study: "备考整理", post: "求职资料", raw: "刚现查到的",
 };

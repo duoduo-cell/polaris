@@ -188,3 +188,31 @@ def test_first_chat_on_a_fresh_database_does_not_deadlock(db):
     worker.start()
     worker.join(30)
     assert "turn" in done and done["turn"].answer == "你好"
+
+
+def test_context_edit_keeps_this_turns_tool_results():
+    from langchain_core.messages import HumanMessage, ToolMessage
+
+    big = "岗位详情" * 400
+    msgs = [HumanMessage("上一句"), AIMessage("", tool_calls=[{"name": "jobs_get", "args": {}, "id": "a"}]),
+            ToolMessage(big, tool_call_id="a"), AIMessage("回答"), HumanMessage("这一句"),
+            AIMessage("", tool_calls=[{"name": "jobs_get", "args": {}, "id": "b"}]), ToolMessage(big, tool_call_id="b")]
+    main.ClearEarlierTurns(trigger=100).apply(msgs, count_tokens=lambda m: 10_000)
+    assert msgs[2].content == main.CLEARED and msgs[6].content == big
+
+
+def test_last_allowed_model_call_gets_no_tools():
+    from langchain_core.messages import SystemMessage
+
+    class Req:
+        def __init__(self, count):
+            self.tools, self.state, self.system_message = ["jobs_search"], {"run_model_call_count": count}, SystemMessage("规则")
+
+        def override(self, **kw):
+            return kw
+
+    seen = []
+    main.LastCallAnswers().wrap_model_call(Req(main.MAX_MODEL_CALLS - 1), seen.append)
+    main.LastCallAnswers().wrap_model_call(Req(2), seen.append)
+    assert seen[0]["tools"] == [] and seen[0]["system_message"].text.endswith(main.LAST_CALL_NOTE.strip())
+    assert isinstance(seen[1], Req)  # 没到最后一次，原样交给模型

@@ -48,6 +48,7 @@ class ToolSpec:
     read_only: bool = True
     example: str | None = None  # 一个正确的参数示例，参数出错时给模型看
     tags: tuple[str, ...] = field(default_factory=tuple)
+    live: bool = False  # 现查：会去网站或用你登录的浏览器，只给主 agent，不进 MCP，每次回答限次数
 
     @property
     def namespace(self) -> str:

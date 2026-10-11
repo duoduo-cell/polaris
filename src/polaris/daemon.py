@@ -58,9 +58,12 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
     left = min(cap - used, cfg["round_queries"] * per_query)
     left = min(left, budget.hour_left(source))
     collector = FACTORIES[source](context, left, cfg)
+    from polaris.collectors.locks import platform_lock
+
     try:
-        r = collect_round(source, collector, cfg["round_queries"],
-                          {"max_calls": left, "cap": cap, "via": cfg.get("via", "browser"), "mode": "daemon"}, echo=echo)
+        with platform_lock(source, timeout=600):  # 和对话里的现查共用一把锁，同一个平台不同时操作
+            r = collect_round(source, collector, cfg["round_queries"],
+                              {"max_calls": left, "cap": cap, "via": cfg.get("via", "browser"), "mode": "daemon"}, echo=echo)
     finally:  # 每轮结束关掉自己开的标签页
         for obj in (collector, getattr(collector, "caller", None)):
             if hasattr(obj, "close"):
@@ -95,6 +98,35 @@ def proactive(echo: Callable[[str], None], prefix: str = "") -> None:
         return
     if not r.get("skipped"):
         echo(f"{prefix}主动推送：推 {r['push']}、进简报 {r['brief']}、不提 {r['drop']}")
+
+
+OFFICIAL_RAW = {"tencent": "tencent:careers", "bytedance": "bytedance:campus", "xhs_careers": "xhs:careers"}
+
+
+def official_daily(echo: Callable[[str], None] = print) -> None:
+    """官网每天整批重采一次（公开页面，A 档）：新出现的岗位才看得到，连续没再出现的才能判断下架，趋势才有数据。
+    每个官网把全部方向词都搜一遍；没变的内容只更新"最后一次见到"的时间，不重复抽取。"""
+    from polaris.collectors import queries as q
+    from polaris.collectors.sites import ByteDanceCollector, XhsCareersCollector
+    from polaris.collectors.tencent import TencentCollector
+    from polaris.extract import run_extract
+
+    makers = {"tencent": TencentCollector, "bytedance": ByteDanceCollector, "xhs_careers": XhsCareersCollector}
+    for source, make in makers.items():
+        try:
+            q.ensure_seeded(source)
+            n = len(q.existing(source))
+            r = collect_round(source, make(), n, {"mode": "official-daily", "max_pages": 3}, echo=echo)
+            out = run_extract("job", len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, OFFICIAL_RAW[source])
+            echo(f"  [官网 {source}] 新写入 {len(r['new_ids'])} 条，抽取 {out['extracted']} 条")
+        except Exception as e:  # noqa: BLE001  一个官网出错不影响别的
+            echo(f"  [官网 {source}] 出错：{e}"[:200])
+    try:
+        from polaris.search.index import refresh
+
+        refresh()  # 对齐时据此标出下架的岗位
+    except Exception as e:  # noqa: BLE001
+        echo(f"  [官网] 刷新知识层出错：{e}"[:200])
 
 
 def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) -> bool:
@@ -182,6 +214,7 @@ def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
         return
     notified: set[str] = set()
     morning_done: str | None = None
+    official_done: str | None = None
     keep_awake(True)
     echo("常驻采集开始，电脑开着时不会自己睡着。按 Ctrl+C 停止。")
     while True:
@@ -189,6 +222,10 @@ def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
         if now.hour * 60 + now.minute >= 8 * 60 + 30 and morning_done != now.date().isoformat():
             proactive(echo, "[早上的简报] ")  # 每天 8:30 以后第一次醒来时出一份
             morning_done = now.date().isoformat()
+        if now.hour >= 9 and official_done != now.date().isoformat():
+            echo(f"[官网] {now:%H:%M} 每天整批重采一次")
+            official_daily(echo)
+            official_done = now.date().isoformat()
         try:
             ran = tick(echo, notified)
         except Exception as e:  # noqa: BLE001  一轮出错不让整个常驻进程退出
