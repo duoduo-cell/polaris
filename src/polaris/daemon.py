@@ -16,7 +16,9 @@ from polaris.config import get_settings
 from polaris.logins import logged_in, notify
 from polaris.report import BEIJING
 
-IMPLEMENTED = ("xhs", "boss")  # 脉脉采集器写好后加进来
+# Boss 会识别出被程序接管的浏览器、把页面跳成空白（10-11 实测），我们不去隐藏，所以暂不自动采 Boss，等用户决定。
+# 脉脉采集器写好后加进来。
+IMPLEMENTED = ("xhs",)
 POST_SOURCES = {"xhs": ("post", "xhs"), "boss": ("job", "boss")}
 
 

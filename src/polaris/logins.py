@@ -18,9 +18,26 @@ def cookie_names(context: Any, source: str) -> set[str]:
     return {c["name"] for c in context.cookies(SITES[source])}
 
 
+XHS_LOGGED_IN = """() => { const u = window.__INITIAL_STATE__?.user;
+                             const v = u && (u.loggedIn?.value ?? u.loggedIn?._value ?? u.loggedIn); return v === true; }"""
+
+
 def logged_in(context: Any, source: str) -> bool:
+    if source == "xhs":
+        # 小红书没登录时也会发 web_session，光看 cookie 会误判（10-11 实测）；看页面自己的登录状态
+        page = next((p for p in context.pages if "xiaohongshu.com" in p.url), None)
+        opened = page is None
+        if opened:
+            page = context.new_page()
+            page.goto("https://www.xiaohongshu.com/explore", wait_until="domcontentloaded", timeout=45000)
+            page.wait_for_function("() => window.__INITIAL_STATE__ !== undefined", timeout=20000)
+        try:
+            return bool(page.evaluate(XHS_LOGGED_IN))
+        finally:
+            if opened:
+                page.close()
     names = cookie_names(context, source)
-    return bool(LOGIN_COOKIES[source] & names) if source != "boss" else LOGIN_COOKIES["boss"] <= names
+    return LOGIN_COOKIES["boss"] <= names if source == "boss" else bool(LOGIN_COOKIES[source] & names)
 
 
 def notify(title: str, message: str) -> None:
