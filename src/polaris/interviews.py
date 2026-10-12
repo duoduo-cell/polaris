@@ -15,6 +15,7 @@ ROUND_RE = re.compile(r"(?:第?([一二三四五六七八九十1-9])\s*面|([一
 NUMBERS = dict(zip("一二三四五六七八九十", range(1, 11), strict=True))
 META_RE = re.compile(r"^(发布[：:]|点赞\s|作者[：:]|属地[：:]|评论数[：:])")
 STUDY_RE = re.compile(r"考点清单|题库|八股整理|面试宝典|备考|面试指南|题目汇总|高频题汇总|面试攻略|培训|付费资料|课程推广|面经指南")
+COMPILATION_RE = re.compile(r"(?:并非|不是|不全是|非)(?:全部|所有)?(?:为)?(?:本人|自己)(?:亲历|亲身)|(?:粉丝|读者|网友)投稿")
 
 
 def normalize(text: str) -> str:
@@ -125,6 +126,8 @@ def profile(post: Any, raw_text: str, raw_json: dict[str, Any] | None = None) ->
             r"凭回忆|时长[：:]|面试官问|面试官让我|我(?:的|参加|经历|投|面)|一面过|二面过", body):
         material = "study"
     supplied = getattr(post, "evidence_profile", None) or {}
+    if COMPILATION_RE.search(body):
+        material = "uncertain" if re.search(r"(?:粉丝|读者|网友)投稿", body) else "study"
     explicit_company = supplied.get("interview_company")
     supplied_company = match(explicit_company)
     if supplied_company and supplied.get("company_evidence") and normalize(supplied["company_evidence"]) in normalize(body):
@@ -185,11 +188,16 @@ def profile(post: Any, raw_text: str, raw_json: dict[str, Any] | None = None) ->
             "rounds": rounds, "questions": rows}
 
 
-def sync_questions(s: Session) -> dict[str, int]:
-    """可重复回填；稳定 key 保留题目 ID，不丢跟踪关系，不调模型。"""
-    rows = s.execute(select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)).all()
-    keys, stats = [], {"posts": len(rows), "questions": 0, "unknown_company": 0, "study": 0}
+def sync_questions(s: Session, post_ids: list[int] | None = None, *, skip_locked: bool = False) -> dict[str, int]:
+    """稳定 key 保留题号，不调模型。按帖更新，在线同步可以跳过正在抽取的帖子。"""
+    stmt = select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)
+    if post_ids is not None:
+        stmt = stmt.where(Post.id.in_(post_ids))
+    rows = s.execute(stmt.with_for_update(of=Post, skip_locked=skip_locked)).all()
+    stats = {"posts": len(rows), "questions": 0, "unknown_company": 0, "study": 0,
+             "skipped_posts": max(0, len(post_ids or []) - len(rows))}
     for p, r in rows:
+        keys = []
         info = profile(p, r.raw_text, r.raw_json)
         p.evidence_profile = {**(p.evidence_profile or {}), **{k: v for k, v in info.items() if k != "questions"},
                               "profile_version": "evidence-v1"}
@@ -200,5 +208,6 @@ def sync_questions(s: Session) -> dict[str, int]:
             stats["questions"] += 1
             stats["unknown_company"] += item["company"] is None
             stats["study"] += item["material"] == "study"
-    s.execute(delete(InterviewQuestion).where(InterviewQuestion.key.not_in(keys)))
+        # 不能按整库的旧快照删题：采集可能已经为别的帖子写入了新题。
+        s.execute(delete(InterviewQuestion).where(InterviewQuestion.post_id == p.id, InterviewQuestion.key.not_in(keys)))
     return stats

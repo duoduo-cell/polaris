@@ -17,7 +17,7 @@ from polaris.memory.job_scope import resolve, sync_followup
 from polaris.memory.schema import qualifier_key
 from polaris.memory.update import Candidate, Context, apply, slot_facts
 from polaris.results import entities, presentation
-from polaris.search.index import sync_chunks
+from polaris.search.index import sync_chunks, sync_post_chunks
 from polaris.sources import safe_url
 from polaris.tools.base import render
 
@@ -55,6 +55,26 @@ def seed():
             s.flush()
             posts.append(p.id)
         return [j.id for j in jobs], posts
+
+
+def test_online_chunk_sync_preserves_other_posts_jobs_and_skips_busy_posts(db):
+    _, posts = seed()
+    sync_chunks()
+    with session_scope() as s:
+        before = {c.key: (c.id, c.content_hash) for c in s.scalars(select(SearchChunk))}
+        p = s.get(Post, posts[0])
+        p.interview_questions = ["RAG 如何召回？"]
+    with session_scope() as locked:
+        locked.execute(select(Post).where(Post.id == posts[0]).with_for_update())
+        with session_scope() as s:
+            assert sync_post_chunks(s, [posts[0]])["skipped_posts"] == 1
+    with session_scope() as s:
+        stats = sync_post_chunks(s, [posts[0]])
+        assert stats["posts"] == 1 and stats["questions"] == 1 and stats["removed"] == 1
+        after = {c.key: (c.id, c.content_hash) for c in s.scalars(select(SearchChunk))}
+        assert f"post:{posts[0]}:q1" not in after
+        assert after == {k: v for k, v in before.items() if k != f"post:{posts[0]}:q1"}
+        assert sync_post_chunks(s, [])["total"] == 0
 
 
 def test_three_verified_recommendations_have_sources_and_hallucinations_do_not(db):
@@ -118,6 +138,31 @@ def test_backfill_is_idempotent_and_preserves_question_ids(db):
         before = dict(s.execute(select(InterviewQuestion.key, InterviewQuestion.id)).all())
         sync_questions(s)
         assert dict(s.execute(select(InterviewQuestion.key, InterviewQuestion.id)).all()) == before
+
+
+def test_scoped_question_sync_preserves_other_posts_and_question_ids(db):
+    _, posts = seed()
+    with session_scope() as s:
+        sync_questions(s)
+        before = dict(s.execute(select(InterviewQuestion.key, InterviewQuestion.id)).all())
+        s.get(Post, posts[0]).interview_questions = ["RAG 如何召回？"]
+        stats = sync_questions(s, [posts[0]])
+        assert stats["posts"] == 1 and stats["questions"] == 1
+        after = dict(s.execute(select(InterviewQuestion.key, InterviewQuestion.id)).all())
+        assert after[f"post:{posts[0]}:q0"] == before[f"post:{posts[0]}:q0"]
+        assert f"post:{posts[0]}:q1" not in after
+        assert all(after[k] == v for k, v in before.items() if not k.startswith(f"post:{posts[0]}:"))
+        assert sync_questions(s, [])["posts"] == 0
+        assert dict(s.execute(select(InterviewQuestion.key, InterviewQuestion.id)).all()) == after
+
+
+def test_online_question_sync_skips_a_post_locked_by_extraction(db):
+    _, posts = seed()
+    with session_scope() as held:
+        held.execute(select(Post).where(Post.id == posts[0]).with_for_update()).one()
+        with session_scope() as s:
+            stats = sync_questions(s, [posts[0]], skip_locked=True)
+            assert stats["posts"] == 0 and stats["skipped_posts"] == 1
 
 
 def test_two_jobs_do_not_share_progress_or_bookmarks_and_retry_does_not_roll_back(db):

@@ -9,7 +9,7 @@ from statistics import median
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from polaris.companies import match
 from polaris.db.models import PeerProfile, RawItem
@@ -23,7 +23,9 @@ class PeersSearchArgs(BaseModel):
     direction: str | None = Field(None, description="方向关键词，如 Agent、后训练、RAG、算法；在方向、岗位、团队里找")
     stage: Literal["本科", "硕士", "博士", "已工作"] | None = Field(None, description="只看某个阶段的人")
     outcome: Literal["拿到offer", "挂了", "进行中"] | None = Field(None, description="只看某种结果")
-    job_type: Literal["日常实习", "暑期实习", "校招", "社招"] | None = None
+    job_type: Literal["实习", "日常实习", "暑期实习", "校招", "社招"] | None = Field(
+        None, description="实习包含日常和暑期，不包含校招和社招；未写类型的不会冒充实习")
+    big_only: bool = Field(True, description="默认只看明确的大厂目标；未知公司不用于推断大厂门槛")
     since_days: int = Field(180, ge=1, le=730, description="只看最近多少天发的帖子，默认半年")
     limit: int = Field(10, ge=1, le=30)
 
@@ -73,7 +75,7 @@ def peers_search(args: PeersSearchArgs) -> dict[str, Any]:
     now = datetime.now(UTC)
     with session_scope() as s:
         stmt = (select(PeerProfile, RawItem).join(RawItem, RawItem.id == PeerProfile.raw_item_id)
-                .where(PeerProfile.published_at >= now - timedelta(days=args.since_days)))
+                .where(PeerProfile.published_at >= now - timedelta(days=args.since_days), PeerProfile.published_at <= now))
         if args.company:
             big = match(args.company)
             name = big.name if big else args.company
@@ -82,20 +84,31 @@ def peers_search(args: PeersSearchArgs) -> dict[str, Any]:
         if args.direction:
             d = f"%{args.direction}%"
             stmt = stmt.where(or_(PeerProfile.direction.ilike(d), PeerProfile.target_role.ilike(d), PeerProfile.target_team.ilike(d)))
-        for col, value in ((PeerProfile.stage, args.stage), (PeerProfile.outcome, args.outcome), (PeerProfile.job_type, args.job_type)):
+        for col, value in ((PeerProfile.stage, args.stage), (PeerProfile.outcome, args.outcome)):
             if value:
                 stmt = stmt.where(col == value)
+        if args.job_type == "实习":
+            stmt = stmt.where(PeerProfile.job_type.in_(("日常实习", "暑期实习")))
+        elif args.job_type:
+            stmt = stmt.where(PeerProfile.job_type == args.job_type)
+        excluded_unknown_company = 0
+        if args.big_only:
+            unknown = stmt.where(PeerProfile.big_company.is_(None)).subquery()
+            excluded_unknown_company = s.scalar(select(func.count()).select_from(unknown)) or 0
+            stmt = stmt.where(PeerProfile.big_company.is_not(None))
         rows = _dedupe(s.execute(stmt.order_by(PeerProfile.published_at.desc())).all())
         people = [p for p, _ in rows]
         items = [_row(p, raw, now) for p, raw in rows[: args.limit]]
-    known_stage = [p for p in people if p.stage != "未说明"]
+    known_stage = [p for p in people if p.stage in ("本科", "硕士", "博士", "已工作")]
     explicit_none = [p for p in people if not p.internships and NO_INTERN.search(p.evidence or "")]
     internship_counts = [len(p.internships) for p in people if p.internships] + [0] * len(explicit_none)
     summary = {
         "matched": len(people),
         "by_outcome": {k: sum(1 for p in people if p.outcome == k) for k in ("拿到offer", "挂了", "进行中", "放弃", "未说明")},
         "by_stage": {k: sum(1 for p in known_stage if p.stage == k) for k in ("本科", "硕士", "博士", "已工作")},
+        "stage_not_stated": len(people) - len(known_stage),
         "stated_papers": sum(1 for p in people if p.papers or p.paper_summary),
+        "papers_not_stated": sum(1 for p in people if not p.papers and not p.paper_summary),
         "with_top_paper": sum(1 for p in people if p.top_papers),
         "stated_internships": sum(1 for p in people if p.internships),
         "explicit_no_internships": len(explicit_none),
@@ -105,8 +118,14 @@ def peers_search(args: PeersSearchArgs) -> dict[str, Any]:
         "oldest": people[-1].published_at.date().isoformat() if people and people[-1].published_at else None,
     }
     out: dict[str, Any] = {"summary": summary, "returned": len(items), "items": items,
+                           "scope": {"company": args.company, "direction": args.direction, "stage": args.stage,
+                                     "outcome": args.outcome, "job_type": args.job_type, "big_only": args.big_only,
+                                     "since_days": args.since_days, "from_date": (now - timedelta(days=args.since_days)).date().isoformat(),
+                                     "to_date": now.date().isoformat(),
+                                     "excluded_unknown_company_records": excluded_unknown_company},
                            "note": "来自帖子里本人自述的背景和结果，只是在网上发帖的那部分人，不代表全部候选人；回答时说清样本量和日期。"
-                                   "“没写”是帖子里没提，不能说成 0 段实习或没有论文"}
+                                   "“没写”是帖子里没提，不能说成 0 段实习或没有论文。不同查询的样本可能重叠，不能把数量直接相加。"
+                                   "未知学历必须单列；校招、产品岗和技术实习不能混成同一门槛。本人感受不代表招聘标准"}
     if not people:
         out["hint"] = "库里还没有符合条件的人。可以放宽条件（去掉阶段或结果、加大天数），或者用 platform_search 去小红书现搜"
     elif len(people) < 5:

@@ -11,6 +11,7 @@ from polaris.config import ROOT, get_settings
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--local-only", action="store_true", help="只验证本地证据，不打开网页或占用采集浏览器")
+parser.add_argument("--reuse-profile", action="store_true", help="复用同一评测副本已初始化的背景，避免重复生成背景介绍回复")
 parser.add_argument("--output", help="结果 JSON 保存在本机 data/ 下")
 parser.add_argument("questions", nargs="*")
 args = parser.parse_args()
@@ -31,16 +32,26 @@ def save():
     if destination:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(json.dumps({"prompt_version": main.PROMPT_VERSION, "local_only": args.local_only,
-                                           "records": records}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+                                           "reuse_profile": args.reuse_profile, "records": records},
+                                          ensure_ascii=False, indent=2, default=str), encoding="utf-8")
 
 
 main.ready()
-intro_turn = main.chat(INTRO, thread, on_event=lambda e: None)
-if intro_turn.error:
-    records.append({"stage": "profile", "error": intro_turn.error})
-    save()
-    print("背景初始化失败：", intro_turn.error)
-    raise SystemExit(2)  # 服务不可用时不继续重复消耗重试
+if args.reuse_profile:
+    from sqlalchemy import func, select
+
+    from polaris.db.models import MemoryFact
+    from polaris.db.session import session_scope
+
+    with session_scope() as s:
+        assert s.scalar(select(func.count()).select_from(MemoryFact).where(MemoryFact.status == "active")), "尚未初始化背景"
+else:
+    intro_turn = main.chat(INTRO, thread, on_event=lambda e: None)
+    if intro_turn.error:
+        records.append({"stage": "profile", "error": intro_turn.error})
+        save()
+        print("背景初始化失败：", intro_turn.error)
+        raise SystemExit(2)  # 服务不可用时不继续重复消耗重试
 failed = False
 for q in QUESTIONS:
     t0 = time.monotonic()

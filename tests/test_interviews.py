@@ -1,6 +1,8 @@
 """图片面经与原句定位的业务回归，合成资料，不调用模型。"""
 from types import SimpleNamespace
 
+import pytest
+
 from polaris.interviews import _end_of, profile
 
 
@@ -63,3 +65,14 @@ def test_round_mentioned_in_a_question_does_not_override_the_section():
            "· 第一轮对话做 DPO，如何构建数据集？\n如何设计检索流水线")
     p = post(["如何设计检索流水线"], [])
     assert profile(p, raw)["questions"][0]["round"] == "2面"
+
+
+@pytest.mark.parametrize("disclaimer,material", [
+    ("并非全部为本人亲历面试原题", "study"),
+    ("面试过的粉丝投稿", "uncertain"),
+])
+def test_compilation_and_submitted_interviews_are_not_firsthand(disclaimer, material):
+    p = post(["如何设计检索流水线"], [])
+    got = profile(p, f"字节面经\n一面\n如何设计检索流水线\n{disclaimer}")
+    assert got["material"] == material
+    assert got["questions"][0]["company"] is None

@@ -187,3 +187,25 @@ def test_ocr_html_and_code_fences_are_stripped():
            "<table><tr><td>一面</td><td>PPO</td></tr></table>\n</body></html>\n```")
     out = xhs_deep.clean_ocr(raw)
     assert "<" not in out and "```" not in out and "学历：双非本 9 硕" in out and "一面 PPO" in out
+
+
+def test_offer_cohort_excludes_unknown_employers_and_non_internships(db):
+    with session_scope() as s:
+        for i, (company, job_type, days) in enumerate((("腾讯", "日常实习", 1), ("腾讯", "暑期实习", 2),
+                                                     ("腾讯", "校招", 3), (None, "日常实习", 4),
+                                                     ("腾讯", "日常实习", -1))):
+            raw = RawItem(source="xhs", tier="B", kind="post", raw_text=f"合成背景{i}", content_hash=f"cohort-{i}",
+                          fetched_at=NOW, published_at=NOW - timedelta(days=days))
+            s.add(raw)
+            s.flush()
+            s.add(PeerProfile(raw_item_id=raw.id, source="xhs", published_at=raw.published_at,
+                              who="作者", stage="未说明", papers=[], internships=[], awards=[],
+                              target_company=company, big_company=company, job_type=job_type,
+                              direction="Agent", outcome="拿到offer", evidence=f"合成背景{i}", prompt_version="test"))
+    out = peers_search(PeersSearchArgs(direction="Agent", job_type="实习", outcome="拿到offer"))
+    assert out["summary"]["matched"] == 2 and out["returned"] == 2
+    assert {p["job_type"] for p in out["items"]} == {"日常实习", "暑期实习"}
+    assert out["summary"]["stage_not_stated"] == 2 and out["summary"]["papers_not_stated"] == 2
+    assert out["scope"]["excluded_unknown_company_records"] == 1
+    assert out["scope"]["job_type"] == "实习" and out["scope"]["from_date"]
+    assert peers_search(PeersSearchArgs(job_type="实习", big_only=False))["summary"]["matched"] == 3
