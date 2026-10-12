@@ -14,7 +14,7 @@ export default function Evals() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Report[]>("reports").then((r) => { setReports(r); if (r.length) setCurrent(r[r.length - 1].name); })
+    api<Report[]>("reports").then((r) => { const list = Array.isArray(r) ? r : []; setReports(list); if (list.length) setCurrent(list[list.length - 1].name); })
       .catch((e) => setError(e.message));
   }, []);
   useEffect(() => {

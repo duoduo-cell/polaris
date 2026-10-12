@@ -2,8 +2,12 @@
 # 用法（在 PowerShell 里，仓库根目录下）：
 #   .\scripts\start.ps1            用真实的库（你的真实记忆）
 #   .\scripts\start.ps1 -Sandbox   用沙盒库 polaris_sandbox（随便测，不碰真实记忆；先运行一次 uv run polaris sandbox）
+#   .\scripts\start.ps1 -Phone     手机也能用，扫屏幕上的二维码配对（和 -Sandbox 可以一起用）。
+#                                  装了 Tailscale：手机在哪个网络都能连，网页仍只听本机；没装：手机要和电脑连同一个 Wi-Fi
+#   .\scripts\start.ps1 -Phone -NewCode   换一个配对码（之前配对过的设备要重新扫）
 # API 和网页各开一个窗口，关掉窗口就停了。
-param([switch]$Sandbox)
+# 不加 -Phone 时网页只听本机（127.0.0.1）：在咖啡馆、学校的公共 Wi-Fi 下，同一网络的人打不开你的北极星。
+param([switch]$Sandbox, [switch]$Phone, [switch]$NewCode)
 
 # 不用 Stop：docker 往 stderr 打的警告在 PowerShell 5.1 里会被当成错误中断；这里靠 $LASTEXITCODE 判断
 $Root = Split-Path -Parent $PSScriptRoot
@@ -53,14 +57,48 @@ if (-not (Test-Path "$Root\web\node_modules")) {
     Write-Host "  第一次用，先装网页的依赖（几分钟）……"
     npm --prefix web install --registry https://registry.npmmirror.com
 }
-$webCmd = "Set-Location '$Root\web'; `$Host.UI.RawUI.WindowTitle='北极星 网页'; npm run dev -- --port 3000"
+$hostArg = "-H 127.0.0.1"
+$webEnv = ""
+if ($Phone) {
+    $phoneArgs = @("run", "polaris", "phone", "--json")
+    if ($NewCode) { $phoneArgs += "--new" }
+    $info = (& uv @phoneArgs | Select-Object -Last 1) | ConvertFrom-Json
+    if (-not $info -or -not $info.urls) {
+        Write-Host "没找到这台电脑在局域网里的地址：先连上 Wi-Fi（手机和电脑连同一个），或者装 Tailscale（见 docs\GUIDE.md）。" -ForegroundColor Red
+        exit 1
+    }
+    # Tailscale：网页仍只听本机，由 tailscale serve 转成 HTTPS 给登录同一账号的设备；没有 Tailscale 才对局域网开放。
+    # 两种都要先配对（web\src\proxy.ts）
+    if ($info.via -ne "tailscale") { $hostArg = "-H 0.0.0.0" }
+    $webEnv = "`$env:POLARIS_PAIR_CODE='$($info.code)'; `$env:POLARIS_DEV_ORIGINS='$($info.origins)'; "
+}
+$webCmd = "Set-Location '$Root\web'; `$Host.UI.RawUI.WindowTitle='北极星 网页'; $webEnv npm run dev -- $hostArg --port 3000"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $webCmd | Out-Null
 
 foreach ($i in 1..60) {
     try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/health -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Seconds 2 }
 }
 foreach ($i in 1..60) {
-    try { Invoke-WebRequest -UseBasicParsing http://localhost:3000 -TimeoutSec 5 | Out-Null; break } catch { Start-Sleep -Seconds 2 }
+    try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3000 -TimeoutSec 5 | Out-Null; break } catch { Start-Sleep -Seconds 2 }
 }
-Start-Process "http://localhost:3000"
-Write-Host "好了：http://localhost:3000 （库：$db）。停掉：关掉那两个窗口。" -ForegroundColor Green
+if ($Phone) {
+    if ($info.via -eq "tailscale") {
+        Write-Host "把网页交给 Tailscale（只有登录你同一个账号的设备能打开）……"
+        Write-Host "  第一次用时它会给一个链接，打开后在 Tailscale 后台点同意开启 HTTPS，它会接着往下走。" -ForegroundColor Yellow
+        & tailscale serve --bg 3000
+    }
+    Start-Process "http://localhost:3000/pair?code=$($info.code)"  # 电脑上的浏览器也配对一下
+    Write-Host ""
+    & uv run polaris phone --qr
+    Write-Host ""
+    Write-Host "好了：用手机扫弹出来的二维码（库：$db）。扫一次记住这台手机 90 天，之后直接打开或从主屏幕点开。" -ForegroundColor Green
+    if ($info.via -eq "tailscale") {
+        Write-Host "  手机上要开着 Tailscale、登录和电脑同一个账号；手机上的其他 VPN、加速器要先关掉。" -ForegroundColor Yellow
+    } else {
+        Write-Host "  手机和电脑要连同一个 Wi-Fi。学校、公司的 Wi-Fi 常常不让设备互相访问，打不开就让电脑连手机的热点再试。" -ForegroundColor Yellow
+        Write-Host "  Windows 问要不要允许 Node.js 访问网络时，选允许（专用网络）。想在任何网络都能用：装 Tailscale，见 docs\GUIDE.md。" -ForegroundColor Yellow
+    }
+} else {
+    Start-Process "http://localhost:3000"
+    Write-Host "好了：http://localhost:3000 （库：$db）。停掉：关掉那两个窗口。想在手机上用：加 -Phone 重新运行。" -ForegroundColor Green
+}

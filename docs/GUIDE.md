@@ -111,9 +111,46 @@ $env:DATABASE_URL="postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris_s
 .\scripts\start.ps1
 ```
 
+### 在手机上用（实时看它查、看它回答）
+
+agent 还在电脑上跑，手机只是另一个屏幕：锁屏、切到别的 App 时任务照常进行，回来马上刷新到最新进度。
+不加 `-Phone` 时网页只让本机打开（公共 Wi-Fi 下同一网络的人打不开你的北极星）。
+
+**电脑（只做一次）**：去 tailscale.com/download 装 Windows 版 Tailscale，登录（Microsoft、GitHub 或 Apple 账号；Google 国内打不开）。
+然后运行：
+
+```powershell
+.\scripts\start.ps1 -Phone              # 加 -Sandbox 就用沙盒库
+```
+
+第一次运行时 Tailscale 会给一个链接，打开后在后台点同意开启 HTTPS，脚本接着往下走，最后弹出一张二维码图片。
+没装 Tailscale 也能用，但手机要和电脑连同一个 Wi-Fi（学校、公司的 Wi-Fi 常常不让设备互相访问，就让电脑连手机热点）。
+
+**iPhone**
+
+1. App Store 搜 Tailscale（开发者 Tailscale Inc.）。国区商店可能搜不到，就在"设置 → 媒体与购买项目"里换成香港或美国的 Apple ID 下载（不要动 iCloud）。
+2. 打开后登录，**和电脑同一个账号**；弹出"添加 VPN 配置"选允许，打开开关看到 Connected。iPhone 同时只能开一个 VPN，开着加速器或代理要先关。
+3. 相机扫电脑上的二维码 → Safari 打开，自动配对，进到对话页。
+4. Safari"分享"→"添加到主屏幕"。以后点桌面图标打开，像 App 一样全屏。
+5. 关掉 Wi-Fi 用 4G 试一次：能打开就说明出门在外也能用。
+
+**安卓**：去 tailscale.com/download 下载安卓安装包（国内上不了 Google Play；也可以在 F-Droid 装），之后同上；Chrome 右上角 ⋮ →"安装应用"或"添加到主屏幕"。
+
+**平时**：电脑开着并运行 `start.ps1 -Phone`、手机开着 Tailscale，点主屏图标就能用。换手机或想让旧手机失效：`start.ps1 -Phone -NewCode` 后重新扫码。
+
+| 打不开时 | 怎么办 |
+|---|---|
+| 手机 Tailscale 连不上 | 关掉手机上其他 VPN、加速器再开；确认两边是同一个账号 |
+| 页面显示"配对这台设备" | 重新扫电脑上的二维码，或把窗口里的配对码输进去（错 8 次锁 10 分钟） |
+| 很慢 | 国内 Tailscale 有时只能绕国外中转；以后可以用阿里云服务器做国内中转 |
+| 没装 Tailscale、同一个 Wi-Fi 也打不开 | Windows 问"允许 Node.js 访问网络"时要选允许；或者让电脑连手机热点 |
+
+为什么不用 Expo Go 这类 App：它只能跑 React Native 写的 App（北极星是网页），官方定位是入门试玩；而且只解决"把界面送到手机"，
+手机连不上电脑后端的问题照样在。网页 + Tailscale 现在就能用，等上了云服务器，手机直接打开固定的 https 地址即可。
+
 ### 停止
 
-关掉那两个窗口就行。常驻采集不受影响，它是另一个进程。
+关掉那两个窗口就行。常驻采集不受影响，它是另一个进程。手机模式用过 Tailscale 的，想彻底关掉转发：`tailscale serve reset`。
 
 ### 不开网页，只用命令行对话
 
@@ -278,4 +315,4 @@ uv run polaris feedback
 - "有目标"：目标页、投递进度跟踪、每日计划
 - 写其余 19 家官网采集的"工程师"子 agent
 - 对话很长时的压缩只在真实问答探针里验证过（见 `design/DEPTH.md`），没有单独的评测集
-- 手机上的页面没调过
+- 手机上收"做完了"的通知（iPhone 装成主屏应用后能收网页推送；安卓国内要走微信）

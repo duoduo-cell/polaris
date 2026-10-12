@@ -79,7 +79,7 @@ export default function Chat() {
   const blocked = submitting || loading || approvals.length > 0;
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-4rem)]">
+    <div className="chat-h flex flex-col">
       <div className="mx-auto w-full max-w-3xl flex items-center justify-between gap-3 pb-3">
         <label className="relative inline-flex items-center min-w-0">
           <select aria-label="切换对话" value={thread} onChange={(e) => switchThread(e.target.value)} disabled={loading || submitting}

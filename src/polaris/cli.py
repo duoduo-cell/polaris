@@ -1,5 +1,6 @@
 """命令行：uv run polaris --help"""
 import json
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -496,6 +497,31 @@ def serve(port: int = typer.Option(8000), reload: bool = typer.Option(False, hel
     import uvicorn
 
     uvicorn.run("polaris.api.app:app", host="127.0.0.1", port=port, reload=reload)
+
+
+@app.command()
+def phone(port: int = typer.Option(3000, help="网页的端口"),
+          new: bool = typer.Option(False, help="换一个新的配对码（之前配对过的设备要重新扫）"),
+          as_json: bool = typer.Option(False, "--json", help="只输出 JSON（给 start.ps1 用）"),
+          qr: bool = typer.Option(False, help="生成二维码图片并用看图软件打开")) -> None:
+    """手机模式：配对码、这台电脑在局域网和 Tailscale 里的地址、给手机扫的二维码。由 scripts/start.ps1 -Phone 调用。"""
+    from polaris import phone as ph
+
+    p = ph.info(port=port, new=new)
+    if as_json:
+        typer.echo(json.dumps({"code": p.code, "origins": p.origins, "via": p.via, "urls": p.urls}))
+        return
+    if not p.urls:
+        typer.echo("没找到这台电脑在局域网里的地址：先连上 Wi-Fi（手机和电脑连同一个）。")
+        raise typer.Exit(1)
+    typer.echo(f"配对码：{p.code}（手机扫码就不用输）")
+    for u in p.urls:
+        typer.echo(f"  {u['label']}：{u['url']}")
+    if qr:
+        for path in ph.qr_images(p):
+            typer.echo(f"  二维码：{path}")
+            if sys.platform == "win32":
+                os.startfile(path)  # noqa: S606  用系统的看图软件打开，给手机扫
 
 
 @app.command()

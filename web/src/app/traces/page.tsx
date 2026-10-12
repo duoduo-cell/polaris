@@ -55,8 +55,8 @@ export default function Traces() {
     return () => { active = false; };
   }, [days]);
 
-  const errRate = data && data.tools.calls ? Math.round((data.tools.errors / data.tools.calls) * 1000) / 10 : null;
-  const maxCalls = Math.max(1, ...(data?.tools.by_tool.map((t) => t.calls) ?? [1]));
+  const errRate = data?.tools?.calls ? Math.round((data.tools.errors / data.tools.calls) * 1000) / 10 : null;
+  const maxCalls = Math.max(1, ...(data?.tools?.by_tool?.map((t) => t.calls) ?? [1]));
   return (
     <div className="space-y-6">
       <PageHeader title="追踪" right={
@@ -69,7 +69,7 @@ export default function Traces() {
       </PageHeader>
       <ErrorNote error={error} />
       {data === null ? <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 !rounded-xl" />)}</div>
-        : data.answers === 0 ? <div className="rounded-xl border border-line bg-card"><EmptyState icon={Activity} title="这段时间还没有回答">去对话里问一句，这里就有数据了。</EmptyState></div>
+        : !data.answers ? <div className="rounded-xl border border-line bg-card"><EmptyState icon={Activity} title="这段时间还没有回答">去对话里问一句，这里就有数据了。</EmptyState></div>
         : <>
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Tile label="回答" value={String(data.answers)} hint={Object.entries(data.tasks).map(([s, n]) => `${STATES[s] ?? s} ${n}`).join(" · ")} />

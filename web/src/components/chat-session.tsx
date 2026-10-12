@@ -174,10 +174,17 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
       }
     }
     refresh.current = load;
-    const focus = () => { clearTimeout(timer); void load(); };
-    window.addEventListener("focus", focus);
+    // 回到页面就马上刷新：手机锁屏、切到别的 App 时页面会被暂停（任务在电脑上照常跑），回来时 iOS 不一定触发 focus
+    const focus = () => { if (document.visibilityState === "visible") { clearTimeout(timer); void load(); } };
+    const events = ["focus", "pageshow", "online"] as const;
+    events.forEach((e) => window.addEventListener(e, focus));
+    document.addEventListener("visibilitychange", focus);
     void load();
-    return () => { active = false; clearTimeout(timer); window.removeEventListener("focus", focus); };
+    return () => {
+      active = false; clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, focus));
+      document.removeEventListener("visibilitychange", focus);
+    };
   }, [thread, ready]);
 
   // 正在跑的那条单独快速刷新（回答草稿、步骤），整段对话仍按原来的节奏刷新

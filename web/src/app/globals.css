@@ -111,6 +111,31 @@ dialog.panel {
 dialog.panel[open] { animation: panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
 dialog.panel::backdrop { background: rgb(0 0 0 / 0.22); animation: fade-in 0.2s ease-out; }
 @keyframes panel-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 手机：让开刘海和底部横条（"添加到主屏幕"后全屏打开时才有值，浏览器里是 0） */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.main-pad { padding-top: 1rem; padding-bottom: calc(env(safe-area-inset-bottom) + 1rem); }
+/* 对话页占满一屏：手机减去顶栏 3.25rem 和上下各 1rem；电脑减去上下各 2rem */
+.chat-h { height: calc(100dvh - 5.25rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  .main-pad { padding-top: 2rem; padding-bottom: 2rem; }
+  .chat-h { height: calc(100dvh - 4rem); }
+}
+.drawer-body { padding-top: calc(env(safe-area-inset-top) + 0.75rem); padding-bottom: calc(env(safe-area-inset-bottom) + 1rem); }
+
+/* 手机左侧滑出的菜单（原生 dialog：返回键、Esc 关闭） */
+dialog.drawer {
+  margin: 0 auto 0 0; height: 100dvh; max-height: 100dvh; width: min(300px, 82vw); max-width: 82vw;
+  border: 0; border-right: 1px solid var(--line); padding: 0; background: var(--background); color: var(--foreground);
+}
+dialog.drawer[open] { animation: drawer-in 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+dialog.drawer::backdrop { background: rgb(0 0 0 / 0.28); animation: fade-in 0.2s ease-out; }
+@keyframes drawer-in { from { transform: translateX(-36px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 详情面板在手机上占满屏，顶部和底部让开刘海、横条 */
+@media (max-width: 767px) {
+  dialog.panel { width: 100vw; border-left: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+}
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* 回答、简报、报告里的 markdown */
