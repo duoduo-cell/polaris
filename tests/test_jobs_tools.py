@@ -64,13 +64,52 @@ def test_jobs_search_filters_and_aliases(db):
     assert '"returned": 0' in out and "如实告诉用户" in out
 
 
+def test_jobs_search_by_days_per_week_reports_jds_that_do_not_say(db):
+    """10-12 回答评测：问"只要去 2 天的那个"时，模型以前只能拿"每周2天"做全文检索，换说法搜了 16 次。"""
+    ids = seed()
+    rt = ToolRuntime()
+    none = json.loads(rt.invoke(REGISTRY["jobs_search"], {"max_days_per_week": 3}))
+    assert none["returned"] == 0
+    assert none["days_filter"]["jd_without_days"] == 1 and none["days_filter"]["least_days_in_jd"] >= 4  # 腾讯那条没写天数
+    some = json.loads(rt.invoke(REGISTRY["jobs_search"], {"max_days_per_week": 5, "company": "字节"}))
+    assert [i["id"] for i in some["items"]] == [f"J-{ids['bd']}"] and some["days_filter"]["jd_without_days"] == 0
+    assert "days_filter" not in json.loads(rt.invoke(REGISTRY["jobs_search"], {"company": "字节"}))
+
+
 def test_jobs_search_with_query_keeps_retrieval_order(db, monkeypatch):
     ids = seed()
-    monkeypatch.setattr(jobs_tools, "ranked_ids", lambda q, scope, company: [ids["tx"], ids["bd"]])
+    monkeypatch.setattr(jobs_tools, "ranked_ids", lambda q, scope, company: ([ids["tx"], ids["bd"]], None))
     out = ToolRuntime().invoke(REGISTRY["jobs_search"], {"query": "Coding Agent 研究实习"})
     assert out.index(f"J-{ids['tx']}") < out.index(f"J-{ids['bd']}")
     out = ToolRuntime().invoke(REGISTRY["jobs_search"], {"query": "Coding Agent 研究实习", "company": "字节"})
     assert f"J-{ids['tx']}" not in out and f"J-{ids['bd']}" in out  # 检索结果仍按字段筛
+
+
+def test_search_falls_back_to_keywords_when_the_embedding_service_fails(db, monkeypatch):
+    """10-12：向量服务欠费返回 400（不是 LLMError），以前整个工具报"内部错误"，模型换说法重试了 14 次。
+    现在退回关键词和图谱，结果里说明打了折扣。"""
+    from polaris.llm.client import LLM
+    from polaris.search import retrieve
+
+    ids = seed()
+    from polaris.search.index import sync_chunks
+
+    sync_chunks()
+
+    def broken(*a, **k):
+        raise RuntimeError("Error code: 400 - Arrearage")
+
+    monkeypatch.setattr(LLM, "embed", broken)
+    monkeypatch.setattr(LLM, "rerank", broken)
+    monkeypatch.setattr(retrieve, "_QUERY_VECTORS", {})
+    rt = ToolRuntime()
+    out = json.loads(rt.invoke(REGISTRY["jobs_search"], {"query": "Coding Agent", "big_only": False}))
+    assert rt.calls[-1]["ok"] and f"J-{ids['tx']}" in [i["id"] for i in out["items"]]
+    assert "关键词" in out["search_note"] and "不要换说法反复搜" in out["search_note"]
+    posts = json.loads(rt.invoke(REGISTRY["posts_search"], {"query": "RAG 召回"}))
+    assert rt.calls[-1]["ok"] and "search_note" in posts
+    questions = json.loads(rt.invoke(REGISTRY["questions_search"], {"query": "RAG 召回"}))
+    assert rt.calls[-1]["ok"] and "search_note" in questions
 
 
 def test_jobs_get_shows_sources_conflicts_and_bad_id(db):
@@ -106,6 +145,20 @@ def test_chunks_sync_keyword_search_and_graph_rows(db):
     g = collect()
     assert {"job": ids["tx"], "city": "新加坡"} in g["job_city"]
     assert any(r["company"] == "滴滴" for r in g["question_company"])
+
+
+def test_graph_counts_only_open_jobs_and_examples_are_checked_against_this_database(db):
+    """10-12：官网重采会标下架，下架的不进图谱；图谱只有一份，例子编号先到当前库核对（评测库、沙盒是早先复制的）。"""
+    from polaris.db.models import Job
+    from polaris.graph.build import collect
+    from polaris.tools.knowledge import keep_live
+
+    ids = seed()
+    with session_scope() as s:
+        s.get(Job, ids["tx"]).status = "gone"
+    assert all(r["job"] != ids["tx"] for r in collect()["job_city"])
+    groups, stale = keep_live("jobs", [{"group": "杭州", "count": 3, "examples": [f"J-{ids['bd']}", f"J-{ids['tx']}", "J-999999"]}])
+    assert groups[0]["examples"] == [f"J-{ids['bd']}"] and stale == 2
 
 
 def test_graph_recall_obeys_all_filters_before_fusion(db, monkeypatch):

@@ -67,7 +67,8 @@ def _unit_path(company: str, unit: str | None) -> list[dict[str, str]]:
 def collect() -> dict[str, list[dict[str, Any]]]:
     """从 Postgres 读出所有节点和关系（纯数据，不连 Neo4j，方便测试）。"""
     with session_scope() as s:
-        jobs = s.execute(select(Job).where(Job.is_synthetic.is_(False)).order_by(Job.id)).scalars().all()
+        # 只算在招的：官网每天重采后会标下架（10-12），下架的留在图谱里会让"某公司多少个岗位要求某技能"偏多
+        jobs = s.execute(select(Job).where(Job.is_synthetic.is_(False), Job.status == "active").order_by(Job.id)).scalars().all()
         posts = s.execute(select(Post, RawItem.source, RawItem.raw_text)
                           .join(RawItem, RawItem.id == Post.raw_item_id).order_by(Post.id)).all()
         questions = s.execute(select(SearchChunk.key, SearchChunk.post_id, SearchChunk.body, InterviewQuestion.company,

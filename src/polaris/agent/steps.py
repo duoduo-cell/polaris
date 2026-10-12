@@ -46,7 +46,9 @@ def describe(tool: str, args: dict[str, Any]) -> str:
     parts: list[str] = []
     if tool == "jobs_search":
         parts = [a.get("company"), a.get("city"), JOB_TYPES.get(a.get("job_type", "")), a.get("direction"),
-                 f"近 {a['since_days']} 天" if a.get("since_days") else None, f"“{a['query']}”" if a.get("query") else None]
+                 f"近 {a['since_days']} 天" if a.get("since_days") else None,
+                 f"每周不超过 {a['max_days_per_week']} 天" if a.get("max_days_per_week") else None,
+                 f"“{a['query']}”" if a.get("query") else None]
     elif tool == "jobs_trend":
         parts = [f"近 {a.get('days', 14)} 天", a.get("company"), a.get("direction"), JOB_TYPES.get(a.get("job_type", ""))]
     elif tool == "platform_search":
@@ -103,5 +105,7 @@ def outcome(tool: str, data: Any, ok: bool, output: str = "") -> str:
         n = data.get("returned") or 0
         unit = {"jobs_search": "个岗位", "posts_search": "篇帖子", "questions_search": "道题"}.get(tool, "条")
         more = "，还有更多" if data.get("next_offset") is not None else ""
-        return f"找到 {n} {unit}{more}" if n else "没找到符合条件的"
+        if (days := data.get("days_filter")) and days.get("jd_without_days"):
+            more += f"（另有 {days['jd_without_days']} 个 JD 没写每周天数）"
+        return f"找到 {n} {unit}{more}" if n else f"没找到符合条件的{more}"
     return "读到了"

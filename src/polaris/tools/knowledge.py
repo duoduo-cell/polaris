@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from polaris.companies import match as big_company
-from polaris.db.models import InterviewQuestion, Post, RawItem, SearchChunk
+from polaris.db.models import InterviewQuestion, Job, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
 from polaris.interviews import MATERIAL_LABELS
-from polaris.search.retrieve import SearchQuery, search
+from polaris.search.retrieve import SearchQuery, degraded, search
 from polaris.sources import source_dict
 from polaris.tools.base import ToolError, ToolSpec
 from polaris.vocab import SKILLS, skills_in
@@ -37,7 +37,7 @@ class QuestionsSearchArgs(BaseModel):
 
 def questions_search(args: QuestionsSearchArgs) -> dict:
     since = datetime.now(UTC) - timedelta(days=args.since_days) if args.since_days else None
-    hits, _ = search(SearchQuery(args.query, scope="questions", company=args.company, since=since, top_k=args.limit,
+    hits, trace = search(SearchQuery(args.query, scope="questions", company=args.company, since=since, top_k=args.limit,
                                 role=args.role, job_type=args.job_type, round=args.round, material=args.material,
                                 category=args.category, source=args.source))
     with session_scope() as s:
@@ -59,6 +59,8 @@ def questions_search(args: QuestionsSearchArgs) -> dict:
                 item["published"] = r.published_at.date().isoformat()
             items.append(item)
     out: dict[str, Any] = {"returned": len(items), "items": items}
+    if note := degraded(trace):
+        out["search_note"] = note
     if not items:
         out["hint"] = "没找到相关的面试题。可以换个说法、去掉公司或时间条件；确实没有就如实告诉用户。"
     return out
@@ -142,7 +144,7 @@ def kg_stats(args: KgStatsArgs) -> dict:
     cypher = (f"MATCH {', '.join(match)} MATCH (d)-[:{rel}]->(g:{label}) "
               f"WITH {key} AS group, {ref} AS ref ORDER BY ref DESC "  # 例子取编号最大的（最新入库的），每次一样
               "WITH group, collect(DISTINCT ref) AS refs "
-              "RETURN group, size(refs) AS n, refs[0..3] AS examples ORDER BY n DESC, group LIMIT $top")
+              "RETURN group, size(refs) AS n, refs[0..8] AS examples ORDER BY n DESC, group LIMIT $top")
     total_cypher = f"MATCH {', '.join(match)} RETURN count(DISTINCT d) AS n"
     d = driver()
     rows = d.execute_query(cypher, **params).records
@@ -155,13 +157,36 @@ def kg_stats(args: KgStatsArgs) -> dict:
             return f"P-{r}"
         return f"P-{str(r).split(':')[1]}"  # 题目的出处是它所在的帖子
 
-    items = [{"group": r["group"], "count": r["n"],
-              "examples": list(dict.fromkeys(cite(x) for x in r["examples"]))} for r in rows]
+    items, stale = keep_live(args.of, [{"group": r["group"], "count": r["n"],
+                                        "examples": list(dict.fromkeys(cite(x) for x in r["examples"]))} for r in rows])
     out: dict[str, Any] = {"of": args.of, "matched": total, "filters": {k: v for k, v in params.items() if k != "top"},
                            "groups": items}
+    if stale:
+        out["graph_note"] = (f"图谱和当前库不完全同步：{stale} 个例子在当前库里没有（已下架或图谱按另一份库建的），已去掉；"
+                             "各组数量可能比当前库多，引用数量时说明是图谱统计")
     if not items:
         out["hint"] = "图谱里没有符合条件的。可以去掉一个条件再查；确实没有就如实告诉用户。"
     return out
+
+
+def keep_live(of: str, groups: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """图谱给的例子编号先到当前库核对，只留查得到的（岗位还要在招），每组最多 3 个。
+    10-12 回答评测：图谱只有一份、按真实库重建；评测库和沙盒是早先复制的，例子里的新岗位在这些库里没有，模型拿去取详情全部报错。"""
+    refs = {x for g in groups for x in g["examples"]}
+    ids = [int(x[2:]) for x in refs if x[2:].isdigit()]
+    live: set[str] = set()
+    if ids:
+        with session_scope() as s:
+            if of == "jobs":
+                live = {f"J-{i}" for i in s.scalars(select(Job.id).where(Job.id.in_(ids), Job.status == "active"))}
+            else:
+                live = {f"P-{i}" for i in s.scalars(select(Post.id).where(Post.id.in_(ids)))}
+    out, stale = [], 0
+    for g in groups:
+        keep = [x for x in g["examples"] if x in live]
+        stale += len(set(g["examples"]) - live)
+        out.append({**g, "examples": keep[:3]})
+    return out, stale
 
 
 TOOLS = [

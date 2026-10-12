@@ -221,6 +221,15 @@ def _query_vector(llm: LLM, text_: str) -> list[float]:
     return _QUERY_VECTORS[text_]
 
 
+DEGRADED_NOTE = ("向量检索或重排暂时用不了（模型服务出错），这次只按关键词和知识图谱找，结果可能不全。"
+                 "不要换说法反复搜；照实告诉用户检索打了折扣，用已经找到的回答。")
+
+
+def degraded(trace: dict[str, Any]) -> str | None:
+    """这次检索有没有打折扣：向量或重排出错时给模型一句话，写进工具结果。"""
+    return DEGRADED_NOTE if trace.get("vector_error") or trace.get("rerank_error") else None
+
+
 def search(q: SearchQuery, llm: LLM | None = None) -> tuple[list[Hit], dict[str, Any]]:
     llm = llm or LLM()
     trace: dict[str, Any] = {"query": q.text, "scope": q.scope}
@@ -235,8 +244,8 @@ def search(q: SearchQuery, llm: LLM | None = None) -> tuple[list[Hit], dict[str,
         if "vector" in q.channels:
             try:
                 channels["vector"] = vector(s, q, _query_vector(llm, q.text))
-            except LLMError as e:
-                trace["vector_error"] = str(e)[:120]
+            except Exception as e:  # noqa: BLE001  向量服务出错（10-12 欠费 400）退回关键词和图谱，不让整个工具报错
+                trace["vector_error"] = f"{type(e).__name__}: {str(e)[:120]}"
         if "graph" in q.channels:
             recalled = graph(q)
             # 图谱只负责找关联；日期、类型、公司和合成标记仍以 Postgres 为准。

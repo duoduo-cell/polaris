@@ -14,11 +14,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import any_, func, or_, select
 
 from polaris.companies import match
-from polaris.db.models import Job, Post, Posting, RawItem
+from polaris.db.models import InterviewQuestion, Job, Post, Posting, RawItem
 from polaris.db.session import session_scope
 from polaris.followups import states
 from polaris.interviews import profile
-from polaris.search.retrieve import SearchQuery, search
+from polaris.search.retrieve import SearchQuery, degraded, search
 from polaris.sources import source_dict
 from polaris.tools.base import Page, ToolError, ToolSpec, untrusted
 
@@ -40,11 +40,11 @@ def _company_filter(name_col, big_col, company: str, is_array: bool = False):
     return any_(name_col) == company if is_array else name_col.ilike(f"%{company}%")
 
 
-def ranked_ids(query: str, scope: str, company: str | None) -> list[int]:
-    """混合检索，返回按相关度排好的岗位编号或帖子编号（同一文档只取第一次出现）。"""
-    hits, _ = search(SearchQuery(query, scope=scope, company=company, top_k=SEARCH_DEPTH))
+def ranked_ids(query: str, scope: str, company: str | None) -> tuple[list[int], str | None]:
+    """混合检索，返回按相关度排好的岗位编号或帖子编号（同一文档只取第一次出现），以及检索打了折扣时的说明。"""
+    hits, trace = search(SearchQuery(query, scope=scope, company=company, top_k=SEARCH_DEPTH))
     ids = [h.job_id if scope == "jobs" else h.post_id for h in hits]
-    return list(dict.fromkeys(i for i in ids if i))
+    return list(dict.fromkeys(i for i in ids if i)), degraded(trace)
 
 
 def _in_order(rows: list[Any], order: list[int], key) -> list[Any]:
@@ -61,6 +61,9 @@ class JobsSearchArgs(Page):
     direction: str | None = Field(None, description="方向，如 Agent、RAG、大模型、后端、算法")
     big_only: bool = Field(True, description="只看风向标大厂名单里的公司")
     since_days: int | None = Field(None, ge=1, le=365, description="只看最近多少天发布的岗位（没写发布日期的岗位会被排除）")
+    max_days_per_week: int | None = Field(None, ge=1, le=7, description=(
+        "每周最多能去几天：只留 JD 写明的到岗天数不超过它的岗位。用户说每周能去几天、问有没有只要去 N 天的，用这个筛，"
+        "不要把「每周2天」当关键词搜。没写天数的岗位不算进来，结果里另报个数"))
 
 
 def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
@@ -175,7 +178,7 @@ def jobs_trend(args: JobsTrendArgs) -> dict:
 
 
 def jobs_search(args: JobsSearchArgs) -> dict:
-    order = ranked_ids(args.query, "jobs", args.company) if args.query else None
+    order, note = ranked_ids(args.query, "jobs", args.company) if args.query else (None, None)
     with session_scope() as s:
         stmt = select(Job).where(Job.is_synthetic.is_(False), Job.status == "active")
         if order is not None:
@@ -192,6 +195,14 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             stmt = stmt.where(Job.company_id.is_not(None))
         if args.since_days:
             stmt = stmt.where(Job.posted_at >= date.today() - timedelta(days=args.since_days))
+        days = None
+        if args.max_days_per_week:
+            # 10-12 回答评测：没有这个筛选时，模型拿"每周2天"做全文检索，换了 16 种说法、调到上限也答不准
+            days = {"max_days_per_week": args.max_days_per_week,
+                    "jd_without_days": s.scalar(stmt.where(Job.days_per_week.is_(None)).with_only_columns(func.count(Job.id))),
+                    "least_days_in_jd": s.scalar(stmt.with_only_columns(func.min(Job.days_per_week))),
+                    "note": "只算 JD 写明了每周到岗天数的岗位；没写天数的要看原文或问 HR，不能当成符合"}
+            stmt = stmt.where(Job.days_per_week <= args.max_days_per_week)
         if order is None:
             rows = s.execute(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)
                              .limit(args.limit + 1).offset(args.offset)).scalars().all()
@@ -209,6 +220,10 @@ def jobs_search(args: JobsSearchArgs) -> dict:
     result: dict = {"returned": len(items), "items": items, "offset": args.offset,
                     "next_offset": args.offset + args.limit if has_more else None,
                     "library": library_note("job", dated=bool(args.since_days))}
+    if days:
+        result["days_filter"] = days
+    if note:
+        result["search_note"] = note
     if not items:
         result["hint"] = ("没有符合条件的岗位。可以去掉一两个条件（比如城市、类型）、换个说法，"
                           "或者库里确实还没采到这家公司的岗位——那就如实告诉用户。")
@@ -280,7 +295,7 @@ def _post_row(p: Post, r: RawItem, detailed: bool) -> dict[str, Any]:
 
 
 def posts_search(args: PostsSearchArgs) -> dict:
-    order = ranked_ids(args.query, "posts", args.company) if args.query else None
+    order, note = ranked_ids(args.query, "posts", args.company) if args.query else (None, None)
     with session_scope() as s:
         stmt = select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)
         stmt = stmt.where(RawItem.is_synthetic.is_(False))
@@ -318,6 +333,8 @@ def posts_search(args: PostsSearchArgs) -> dict:
     has_more = len(all_items) > args.offset + args.limit
     result: dict = {"returned": len(items), "items": items, "offset": args.offset,
                     "next_offset": args.offset + args.limit if has_more else None, "library": library_note("post")}
+    if note:
+        result["search_note"] = note
     if not items:
         result["hint"] = "没有符合条件的帖子。可以去掉类型或公司条件、换个说法；确实没有就如实告诉用户。"
     return result
@@ -336,11 +353,17 @@ def posts_get(args: PostsGetArgs) -> dict:
             raise ToolError(f"没有编号为 P-{pid} 的帖子", "先用 posts_search 找到编号再取详情", '{"post_id": "P-3"}')
         p, r = row
         out = _post_row(p, r, True)
-        out["question_details"] = [dict(q, interview_date=q["interview_date"].isoformat() if q["interview_date"] else None,
-                                         published_at=q["published_at"].isoformat() if q["published_at"] else None)
-                                   for q in profile(p, r.raw_text, r.raw_json)["questions"]]
-        out.update({"interview_questions": p.interview_questions, "advice": p.advice, "grad_year": p.grad_year})
+        details = profile(p, r.raw_text, r.raw_json)["questions"]
+        qids = dict(s.execute(select(InterviewQuestion.key, InterviewQuestion.id).where(InterviewQuestion.post_id == pid)).all())
+        # 每道题带真实题号（Q-），引用时能生成题目卡片。10-12 回答评测：以前带出处的明细太长，每次都被输出上限整段裁掉，
+        # 模型只看到不带题号的题目文字，就顺着别处见过的题号往下推（Q-487 之后写 Q-488）
+        out["questions"] = [{"id": f"Q-{qids[q['key']]}" if q["key"] in qids else None, "question": q["question"],
+                             "round": q["round"], "category": q["category"]} for q in details]
+        out.update({"advice": p.advice, "grad_year": p.grad_year})
         if args.response_format == "detailed":
+            out["question_details"] = [dict(q, interview_date=q["interview_date"].isoformat() if q["interview_date"] else None,
+                                            published_at=q["published_at"].isoformat() if q["published_at"] else None)
+                                       for q in details]
             out["text"] = untrusted(r.raw_text[:2500])
     return out
 

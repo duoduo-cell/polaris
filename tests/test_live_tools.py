@@ -127,8 +127,24 @@ def test_chat_runtime_reuses_identical_calls_and_caps_repeats(db):
     assert rt.invoke(REGISTRY["posts_search"], {"query": "字节 面经"}) == first and len(rt.calls) == 1  # 一模一样的不重查
     for i in range(10):
         out = rt.invoke(REGISTRY["posts_search"], {"query": f"换个说法 {i}"})
-    assert "已经调用 posts_search 8 次" in out
+    from polaris.tools.runtime import PER_ANSWER_CAPS
+
+    assert f"已经调用 posts_search {PER_ANSWER_CAPS['posts_search']} 次" in out
     other = ToolRuntime(agent="bench")  # 评测不受影响
     for i in range(9):
         out = other.invoke(REGISTRY["posts_search"], {"query": f"换个说法 {i}"})
-    assert "已经调用" not in out
+    assert "已经调用" not in out and "budget" not in out
+
+
+def test_chat_runtime_reminds_to_wrap_up_after_many_calls(db):
+    """软刹车：查到第 SOFT_LIMIT 次起，结果里带一句收尾提醒，结果本身照给、仍是合法 JSON（编号能认出来）。"""
+    import json
+
+    from polaris.tools.runtime import SOFT_LIMIT
+
+    rt = ToolRuntime(agent="main")
+    outs = [rt.invoke(REGISTRY[name], {"query": f"问法 {i}"})
+            for i, name in enumerate(["posts_search", "jobs_search", "questions_search"] * 4)][:SOFT_LIMIT]
+    assert all("budget" not in json.loads(o) for o in outs[:SOFT_LIMIT - 1])
+    last = json.loads(outs[SOFT_LIMIT - 1])
+    assert f"已经查了 {SOFT_LIMIT} 次" in last["budget"] and "returned" in last

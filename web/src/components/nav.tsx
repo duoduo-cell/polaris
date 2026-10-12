@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { BarChart3, BookOpen, Brain, Briefcase, MessageCircle, Network, Sun } from "lucide-react";
+import { Activity, BarChart3, BookOpen, Brain, Briefcase, MessageCircle, Network, Sun } from "lucide-react";
 import { api } from "@/lib/client";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/jobs", label: "岗位", icon: Briefcase },
   { href: "/interviews", label: "面经与内推", icon: BookOpen },
   { href: "/graph", label: "图谱", icon: Network },
+  { href: "/traces", label: "追踪", icon: Activity },
   { href: "/evals", label: "评测", icon: BarChart3 },
 ];
 

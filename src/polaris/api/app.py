@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from polaris import __version__
+from polaris.api.personal import require_owner  # 追踪和原始数据里有你的对话、记忆和帖子原文：要口令才能读
 from polaris.config import get_settings
 from polaris.db.models import LLMCall, RawItem, Run, ToolCall
 from polaris.db.session import db_ok, session_factory
@@ -180,7 +181,7 @@ def health() -> Health:
                   config=get_settings().public_summary())
 
 
-@app.get("/api/llm-calls", response_model=list[LLMCallSummary], tags=["tracing"],
+@app.get("/api/llm-calls", dependencies=[Depends(require_owner)], response_model=list[LLMCallSummary], tags=["tracing"],
          summary="List traced model calls (newest first)")
 def list_llm_calls(db: Db, purpose: str | None = None, model: str | None = None, run_id: int | None = None,
                    limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> list[LLMCall]:
@@ -194,7 +195,7 @@ def list_llm_calls(db: Db, purpose: str | None = None, model: str | None = None,
     return list(db.execute(stmt).scalars())
 
 
-@app.get("/api/llm-calls/{call_id}", response_model=LLMCallDetail, tags=["tracing"],
+@app.get("/api/llm-calls/{call_id}", dependencies=[Depends(require_owner)], response_model=LLMCallDetail, tags=["tracing"],
          summary="One model call with full request and response, for replay")
 def get_llm_call(call_id: int, db: Db) -> LLMCall:
     call = db.get(LLMCall, call_id)
@@ -203,7 +204,7 @@ def get_llm_call(call_id: int, db: Db) -> LLMCall:
     return call
 
 
-@app.get("/api/tool-calls", response_model=list[ToolCallOut], tags=["tracing"],
+@app.get("/api/tool-calls", dependencies=[Depends(require_owner)], response_model=list[ToolCallOut], tags=["tracing"],
          summary="List traced tool calls (newest first), including failed and replayed ones")
 def list_tool_calls(db: Db, run_id: int | None = None, tool: str | None = None, ok: bool | None = None,
                     limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> list[ToolCallOut]:
@@ -222,7 +223,7 @@ def list_tool_calls(db: Db, run_id: int | None = None, tool: str | None = None, 
     return out
 
 
-@app.get("/api/runs", response_model=list[RunOut], tags=["tracing"],
+@app.get("/api/runs", dependencies=[Depends(require_owner)], response_model=list[RunOut], tags=["tracing"],
          summary="List runs (collect, extract, eval, seed, synth) with their metrics")
 def list_runs(db: Db, kind: str | None = None, limit: int = Query(50, ge=1, le=200),
               offset: int = Query(0, ge=0)) -> list[Run]:
@@ -232,7 +233,7 @@ def list_runs(db: Db, kind: str | None = None, limit: int = Query(50, ge=1, le=2
     return list(db.execute(stmt).scalars())
 
 
-@app.get("/api/runs/{run_id}", response_model=RunOut, tags=["tracing"], summary="One run")
+@app.get("/api/runs/{run_id}", dependencies=[Depends(require_owner)], response_model=RunOut, tags=["tracing"], summary="One run")
 def get_run(run_id: int, db: Db) -> Run:
     run = db.get(Run, run_id)
     if run is None:
@@ -240,7 +241,7 @@ def get_run(run_id: int, db: Db) -> Run:
     return run
 
 
-@app.get("/api/raw-items", response_model=list[RawItemOut], tags=["data"],
+@app.get("/api/raw-items", dependencies=[Depends(require_owner)], response_model=list[RawItemOut], tags=["data"],
          summary="List raw items as collected (text truncated; fetch one item for the full text)")
 def list_raw_items(db: Db, source: str | None = None, tier: str | None = None, kind: str | None = None,
                    limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> list[RawItemOut]:
@@ -259,7 +260,8 @@ def list_raw_items(db: Db, source: str | None = None, tier: str | None = None, k
     return out
 
 
-@app.get("/api/raw-items/{item_id}", response_model=RawItemOut, tags=["data"], summary="One raw item")
+@app.get("/api/raw-items/{item_id}", dependencies=[Depends(require_owner)], response_model=RawItemOut, tags=["data"],
+         summary="One raw item")
 def get_raw_item(item_id: int, db: Db) -> RawItem:
     item = db.get(RawItem, item_id)
     if item is None:

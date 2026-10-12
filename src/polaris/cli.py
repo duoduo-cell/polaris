@@ -642,6 +642,30 @@ def metrics_m5(k: int = typer.Option(1, help="每个问题问几次")) -> None:
     typer.echo((memory_eval.REPORT_DIR / "M5.md").read_text(encoding="utf-8"))
 
 
+@metrics_app.command("answers")
+def metrics_answers(fresh: bool = typer.Option(False, help="先清空这个评测库的聊天和记忆（只在单独的库上）"),
+                    workers: int = typer.Option(4, help="几题并行"),
+                    only: str = typer.Option("", help="只跑这些题，逗号分隔，如 N1,E3"),
+                    spec: str = typer.Option("answers_v1", help="题目（eval/gold/ 下）：answers_v1 开发集，answers_v2 留出集"),
+                    rejudge: str = typer.Option("", help="不重跑回答，只重新打分：data/probe/answers-… 目录"),
+                    out: str = typer.Option("", help="报告文件名（eval/reports/ 下，不带扩展名），默认按题目定")) -> None:
+    """回答质量：正常、边界、对抗三类题，规则检查 + 另一家模型打分（会调模型；只在单独的库上跑）。"""
+    from pathlib import Path
+
+    from polaris.config import ROOT
+    from polaris.eval import answer_eval
+
+    spec_path = ROOT / "eval" / "gold" / f"{spec}.json"
+    if rejudge:
+        result = answer_eval.rejudge(Path(rejudge), spec_path=spec_path, workers=workers)
+    else:
+        result = answer_eval.run(spec_path=spec_path, workers=workers, fresh=fresh,
+                                 only=[x.strip() for x in only.split(",") if x.strip()] or None)
+    if out:
+        result["out"] = out
+    typer.echo(answer_eval.write_report(result))
+
+
 @metrics_app.command("proactive")
 def metrics_proactive() -> None:
     """主动决策：开发集和留出集场景上，推 / 简报 / 不提的准确率、打扰率、漏报率（不调模型）。"""

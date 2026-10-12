@@ -25,8 +25,13 @@ FAULT_MESSAGES: dict[str, str] = {
     "timeout": "出错了：来源超时没有响应。\n怎么改：用同样的参数再调用一次；连续失败就换个查询词。",
 }
 INTERNAL_ERROR = "出错了：工具内部错误（{name}）。\n怎么改：这不是参数的问题，可以再试一次，或者换一个工具。"
-# 和用户对话时一次回答里每种工具最多调几次（10-12 探针：提示词说了"最多换一次说法"，模型还是把帖子搜了 41 次）
-PER_ANSWER_CAPS = {"jobs_search": 8, "posts_search": 8, "questions_search": 6, "kg_stats": 8, "jobs_get": 10, "posts_get": 10}
+# 和用户对话时一次回答里每种工具最多调几次（10-12 探针：提示词说了"最多换一次说法"，模型还是把帖子搜了 41 次；
+# 回答评测 E2：查一个不存在的"每周 2 天"岗位，岗位和帖子各搜满 8 次，于是搜索再收到 6 次）
+PER_ANSWER_CAPS = {"jobs_search": 6, "posts_search": 6, "questions_search": 5, "kg_stats": 8, "jobs_get": 10, "posts_get": 10}
+# 软刹车：这次回答查到第几次起，在结果里提醒模型收尾（不打断、不报错）。10-12 回答评测：对比类问题查了 24 次、180 秒，
+# 后面十几次是边看边扩大范围（用户没问的城市、换参数重查统计）
+SOFT_LIMIT = 10
+SOFT_NOTE = "这次回答已经查了 {n} 次。够回答就直接写；还缺的说清缺什么，不要再扩大范围（用户没问的城市、公司、类型不查）。"
 CAP_MESSAGE = ("出错了：这次回答已经调用 {name} {n} 次，不能再调。\n"
                "怎么改：用已经查到的结果回答；没查到的如实说，并告诉用户可以换个更具体的问法。")
 
@@ -83,6 +88,8 @@ class ToolRuntime:
 
         try:
             data = spec.func(args)
+            if self.agent == "main" and isinstance(data, dict) and len(self.calls) + 1 >= SOFT_LIMIT:
+                data = {**data, "budget": SOFT_NOTE.format(n=len(self.calls) + 1)}
             output, ok, kind = render(data), True, None
         except ToolError as e:
             data = None
@@ -99,7 +106,7 @@ class ToolRuntime:
         row = {"run_id": self.run_id, "thread_id": self.thread_id, "agent": self.agent, "tool": spec.name,
                "args": args, "output": output, "ok": ok, "error_kind": kind,
                "latency_ms": int((time.perf_counter() - start) * 1000), "replayed": replayed}
-        self.calls.append({**row, "live": spec.live})
+        self.calls.append({**row, "live": spec.live, "started": start})
         if data is not None:
             self.results[len(self.calls) - 1] = data
         if self.record_db:

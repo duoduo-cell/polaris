@@ -43,7 +43,14 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v8"  # v4：中文摘要；v5：探针后的诚实、效率和解读规则；v6：现查；v7：趋势、详情最多 5 个；v8：不替用户编项目细节
+PROMPT_VERSION = "main-v14"  # v4：中文摘要；v5：探针后的诚实、效率和解读规则；v6：现查；v7：趋势、详情最多 5 个；v8：不替用户编项目细节；
+# v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
+# v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
+# v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
+#      v10 的"第一步就一起发出"在留出集上让模型一开始就铺开查（H3 12→20 次），改成"通常两三样就够"；
+# v12：v11 的"给具体下一步"和"不附带没问的推荐"打架（E3 给不存在的公司推了别的岗位）；帖子里的题没有题号时编了 Q- 号（N4）；
+# v13：指代不明时别让用户报编号（E1 "有编号像 J-12 直接发我"）；
+# v14：撤掉 v11 的两条深度要求——深度分没动（4.0–4.2），开发集诚实分从 4.8 降到 4.0–4.5、编号编造从 0 次变成六次里四次
 TOOLS = ("jobs_search", "jobs_get", "jobs_trend", "posts_search", "posts_get", "questions_search", "kg_stats",
          "memory_card", "memory_history", "memory_known_at", "memory_forget", "source_open", "platform_search")
 MAX_MODEL_CALLS = 12
@@ -166,11 +173,18 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 {card}
 {asks}
 工具怎么选：
-- 找岗位：jobs_search（按公司、城市、类型、方向、最近多少天筛；query 写想找什么）；看要求、来源、说法冲突用 jobs_get。
+- 找岗位：jobs_search（按公司、城市、类型、方向、最近多少天、每周最多去几天筛；query 写想找什么）；看要求、来源、说法冲突用 jobs_get。
+  每周天数用 max_days_per_week 筛，不要把"每周2天"当关键词搜；结果里的 days_filter 说了多少岗位没写天数，照实转告。
 - 要查好几样东西时（几个岗位的详情、两家公司的统计），在同一步里同时发出多个工具调用，不要一个查完再查下一个：每多一步就要多等一次模型。
+- 动手前先想好回答这个问题要哪几样证据，通常两三样就够，之后最多补一轮；不要为了举例把每一组都查一遍；
+  不查用户没问的范围（城市、公司、岗位类型）。
+  工具结果里出现 budget 提醒时，用已有的写回答。
 - 找帖子（面经、内推、招聘、经验）：posts_search / posts_get。找面试题：questions_search。
 - 统计和分布（哪些公司要求某技能、某公司哪些部门在招、面试常考什么）：kg_stats。
-- 用户问自己的情况，先看上面的卡片；问以前怎么说的、某天说的是什么，用 memory_history / memory_known_at。
+- 用户问自己的情况，看上面的卡片（含保存的岗位进度），不用再调 memory_card；
+  问以前怎么说的、某天说的是什么，用 memory_history / memory_known_at。
+- "那个岗位""第二个"指代不明时，先看这段对话里提到过的；对话和卡片里都没有，就直接问是哪一个（公司和岗位名），
+  不要去翻记忆历史或搜库猜，也不要让用户报编号（编号只在内部用，用户看不到）。
 - 用户要你忘掉某件事，用 memory_forget（会先请用户批准）。
 - 用户这句话里的新条件（城市、天数、技能、偏好、进度……）由记忆模块自动记下，和你回答同时进行，你看不到这一步；
   不要说"我没有写记忆的工具""只在这轮生效"，直接说记下了。上面的卡片是这句话之前的状态，用户刚说的以这句话为准。
@@ -178,7 +192,8 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
   要最新的、本地库没有或太旧、用户点名要去某个平台搜时，用 platform_search 现搜；问"还在招吗""原文现在怎么写"
   "内推还有效吗"时，用 source_open 打开原链接核对。这两个慢，每次回答最多 3 次，先想清楚查什么。
   只有真的调用了它们并成功，才能说"我刚在小红书上搜了""我打开原链接核对了"；失败了照实说原因，再用本地库回答并说明是哪天采的。
-- 同一个意思搜不到，最多换一种说法再试一次；不要为了"排除"去搜用户没问的公司。要看详情时挑最相关的、一次最多 5 个，
+- 同一个意思搜不到，最多换一种说法再试一次；不要为了"排除"去搜用户没问的公司。用户说的岗位或说法（"只要去 2 天的那个"）
+  查两次都没有，就照实说库里没有、给最接近的，不要反复换说法证明它不存在。要看详情时挑最相关的、一次最多 5 个，
   同一步并行发出；已经查到的不要再查一遍。
 回答规则：
 - 只回答用户问的。不要在末尾附带没被要求的岗位推荐或清单；结尾最多一句"要不要我……"。
@@ -193,11 +208,14 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 - 只根据工具返回的内容回答，结论写上编号（岗位 J-12，帖子 P-3，记忆 M-5）；找不到就如实说查了什么、没找到。
 - 推荐三个岗位时只选择三个结果，用公司和岗位名称介绍，每项引用 J- 编号以生成卡片；未选择的命中不要罗列编号。
   先给简短结论和匹配理由，详情由卡片提供，不重复粘贴整篇 JD。编号不是用户要读的主标题。
-- 面试题可以引用 Q- 编号生成题目卡片；面经、备考整理、内推分别展示，不能把备考清单说成某公司真实问过。
+- 面试题可以引用 Q- 编号生成题目卡片；帖子里列的题没有 Q- 编号时引用帖子编号（P-），不要自己编 Q- 编号。
+  面经、备考整理、内推分别展示，不能把备考清单说成某公司真实问过。
   只用题目自己的 company/round/evidence 判断归属；comment_companies 不属于正文面经。未说明的条件如实说未知。
 - 来源 URL 只能用工具给出的真实来源，不能拼接。收藏不算投递，阅读和搜索不算掌握技能。
 - jobs_get 返回各处说法不一致时，说清取了哪个、另一种说法来自哪里。
 - 投递、发消息这类对外的事你不做，可以帮用户起草，由用户自己发。
+- 对用户不念工具名（platform_search 之类）和"R- 结果"这类内部叫法，也不说"规则里写着"；用大白话说你做了什么、能做什么。
+  编号照常写在结论后面（用来生成卡片）。
 {defense}- 和找实习无关的问题，直接简短回答，不调用工具。"""
 
 
@@ -237,6 +255,7 @@ class Turn:
     activities: list[dict[str, Any]] = field(default_factory=list)
     context: dict[str, Any] | None = None  # 回答后上下文有多长：{tokens, limit}，到 limit 会压缩
     compacted: dict[str, Any] | None = None  # 这次回答前压缩了上下文：{summary, messages, before_tokens, after_tokens}
+    trace: dict[str, Any] | None = None  # 追踪：每次模型和工具调用的起止、token、费用、出错类型（不含内容）
 
     def to_dict(self) -> dict[str, Any]:
         out = {"thread_id": self.thread_id, "answer": self.answer, "memory_events": self.memory_events,
@@ -247,6 +266,8 @@ class Turn:
             out["context"] = self.context
         if self.compacted:
             out["compacted"] = self.compacted
+        if self.trace:
+            out["trace"] = self.trace
         return out
 
 
@@ -462,6 +483,22 @@ def resume(thread_id: str, approve: bool, reason: str = "", *, now: datetime | N
     return turn
 
 
+def trace_of(tracer: PolarisTracer, runtime: ToolRuntime) -> dict[str, Any]:
+    """一次回答的追踪摘要：时间线和合计。工具调用的起点按同一个时钟换算到这次回答开始后的毫秒数。"""
+    tools = [{"tool": c["tool"], "at_ms": max(0, int((c.get("started", tracer.t0) - tracer.t0) * 1000)), "ms": c["latency_ms"],
+              "ok": c["ok"], "error_kind": c.get("error_kind"), "live": c.get("live", False)} for c in runtime.calls]
+    models = tracer.trace
+
+    def total(key: str) -> int:
+        return sum(m.get(key) or 0 for m in models)
+
+    return {"model_calls": models, "tools": tools, "totals": {
+        "model_calls": len(models), "model_ms": total("ms"), "input_tokens": total("input_tokens"),
+        "cached_tokens": total("cached_tokens"), "output_tokens": total("output_tokens"),
+        "reasoning_tokens": total("reasoning_tokens"), "cost_usd": round(sum(m.get("cost_usd") or 0 for m in models), 5),
+        "tool_calls": len(tools), "tool_ms": sum(t["ms"] for t in tools), "tool_errors": sum(not t["ok"] for t in tools)}}
+
+
 def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tracer: PolarisTracer, err: str | None,
           ms: int, mem: dict[str, Any]) -> Turn:
     approvals = _interrupts(state or {})
@@ -484,7 +521,7 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
     context = None
     if state and state.get("messages"):
         context = {"tokens": count_tokens_approximately(state["messages"]), "limit": SUMMARY_TRIGGER_TOKENS}
-    return Turn(thread_id=thread_id, answer=answer, memory_events=mem.get("events", []),
+    return Turn(thread_id=thread_id, answer=answer, memory_events=mem.get("events", []), trace=trace_of(tracer, runtime),
                 memory_questions=mem.get("questions", []), approvals=approvals, tool_calls=runtime.calls,
                 llm_call_ids=tracer.call_ids, latency_ms=ms, error=err or mem.get("error"), results=results,
                 activities=steps,

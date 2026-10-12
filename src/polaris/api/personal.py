@@ -347,6 +347,13 @@ def feedback_endpoint(notification_id: int, body: FeedbackIn) -> dict[str, Any]:
     return {"ok": True}
 
 
+@router.get("/traces", summary="Observability: latency, model and tool calls, tokens, tool error classes over recent answers")
+def traces_endpoint(days: int = 7) -> dict[str, Any]:
+    from polaris.observe import overview
+
+    return overview(max(1, min(days, 90)))
+
+
 @router.get("/agenda", summary="What Polaris is doing, needs from you, has scheduled and finished today")
 def agenda_endpoint() -> dict[str, Any]:
     from polaris.agenda import agenda
@@ -410,7 +417,7 @@ def _with_match(result: dict[str, Any]) -> dict[str, Any]:
     return {**result, "items": marked} if "items" in result else marked[0]
 
 
-REPORTS = ("M1", "M2", "M3", "M4", "M5", "proactive", "injection", "market")
+REPORTS = ("M1", "M2", "M3", "M4", "M5", "answers", "answers_v2", "proactive", "injection", "market")
 
 
 @router.get("/reports", summary="Evaluation reports that can be shown")

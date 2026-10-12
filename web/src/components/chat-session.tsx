@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/client";
 import { type Result } from "@/lib/results";
+import { type Trace } from "@/components/trace";
 
 export type Approval = { name: string; args: Record<string, unknown>; description: string };
 export type MemoryEvent = {
@@ -22,6 +23,7 @@ export type Turn = {
   activities?: ToolStep[];
   context?: { tokens: number; limit: number };
   compacted?: Compacted;
+  trace?: Trace;
 };
 export type Message = {
   id?: number; role: "user" | "assistant"; content: string; turn?: Turn; verdict?: "good" | "bad"; task_id?: string;

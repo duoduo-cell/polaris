@@ -28,6 +28,10 @@ def message_to_dict(msg: BaseMessage) -> dict[str, Any]:
     return data
 
 
+def _float(value: Any) -> float | None:
+    return float(value) if value is not None else None
+
+
 class PolarisTracer(BaseCallbackHandler):
     def __init__(self, *, purpose: str, run_id: int | None = None, prompt_version: str | None = None,
                  recorder: Recorder | None = None, cassette: Cassette | None = None, provider: str | None = None):
@@ -37,14 +41,17 @@ class PolarisTracer(BaseCallbackHandler):
         self.provider = provider or urlparse(get_settings().chat_base).netloc
         self._starts: dict[UUID, dict[str, Any]] = {}
         self.call_ids: list[int | None] = []
+        self.t0 = time.perf_counter()
+        self.trace: list[dict[str, Any]] = []  # 每次模型调用的摘要，给网页的"追踪"看（不含内容）
 
     def on_chat_model_start(self, serialized: dict[str, Any], messages: list[list[BaseMessage]], *,
                             run_id: UUID, invocation_params: dict[str, Any] | None = None,
-                            **kwargs: Any) -> None:
+                            metadata: dict[str, Any] | None = None, **kwargs: Any) -> None:
         params = {k: v for k, v in (invocation_params or {}).items()
                   if not any(h in k.lower() for h in SECRET_HINTS) and k not in ("tools",)}
         tools = [t.get("function", {}).get("name") for t in (invocation_params or {}).get("tools", []) or []]
         self._starts[run_id] = {"t": time.perf_counter(), "params": params, "tools": tools,
+                                "summary": (metadata or {}).get("lc_source") == "summarization",
                                 "messages": convert_to_openai_messages(messages[0]) if messages else []}
 
     def _model(self, start: dict[str, Any]) -> str:
@@ -62,6 +69,13 @@ class PolarisTracer(BaseCallbackHandler):
         message = message_to_dict(msg) if msg is not None else {"content": getattr(gen, "text", "")}
         if self.cassette is not None:
             self.cassette.record_llm(message)
+        calls = len(message.get("tool_calls") or [])
+        self.trace.append({"at_ms": int((start["t"] - self.t0) * 1000), "ms": int((time.perf_counter() - start["t"]) * 1000),
+                           "kind": "summary" if start.get("summary") else "tools" if calls else "answer", "tool_calls": calls,
+                           "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens"),
+                           "reasoning_tokens": out_details.get("reasoning"), "cached_tokens": in_details.get("cache_read"),
+                           "cost_usd": _float(cost_usd(model, usage.get("input_tokens"), usage.get("output_tokens"))),
+                           "model": model})
         self.call_ids.append(self.recorder.record({
             "run_id": self.run_id, "purpose": self.purpose, "prompt_version": self.prompt_version,
             "provider": self.provider, "model": model, "endpoint": "chat",
@@ -75,6 +89,8 @@ class PolarisTracer(BaseCallbackHandler):
 
     def on_llm_error(self, error: BaseException, *, run_id: UUID, **kwargs: Any) -> None:
         start = self._starts.pop(run_id, None) or {"t": time.perf_counter(), "params": {}, "tools": [], "messages": []}
+        self.trace.append({"at_ms": int((start["t"] - self.t0) * 1000), "ms": int((time.perf_counter() - start["t"]) * 1000),
+                           "kind": "error", "error": type(error).__name__, "model": self._model(start)})
         self.call_ids.append(self.recorder.record({
             "run_id": self.run_id, "purpose": self.purpose, "prompt_version": self.prompt_version,
             "provider": self.provider, "model": self._model(start), "endpoint": "chat",

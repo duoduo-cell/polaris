@@ -77,7 +77,7 @@ def render(data: Any) -> str:
                 base = out.get("offset", (out.get("next_offset") or original) - original)
                 out["next_offset"] = base + kept
         # 始终保留完整合法 JSON 和真实 URL；全文由详情接口直接返回。
-        for key in ("jd_text", "text", "question_details", "interview_questions", "advice"):
+        for key in ("jd_text", "question_details", "text", "interview_questions", "advice", "questions"):
             if len(encode(out)) <= MAX_OUTPUT_CHARS:
                 break
             out.pop(key, None)
@@ -86,7 +86,7 @@ def render(data: Any) -> str:
                 if isinstance(value, dict):
                     result = {}
                     for key, item in value.items():
-                        if key in ("jd_text", "text", "question_details", "interview_questions", "advice"):
+                        if key in ("jd_text", "text", "question_details", "interview_questions", "advice", "questions"):
                             continue
                         if key == "url":
                             # 超长链接整条省略；绝不把半个 URL 当作可点击的来源。

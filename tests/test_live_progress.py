@@ -34,6 +34,9 @@ def test_steps_read_like_sentences_and_never_show_raw_ids(db):
     assert describe("jobs_get", {"job_id": "J-999"}) == "看岗位详情"  # 查不到名字就不写，也不露编号
     assert describe("memory_forget", {"attribute": "school"}) == "忘掉一条记忆 · 学校"
     assert outcome("jobs_search", {"returned": 3, "items": [], "next_offset": 3}, True) == "找到 3 个岗位，还有更多"
+    assert describe("jobs_search", {"company": "字节", "max_days_per_week": 3}) == "搜岗位 · 字节 · 每周不超过 3 天"
+    no_days = {"returned": 0, "items": [], "days_filter": {"jd_without_days": 96}}
+    assert outcome("jobs_search", no_days, True) == "没找到符合条件的（另有 96 个 JD 没写每周天数）"
     assert outcome("posts_search", {"returned": 0, "items": []}, True) == "没找到符合条件的"
     assert outcome("kg_stats", {"matched": 12, "groups": [{}, {}]}, True) == "符合条件的有 12 个，分成 2 组"
     assert outcome("jobs_search", None, False, "出错了：来源暂时限流（HTTP 429）。\n怎么改：……") == "来源暂时限流（HTTP 429）。"
@@ -222,3 +225,19 @@ def test_model_outage_is_reported_as_an_error_not_an_answer(db):
     turn = main.chat("在吗", tid(), model=script(AIMessage(content="Model call failed after 4 attempts with OpenAIConnectionError")),
                      **NO_MEMORY)
     assert turn.answer == "" and "连不上" in turn.error
+
+
+def test_each_answer_carries_a_trace_and_overview_aggregates_it(db):
+    from polaris.observe import overview
+
+    turn = main.chat("看看你记着什么", tid(), on_event=lambda e: None,
+                     model=script(call("memory_card", {}), AIMessage(content="还没记住什么")), **NO_MEMORY)
+    t = turn.to_dict()["trace"]
+    assert [m["kind"] for m in t["model_calls"]] == ["tools", "answer"]
+    assert t["tools"][0]["tool"] == "memory_card" and t["tools"][0]["ok"] is True
+    assert t["totals"]["model_calls"] == 2 and t["totals"]["tool_calls"] == 1 and t["totals"]["tool_errors"] == 0
+    assert t["model_calls"][1]["at_ms"] >= t["tools"][0]["at_ms"]  # 时间线顺序：先查后答
+    out = overview(days=1)
+    assert out["answers"] == 1 and out["per_answer"]["model_calls"] == 2
+    assert out["tools"]["by_tool"][0]["tool"] == "memory_card" and out["recent"][0]["tool_calls"] == 1
+    assert TestClient(app).get("/api/me/traces?days=7", headers=AUTH).json()["answers"] == 1

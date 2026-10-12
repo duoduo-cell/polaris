@@ -16,21 +16,31 @@ REF_RE = re.compile(r"(?<![A-Za-z0-9])([JPQR]-\d+)(?!\d)")
 POST_KINDS = {"面经": "interview", "内推": "referral", "招聘": "recruitment", "经验": "study"}
 
 
+# 工具输出里放编号的字段：整个字段就是一个编号才算（kg_stats 的例子、jobs_trend 的新岗位、来源的原始记录、source_open 的对象）。
+# 不扫描外部原文里的文字，帖子正文写个 "J-1" 不会变成卡片。
+REF_KEYS = ("id", "from", "new_version", "raw_id", "ref")
+REF_LISTS = ("examples", "examples_new")
+
+
 def refs_from_output(output: str) -> set[str]:
     try:
         value = json.loads(output)
     except (ValueError, TypeError):
-        # 兼容旧版截到半途的 JSON；仅接受真实结构的 id/from 字段，不扫描外部原文。
-        return set(re.findall(r'(?<!\\)"(?:id|from)"\s*:\s*"([JPQ]-\d+)"', output or "")) if (output or "").startswith("{") else set()
+        # 兼容旧版截到半途的 JSON；仅接受真实结构的字段，不扫描外部原文。
+        keys = "|".join(REF_KEYS)
+        return set(re.findall(rf'(?<!\\)"(?:{keys})"\s*:\s*"([JPQR]-\d+)"', output or "")) if (output or "").startswith("{") else set()
     refs: set[str] = set()
     def walk(node):
         if isinstance(node, dict):
-            for k in ("id", "from", "new_version"):
+            for k in REF_KEYS:
                 if isinstance(node.get(k), str) and REF_RE.fullmatch(node[k]):
                     refs.add(node[k])
-            for k in ("items", "groups"):
-                for item in node.get(k, []) if isinstance(node.get(k), list) else []:
-                    walk(item)
+            for k in REF_LISTS:
+                if isinstance(node.get(k), list):
+                    refs.update(x for x in node[k] if isinstance(x, str) and REF_RE.fullmatch(x))
+            for v in node.values():
+                if isinstance(v, (dict, list)):
+                    walk(v)
         elif isinstance(node, list):
             for item in node:
                 walk(item)

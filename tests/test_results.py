@@ -69,6 +69,21 @@ def test_three_verified_recommendations_have_sources_and_hallucinations_do_not(d
         assert presentation(s, f"J-{ids[0]}", [{"ok": False, "output": calls[0]["output"]}]) == []
 
 
+def test_refs_in_stats_examples_trend_and_sources_count_but_not_refs_inside_text():
+    """10-12 回答评测：kg_stats 的例子、jobs_trend 的新岗位、来源的原始记录里的编号以前不认，回答里引用了也点不开。"""
+    from polaris.results import refs_from_output
+
+    stats = {"groups": [{"group": "北京", "count": 2, "examples": ["J-7", "J-8"]}]}
+    trend = {"examples_new": ["J-9"], "caveats": ["快照才 1 天"]}
+    job = {"id": "J-1", "sources": [{"raw_id": "R-5", "url": "https://example.com"}]}
+    post = {"items": [{"id": "P-2", "summary": "帖子里写了 J-404 和 Q-405", "text": "J-406"}]}
+    assert refs_from_output(json.dumps(stats)) == {"J-7", "J-8"}
+    assert refs_from_output(json.dumps(trend)) == {"J-9"}
+    assert refs_from_output(json.dumps(job)) == {"J-1", "R-5"}
+    assert refs_from_output(json.dumps(post)) == {"P-2"}
+    assert refs_from_output('{"ref": "J-3", "examples": ["J-4"') == {"J-3"}  # 截断的 JSON 只认字段
+
+
 def test_comment_company_study_and_rounds_are_separated_in_index_and_graph(db):
     _, posts = seed()
     sync_chunks()
@@ -83,7 +98,17 @@ def test_comment_company_study_and_rounds_are_separated_in_index_and_graph(db):
         assert all(c.companies == ["字节跳动"] for c in chunks)
         detail = entities(s, [f"P-{posts[0]}"], detailed=True)[0]
         assert detail["comment_companies"] == ["华为"] and "华为招聘" not in detail["text"]
+        ids = [f"Q-{q.id}" for q in first]
     assert all(r["company"] == "字节跳动" for r in collect()["question_company"])
+    # 帖子详情里每道题带真实题号（10-12：以前明细被输出上限裁掉，模型只能顺着编号推）
+    from polaris.results import refs_from_output
+    from polaris.tools import REGISTRY
+    from polaris.tools.runtime import ToolRuntime
+
+    out = ToolRuntime(record_db=False).invoke(REGISTRY["posts_get"], {"post_id": f"P-{posts[0]}"})
+    got = json.loads(out)["questions"]
+    assert [q["id"] for q in got] == ids and got[0]["question"] == "RAG 如何召回？" and got[0]["round"] == "1面"
+    assert set(ids) <= refs_from_output(out)
 
 
 def test_backfill_is_idempotent_and_preserves_question_ids(db):

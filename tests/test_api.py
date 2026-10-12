@@ -6,6 +6,7 @@ from polaris.llm.recorder import DbRecorder
 
 client = TestClient(app)
 AUTH = {"Authorization": "Bearer test-ingest-token"}
+ME = {"Authorization": "Bearer test-owner-token"}
 
 
 def test_health_shows_models_but_no_secrets(db):
@@ -32,11 +33,11 @@ def test_ingest_then_list_and_fetch(db):
     again = client.post("/api/ingest/raw-items", json=payload, headers=AUTH).json()
     assert again["inserted"] == 0 and again["duplicates"] == 2
 
-    listed = client.get("/api/raw-items", params={"tier": "B"}).json()
+    listed = client.get("/api/raw-items", params={"tier": "B"}, headers=ME).json()
     assert len(listed) == 1 and listed[0]["raw_text"].endswith("…")  # 列表里截断
-    full = client.get(f"/api/raw-items/{listed[0]['id']}").json()
+    full = client.get(f"/api/raw-items/{listed[0]['id']}", headers=ME).json()
     assert full["raw_text"] == long_text
-    assert client.get("/api/raw-items/999999").status_code == 404
+    assert client.get("/api/raw-items/999999", headers=ME).status_code == 404
 
 
 def test_ingest_rejects_bad_items(db):
@@ -50,9 +51,9 @@ def test_llm_calls_list_and_detail(db):
                           "request": {"messages": [{"role": "user", "content": "hi"}]},
                           "response": {"choices": []}, "latency_ms": 12, "prompt_tokens": 3,
                           "completion_tokens": 1})
-    listed = client.get("/api/llm-calls", params={"purpose": "extract_job"}).json()
+    listed = client.get("/api/llm-calls", params={"purpose": "extract_job"}, headers=ME).json()
     assert [c["id"] for c in listed] == [call_id] and "request" not in listed[0]
-    detail = client.get(f"/api/llm-calls/{call_id}").json()
+    detail = client.get(f"/api/llm-calls/{call_id}", headers=ME).json()
     assert detail["request"]["messages"][0]["content"] == "hi" and detail["latency_ms"] == 12
 
 
@@ -63,6 +64,12 @@ def test_tool_calls_endpoint(db):
     rt = ToolRuntime(agent="test")
     rt.invoke(REGISTRY["raw_items_search"], {"query": "不存在的词"})
     rt.invoke(REGISTRY["raw_items_search"], {"query": ""})
-    listed = client.get("/api/tool-calls").json()
+    listed = client.get("/api/tool-calls", headers=ME).json()
     assert [c["ok"] for c in listed] == [False, True]  # 新的在前
-    assert client.get("/api/tool-calls", params={"ok": False}).json()[0]["error_kind"] == "invalid_args"
+    assert client.get("/api/tool-calls", params={"ok": False}, headers=ME).json()[0]["error_kind"] == "invalid_args"
+
+
+def test_traces_and_raw_items_need_the_owner_token(db):
+    for path in ("/api/raw-items", "/api/llm-calls", "/api/tool-calls", "/api/runs"):
+        assert client.get(path).status_code == 401
+    assert client.get("/health").status_code == 200  # 健康检查照旧公开

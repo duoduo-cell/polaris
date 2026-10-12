@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Archive, Brain, Check, ChevronRight, CircleAlert, CircleHelp, Globe, Loader2, Square, Undo2 } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { type Compacted, type Live, type MemoryEvent, type Step, type Turn, TOOL_NAMES } from "@/components/chat-session";
+import { TraceTimeline } from "@/components/trace";
 import { api } from "@/lib/client";
 import { hideRefs } from "@/lib/refs";
 
@@ -112,7 +113,7 @@ export function ThinkingDone({ turn }: { turn: Turn }) {
                                     args: a.args, sources: a.sources }))
     : turn.tool_calls.map((c) => ({ tool: c.tool, desc: TOOL_NAMES[c.tool] ?? "处理资料", done: true, ok: c.ok, args: c.args }));
   const seconds = (turn.latency_ms / 1000).toFixed(1);
-  if (!steps.length && !turn.memory_events.length) return null;
+  if (!steps.length && !turn.memory_events.length && !turn.trace) return null;
   return (
     <div className="text-[13px]">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
@@ -129,6 +130,14 @@ export function ThinkingDone({ turn }: { turn: Turn }) {
               记忆 · {memorySummary(turn.memory_events)}
             </li>
             {steps.map((s, i) => <StepRow key={i} step={s} sources={s.sources} />)}
+            {turn.trace && (
+              <li className="relative pl-6 pt-1">
+                <details>
+                  <summary className="cursor-pointer text-faint hover:text-muted text-xs list-none">查看追踪（每一步的耗时和 token）</summary>
+                  <div className="mt-2 pr-1"><TraceTimeline trace={turn.trace} seconds={turn.latency_ms / 1000} /></div>
+                </details>
+              </li>
+            )}
           </motion.ol>
         )}
       </AnimatePresence>
