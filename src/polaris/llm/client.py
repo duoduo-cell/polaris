@@ -5,6 +5,7 @@
 - embed：向量，按批调用，核对维度
 - rerank：重排（M4 检索用），返回每个候选的相关度
 """
+import base64
 import hashlib
 import json
 import random
@@ -188,6 +189,17 @@ class LLM:
             messages = messages + [{"role": "assistant", "content": content},
                                    {"role": "user", "content": FIX_INSTRUCTION.format(error=error)}]
 
+    def vision(self, prompt: str, image: bytes, *, purpose: str, mime: str = "image/jpeg", run_id: int | None = None,
+               prompt_version: str | None = None) -> ChatResult:
+        """读一张图（转写图里的文字）。走向量那家服务（百炼）的对话接口；图片本身不进调用记录，只记哈希和大小。"""
+        url = f"data:{mime};base64,{base64.b64encode(image).decode()}"
+        body = {"model": self.settings.vision_model,
+                "messages": [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": url}},
+                                                          {"type": "text", "text": prompt}]}]}
+        data, call_id, hit, _ = self._request("vision", body, purpose=purpose, run_id=run_id, prompt_version=prompt_version)
+        msg = data["choices"][0]["message"]
+        return ChatResult(content=msg.get("content"), message=msg, usage=data.get("usage"), call_id=call_id, cache_hit=hit)
+
     def embed(self, texts: list[str], *, purpose: str, run_id: int | None = None) -> list[list[float]]:
         s = self.settings
         vectors: list[list[float]] = []
@@ -237,6 +249,8 @@ class LLM:
         is_embed = endpoint == "embeddings"
         if endpoint == "rerank":
             client, base = self.rerank_client, self.settings.rerank_base_url or ""
+        elif endpoint == "vision":
+            client, base = self.embed_client, self.settings.embed_base
         else:
             client = self.embed_client if is_embed else self.chat_client
             base = self.settings.embed_base if is_embed else self.settings.chat_base
@@ -247,6 +261,10 @@ class LLM:
                   "request": body, "cache_key": key}
         if endpoint == "rerank":  # 候选原文不进记录（可能是帖子原文），只记条数
             common["request"] = {k: v for k, v in body.items() if k != "documents"} | {"documents": len(body["documents"])}
+        if endpoint == "vision":  # 图片可能是别人的简历截图：不进记录，只记哈希和大小
+            img = body["messages"][0]["content"][0]["image_url"]["url"]
+            common["request"] = {"model": body["model"], "prompt": body["messages"][0]["content"][1]["text"],
+                                 "image_sha256": hashlib.sha256(img.encode()).hexdigest()[:16], "image_chars": len(img)}
 
         if use_cache:
             cached = self.recorder.find_cached(key)

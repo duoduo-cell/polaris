@@ -475,3 +475,41 @@ class Notification(Base):
     feedback: Mapped[str | None] = mapped_column(String(16))  # useful / dismissed
     feedback_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PeerProfile(Base):
+    """帖子里的"人和结果"（10-12）：发帖人或评论区里自述背景的人，是什么阶段、学校、几篇论文、几段实习，
+    冲哪家哪个岗，结果如何、面到第几轮、觉得多难。每条带原句，能点回原帖核对。B 档数据，只在本机。"""
+
+    __tablename__ = "peer_profiles"
+    __table_args__ = (Index("ix_peer_profiles_raw", "raw_item_id"), Index("ix_peer_profiles_company", "big_company"))
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    raw_item_id: Mapped[int] = mapped_column(ForeignKey("raw_items.id", ondelete="CASCADE"))
+    source: Mapped[str] = mapped_column(String(32))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    who: Mapped[str] = mapped_column(String(8))  # 作者 / 评论区
+    stage: Mapped[str] = mapped_column(String(8))  # 本科 / 硕士 / 博士 / 已工作 / 未说明
+    grad_year: Mapped[str | None] = mapped_column(String(50))
+    school: Mapped[str | None] = mapped_column(String(200))
+    major: Mapped[str | None] = mapped_column(String(200))
+    papers: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    paper_summary: Mapped[str | None] = mapped_column(Text)
+    top_papers: Mapped[int] = mapped_column(Integer, default=0)  # CCF-A 或顶会
+    internships: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    awards: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    target_company: Mapped[str | None] = mapped_column(String(200))
+    big_company: Mapped[str | None] = mapped_column(String(64))  # 按大厂名单归一
+    target_team: Mapped[str | None] = mapped_column(String(200))
+    target_role: Mapped[str | None] = mapped_column(String(200))
+    job_type: Mapped[str] = mapped_column(String(8))
+    direction: Mapped[str | None] = mapped_column(String(100))
+    outcome: Mapped[str] = mapped_column(String(8))  # 拿到offer / 挂了 / 进行中 / 放弃 / 未说明
+    reached: Mapped[str | None] = mapped_column(String(50))
+    difficulty: Mapped[str | None] = mapped_column(Text)
+    dates: Mapped[str | None] = mapped_column(String(200))
+    evidence: Mapped[str] = mapped_column(Text)
+    from_image: Mapped[bool] = mapped_column(Boolean, default=False)
+    llm_call_id: Mapped[int | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"))
+    prompt_version: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = created_at()

@@ -239,14 +239,21 @@ class XhsCollector:
         note = detail.get("note") or {}
         if not note:
             return None
-        comments = slim_comments((detail.get("comments") or {}).get("list") or [])
         self.stats.opened += 1
         self.known.add(feed_id)
-        kept = {k: note.get(k) for k in ("noteId", "title", "desc", "type", "time", "ipLocation", "interactInfo")}
-        kept["user"] = {k: (note.get("user") or {}).get(k) for k in ("userId", "nickname")}
+        if hasattr(self.caller, "page"):  # 采集浏览器：同一次浏览里把评论翻完、图片读成字（10-12，见 xhs_deep）
+            from polaris.collectors.xhs_deep import VERSION, enrich
+
+            text, raw_json, _ = enrich(self.caller, feed_id, note, detail.get("comments") or {})
+            version = VERSION
+        else:
+            comments = slim_comments((detail.get("comments") or {}).get("list") or [])
+            kept = {k: note.get(k) for k in ("noteId", "title", "desc", "type", "time", "ipLocation", "interactInfo")}
+            kept["user"] = {k: (note.get("user") or {}).get(k) for k in ("userId", "nickname")}
+            text, raw_json, version = to_text(note, comments), {"note": kept, "comments": comments}, COLLECTOR_VERSION
         return RawItemIn(source="xhs", tier="B", kind="post", url=note_url(feed_id, token), external_id=feed_id,
-                         query=query, raw_text=to_text(note, comments), raw_json={"note": kept, "comments": comments},
-                         fetched_at=datetime.now(UTC), fetch_method="mcp", collector_version=COLLECTOR_VERSION,
+                         query=query, raw_text=text, raw_json=raw_json,
+                         fetched_at=datetime.now(UTC), fetch_method="mcp", collector_version=version,
                          published_at=datetime.fromtimestamp(note["time"] / 1000, UTC) if note.get("time") else None)
 
     def collect(self, query: Query) -> Iterator[RawItemIn]:

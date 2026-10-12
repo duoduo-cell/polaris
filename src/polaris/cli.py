@@ -133,6 +133,21 @@ def collect_boss(queries: int = typer.Option(2, help="本轮搜几个查询词")
                    "有验证就你自己完成，然后再继续。")
 
 
+@app.command()
+def deepen(limit: int = typer.Option(40, help="这一批最多深挖几条")) -> None:
+    """小红书深挖：重新打开已采到的笔记，读图片里的字、把评论翻完（和常驻采集共用锁和额度，会调读图模型）。"""
+    from polaris.collectors.xhs_deep import deepen as run
+
+    out = run(limit)
+    items = out["items"]
+    typer.echo(f"候选 {out['candidates']} 条，深挖 {out['deepened']} 条" + (f"，停在：{out['stopped']}" if out["stopped"] else ""))
+    if items:
+        live = [i for i in items if not i.get("gone")]
+        typer.echo(f"  已下线 {len(items) - len(live)} 条；有图 {sum(1 for i in live if i['images'])} 条，"
+                   f"图里有字 {sum(1 for i in live if i['images_with_text'])} 条，读出 {sum(i['ocr_chars'] for i in live)} 字；"
+                   f"评论 {sum(i['comments_before'] for i in live)} → {sum(i['comments'] for i in live)} 条")
+
+
 @browser_app.command("open")
 def browser_open() -> None:
     """打开两个采集专用的 Edge：一个放小红书和脉脉，一个只放 Boss。第一次在里面各登录一次，之后保持开着即可。"""

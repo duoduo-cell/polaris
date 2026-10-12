@@ -57,13 +57,27 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
     per_query = {"xhs": 3 * 3 + 20, "boss": 30, "maimai": 10}[source]
     left = min(cap - used, cfg["round_queries"] * per_query)
     left = min(left, budget.hour_left(source))
-    collector = FACTORIES[source](context, left, cfg)
+    # 小红书每轮留三分之一补老笔记（读图、翻评论，见 collectors/xhs_deep.py），新采的笔记打开时已经顺手补全
+    reserve = left // 3 if source == "xhs" else 0
+    collector = FACTORIES[source](context, left - reserve, cfg)
     from polaris.collectors.locks import platform_lock
 
     try:
         with platform_lock(source, timeout=600):  # 和对话里的现查共用一把锁，同一个平台不同时操作
             r = collect_round(source, collector, cfg["round_queries"],
-                              {"max_calls": left, "cap": cap, "via": cfg.get("via", "browser"), "mode": "daemon"}, echo=echo)
+                              {"max_calls": left - reserve, "cap": cap, "via": cfg.get("via", "browser"), "mode": "daemon"},
+                              echo=echo)
+            if reserve and not r.get("stopped") and hasattr(getattr(collector, "caller", None), "page"):
+                try:
+                    from polaris.collectors.xhs_deep import backfill
+
+                    b = backfill(collector.caller, reserve)
+                    if b["deepened"] or b["stopped"]:
+                        echo(f"  [{source}] 补老笔记 {b['deepened']} 条" + (f"，停在：{b['stopped']}" if b["stopped"] else ""))
+                    if b["stopped"]:
+                        r["stopped"] = b["stopped"]
+                except Exception as e:  # noqa: BLE001  补老笔记出错不影响采集
+                    echo(f"  [{source}] 补老笔记出错：{e}"[:200])
     finally:  # 每轮结束关掉自己开的标签页
         for obj in (collector, getattr(collector, "caller", None)):
             if hasattr(obj, "close"):
@@ -74,6 +88,11 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
             out = run_extract(kind, len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, raw_source)
             added = discover_queries(r["new_ids"], r["run_id"]) if source == "xhs" else []
             echo(f"  [{source}] 抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
+            from polaris.peers import run as extract_peers
+
+            peers = extract_peers(len(r["new_ids"]) + 20, source=raw_source)  # 帖子里"人和结果"（背景、offer、几面）
+            if peers["people"]:
+                echo(f"  [{source}] 人和结果：{peers['with_people']} 条帖子里有 {peers['people']} 个人")
         except Exception as e:  # noqa: BLE001
             echo(f"  [{source}] 抽取或提词出错（采集继续）：{e}"[:200])
         from polaris.search.index import refresh

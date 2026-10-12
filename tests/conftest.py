@@ -35,7 +35,7 @@ get_engine.cache_clear()
 
 TABLES = ["interview_questions", "job_followup_events", "job_followups",
           "chat_tasks", "chat_messages", "chat_threads", "notifications", "memory_events", "memory_facts", "memory_suppressions",
-          "posts", "postings", "jobs", "raw_items", "companies", "search_queries", "tool_calls", "llm_calls", "runs"]
+          "peer_profiles", "posts", "postings", "jobs", "raw_items", "companies", "search_queries", "tool_calls", "llm_calls", "runs"]
 
 
 def _ensure_test_database() -> None:
@@ -62,6 +62,17 @@ def engine():
     cfg.attributes["configure_logger"] = False
     command.upgrade(cfg, "head")
     return get_engine()
+
+
+@pytest.fixture(autouse=True)
+def _isolated_files(tmp_path, monkeypatch):
+    """测试不碰真实的 data/：平台锁和每日简报换成临时目录。
+    10-12 全量测试挂了两项：常驻采集正拿着真实的小红书锁，今天的真实简报也已经生成，测试结果跟着真实环境变。"""
+    from polaris.collectors import locks
+    from polaris.proactive import daily
+
+    monkeypatch.setattr(locks, "LOCK_DIR", tmp_path / "locks")
+    monkeypatch.setattr(daily, "BRIEFS", tmp_path / "briefs")
 
 
 @pytest.fixture

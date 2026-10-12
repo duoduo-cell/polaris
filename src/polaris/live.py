@@ -85,12 +85,13 @@ def _store(items: list[RawItemIn]) -> dict[tuple[str, str], int]:
 
 
 def _row(item: RawItemIn, rid: int | None, text_limit: int = 1200) -> dict[str, Any]:
+    from polaris.collectors.xhs_deep import brief
     from polaris.tools.base import untrusted
 
     first = item.raw_text.strip().splitlines()[0][:80] if item.raw_text.strip() else ""
     return {"id": f"R-{rid}" if rid else None, "source": label(item.source), "title": first,
             "published": item.published_at.date().isoformat() if item.published_at else None, "url": item.url,
-            "text": untrusted(item.raw_text[:text_limit])}
+            "text": untrusted(brief(item.raw_text, 2400) if item.source == "xhs" else item.raw_text[:text_limit])}
 
 
 # ---------- 横向：现场搜 ----------

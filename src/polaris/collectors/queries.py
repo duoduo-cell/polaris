@@ -51,6 +51,7 @@ def seed_queries(source: str) -> list[tuple[str, int]]:
             priority = 2 if name in top else 1
             out += [(f"{name} {t}", priority) for t in ("实习", "面经", "内推")]
         out += [(f"{d} 面经", 1) for d in directions[:3]]
+    out = [(q, 4) for q in cfg.get(f"peer_queries_{source}", [])] + out  # 对着"人和结果"的词，优先级最高（10-12）
     seen: set[str] = set()
     return [(q, p) for q, p in out if not (q in seen or seen.add(q))]
 

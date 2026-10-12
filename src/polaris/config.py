@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     embed_dim: int = EMBED_DIM
     embed_batch: int = 10
     # 重排服务（M4）：不配就跳过重排，直接用融合分。key 和向量服务共用（开发期都是阿里云百炼）
+    # 读图（小红书图文笔记里的简历、offer、长面经截图）：走和向量同一个服务的地址和 key；模型名可在 .env 里用 VISION_MODEL 覆盖
+    vision_model: str = "qwen3.5-ocr"  # 10-12 查过这个账号的百炼上可用：qwen3.5-ocr、qwen-vl-ocr、qwen3-vl-plus
     rerank_base_url: str | None = None
     rerank_model: str | None = None
 

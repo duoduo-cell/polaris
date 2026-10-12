@@ -11,7 +11,7 @@ MATERIALS = {"firsthand": "面经", "study": "备考整理", "uncertain": "待�
 OF = {"jobs": "岗位", "questions": "面试题", "posts": "帖子"}
 GROUP = {"company": "公司", "skill": "技能", "unit": "部门", "city": "城市", "direction": "方向"}
 VERBS = {"jobs_search": "搜岗位", "jobs_get": "看岗位详情", "posts_search": "搜帖子", "posts_get": "看帖子",
-         "questions_search": "搜面试题", "kg_stats": "查知识图谱", "memory_card": "看你的记忆",
+         "questions_search": "搜面试题", "kg_stats": "查知识图谱", "peers_search": "查拿到岗位的人", "memory_card": "看你的记忆",
          "memory_history": "查记忆的历史", "memory_known_at": "查当时记着什么", "memory_forget": "忘掉一条记忆",
          "source_open": "打开原链接", "platform_search": "现搜", "jobs_trend": "看招聘变化"}
 PLATFORMS = {"xhs": "小红书", "maimai": "脉脉", "boss": "Boss直聘", "tencent": "腾讯招聘官网"}
@@ -64,6 +64,9 @@ def describe(tool: str, args: dict[str, Any]) -> str:
     elif tool == "questions_search":
         parts = [a.get("company"), a.get("role"), a.get("round"), MATERIALS.get(a.get("material", "")),
                  f"“{a['query']}”" if a.get("query") else None]
+    elif tool == "peers_search":
+        parts = [a.get("company"), a.get("direction"), a.get("stage"), a.get("outcome"), a.get("job_type"),
+                 f"近 {a['since_days']} 天" if a.get("since_days") else None]
     elif tool == "kg_stats":
         filters = [a.get("company"), a.get("skill"), a.get("direction"), a.get("city")]
         parts = [f"数{OF.get(a.get('of', 'jobs'), '岗位')}，按{GROUP.get(a.get('group_by', ''), '类别')}分", *filters]
@@ -93,6 +96,11 @@ def outcome(tool: str, data: Any, ok: bool, output: str = "") -> str:
         n = data.get("returned") or 0
         more = len(data.get("also_listed") or [])
         return (f"带回 {n} 条" + (f"，另有 {more} 条只看了标题" if more else "")) if n or more else "平台上没搜到"
+    if tool == "peers_search":
+        sm = data.get("summary") or {}
+        n = sm.get("matched", 0)
+        span = f"（{sm.get('oldest')} 到 {sm.get('newest')}）" if n else ""
+        return f"找到 {n} 个人{span}，其中拿到 offer {(sm.get('by_outcome') or {}).get('拿到offer', 0)} 个" if n else "库里还没有这样的人"
     if tool == "kg_stats":
         return f"符合条件的有 {data.get('matched', 0)} 个，分成 {len(data.get('groups') or [])} 组"
     if tool == "memory_card":

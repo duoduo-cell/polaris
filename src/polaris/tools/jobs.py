@@ -364,7 +364,12 @@ def posts_get(args: PostsGetArgs) -> dict:
             out["question_details"] = [dict(q, interview_date=q["interview_date"].isoformat() if q["interview_date"] else None,
                                             published_at=q["published_at"].isoformat() if q["published_at"] else None)
                                        for q in details]
-            out["text"] = untrusted(r.raw_text[:2500])
+            if r.source == "xhs":  # 图片里的字和评论排在最后，按段截，免得整段丢掉
+                from polaris.collectors.xhs_deep import brief
+
+                out["text"] = untrusted(brief(r.raw_text or "", 2500))
+            else:
+                out["text"] = untrusted(r.raw_text[:2500])
     return out
 
 
