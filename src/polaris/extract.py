@@ -16,7 +16,9 @@ from polaris.llm import LLM, parallel_map
 from polaris.schemas import JobFacts, PostFacts
 
 JOB_PROMPT_VERSION = "extract-job-v1"
-POST_PROMPT_VERSION = "extract-post-v3"
+POST_PROMPT_VERSION = "extract-post-v4"  # v4：读图片里的字，题目上限 15 → 40（10-12）
+POST_CHARS = 12000
+MAX_QUESTIONS = 40
 DIRECTION_VOCAB = "Agent、RAG、大模型、多模态、推理加速、评测、数据、推荐搜索、后端、前端、客户端、算法、安全、其他"
 
 JOB_SYSTEM = f"""你从招聘原文里抽取岗位信息。规则：
@@ -38,7 +40,8 @@ POST_SYSTEM = f"""你从小红书笔记（含评论）里抽取对求职有用�
 - city 只写城市名，多个用顿号分隔，如"上海、北京"，不加括号说明；发帖属地（IP 属地）不是工作城市。
 - directions 从这些里选，可以多选：{DIRECTION_VOCAB}。
 - interview_rounds：面经写了"一面""二面"就是对应的轮数（写到几面就填几）。
-- interview_questions 只放面经里真实出现的题目，每条一句，最多 15 条；advice 最多 5 条。
+- interview_questions 只放面经里真实出现的题目（"图片里的文字："之后是截图识别出来的，题目常在那里），
+  每条一句，最多 40 条；advice 最多 5 条。
 - 正文和评论分开处理：companies、team、roles、面试公司只从正文确定，评论中的另一家公司不属于正文面经。
 - 题库、考点清单、备考资料、营销课程归为经验或其他，不冒充亲历面经；爆料可单独分类。
 - interview_company 是实际面试公司；company_evidence 照抄正文原句；question_details 与题目对应，证据照抄正文。
@@ -76,8 +79,21 @@ def extract_job(llm: LLM, item: RawItem, run_id: int | None = None) -> dict[str,
             "prompt_version": JOB_PROMPT_VERSION, "is_synthetic": item.is_synthetic}
 
 
+def post_input(text: str) -> str:
+    """正文、图片里的字、评论依次放，前面用不完的额度留给后面。
+    10-12：图片里的字排在评论后面，按前 6,000 字截断时整段丢了（R-997 九张图约 7,000 字面经，一道题都没进题库）。"""
+    body, _, image = text.partition("\n\n图片里的文字：\n")
+    main, _, comments = body.partition("\n\n评论：\n")
+    parts, left = [main[:POST_CHARS // 2]], POST_CHARS - min(len(main), POST_CHARS // 2)
+    for head, part in (("图片里的文字：\n", image), ("评论：\n", comments)):
+        if part and left > 0:
+            parts.append((head + part)[:left])
+            left -= len(parts[-1])
+    return "\n\n".join(parts)
+
+
 def extract_post(llm: LLM, item: RawItem, run_id: int | None = None) -> dict[str, Any] | None:
-    r = llm.extract(item.raw_text[:6000], PostFacts, purpose="extract_post", role="extract", system=POST_SYSTEM,
+    r = llm.extract(post_input(item.raw_text), PostFacts, purpose="extract_post", role="extract", system=POST_SYSTEM,
                     run_id=run_id, prompt_version=POST_PROMPT_VERSION)
     if not r.ok or r.value is None:
         return None
@@ -89,7 +105,7 @@ def extract_post(llm: LLM, item: RawItem, run_id: int | None = None) -> dict[str
             "big_companies": list(dict.fromkeys(bigs)), "team": f.team, "roles": f.roles, "directions": f.directions,
             "city": f.city, "job_type": f.job_type, "grad_year": f.grad_year, "days_per_week": f.days_per_week,
             "duration_months": f.duration_months, "can_convert": f.can_convert, "has_referral": f.has_referral,
-            "interview_rounds": f.interview_rounds, "interview_questions": f.interview_questions[:15],
+            "interview_rounds": f.interview_rounds, "interview_questions": f.interview_questions[:MAX_QUESTIONS],
             "advice": f.advice[:5], "summary": f.summary, "published_at": published,
             "likes": _likes((note.get("interactInfo") or {}).get("likedCount")), "llm_call_id": r.call_ids[-1],
             "evidence_profile": {"interview_company": f.interview_company, "company_evidence": f.company_evidence,

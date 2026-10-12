@@ -122,6 +122,20 @@ def proactive(echo: Callable[[str], None], prefix: str = "") -> None:
 OFFICIAL_RAW = {"tencent": "tencent:careers", "bytedance": "bytedance:campus", "xhs_careers": "xhs:careers"}
 
 
+def official_done_today(now: datetime) -> bool:
+    """今天官网整批重采过没有：查库里的采集记录，不只看进程内存（10-12：重启一次就又整批采一遍，约 35 分钟）。"""
+    from sqlalchemy import select
+
+    from polaris.db.models import Run
+    from polaris.db.session import session_scope
+
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    with session_scope() as s:
+        done = s.scalars(select(Run.params["source"].astext).where(
+            Run.kind == "collect", Run.params["mode"].astext == "official-daily", Run.started_at >= start)).all()
+    return set(OFFICIAL_RAW) <= set(done)
+
+
 def official_daily(echo: Callable[[str], None] = print) -> None:
     """官网每天整批重采一次（公开页面，A 档）：新出现的岗位才看得到，连续没再出现的才能判断下架，趋势才有数据。
     每个官网把全部方向词都搜一遍；没变的内容只更新"最后一次见到"的时间，不重复抽取。"""
@@ -241,6 +255,8 @@ def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
         if now.hour * 60 + now.minute >= 8 * 60 + 30 and morning_done != now.date().isoformat():
             proactive(echo, "[早上的简报] ")  # 每天 8:30 以后第一次醒来时出一份
             morning_done = now.date().isoformat()
+        if now.hour >= 9 and official_done != now.date().isoformat() and official_done_today(now):
+            official_done = now.date().isoformat()  # 今天已经采过（比如进程重启了）
         if now.hour >= 9 and official_done != now.date().isoformat():
             echo(f"[官网] {now:%H:%M} 每天整批重采一次")
             official_daily(echo)

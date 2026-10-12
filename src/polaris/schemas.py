@@ -53,7 +53,7 @@ class PostFacts(BaseModel):
     can_convert: bool | None = Field(None, description="写了有转正机会就是 true")
     has_referral: bool = Field(False, description="发帖人或评论里明确可以内推")
     interview_rounds: int | None = Field(None, description="面经里提到几轮面试")
-    interview_questions: list[str] = Field(default_factory=list, description="面经里的题目，每条一句，最多 15 条")
+    interview_questions: list[str] = Field(default_factory=list, description="面经里的题目（包括图片里的文字），每条一句，最多 40 条")
     interview_company: str | None = Field(None, description="正文里实际面试的公司；多公司/不能确定留空，不继承评论公司")
     company_evidence: str | None = Field(None, description="实际面试公司的正文原句，照抄")
     question_details: list[QuestionEvidence] = Field(default_factory=list)

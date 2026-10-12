@@ -30,7 +30,7 @@ flowchart LR
   AL --> DB[(PostgreSQL<br/>pgvector + BM25)]
   AL --> G[(Neo4j<br/>知识图谱)]
   subgraph 对话["对话（主 agent）"]
-    U[你的一句话] --> M[记忆抽取<br/>规则更新] & AG[LangGraph agent<br/>13 个工具]
+    U[你的一句话] --> M[记忆抽取<br/>规则更新] & AG[LangGraph agent<br/>14 个工具]
     AG -->|混合检索| DB
     AG -->|统计| G
     AG -->|打开原链接 / 现搜| L[现查<br/>限次、共用额度和锁]

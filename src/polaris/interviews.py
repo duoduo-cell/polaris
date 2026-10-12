@@ -24,13 +24,17 @@ def normalize(text: str) -> str:
 def split_text(raw_text: str, raw_json: dict[str, Any] | None = None) -> tuple[str, str, str]:
     data = raw_json or {}
     note = data.get("note") or {}
-    parts = re.split(r"\n\s*评论[：:]\s*\n", raw_text or "", maxsplit=1)
+    # 图片里的字是作者自己的截图（面经、时间线、offer），算正文；它排在评论后面（10-12 读图后才有）
+    text, _, image = (raw_text or "").partition("\n\n图片里的文字：\n")
+    parts = re.split(r"\n\s*评论[：:]\s*\n", text, maxsplit=1)
     body = parts[0]
     comments = parts[1] if len(parts) > 1 else ""
     if note.get("desc") is not None:
         body = f"{note.get('title') or ''}\n{note.get('desc') or ''}".strip()
     if data.get("comments"):
         comments = "\n".join(c.get("content") or "" for c in data["comments"] if isinstance(c, dict))
+    if image:
+        body = f"{body}\n{image}"
     lines = [x.strip() for x in body.splitlines() if x.strip() and not META_RE.match(x.strip())]
     headline = str(note.get("title") or data.get("title") or (lines[0] if lines else "求职资料"))[:120]
     return headline, "\n".join(lines), comments
@@ -69,6 +73,42 @@ def evidence_line(question: str, body: str, supplied: str | None = None) -> str 
     return None
 
 
+def _end_of(body: str, evidence: str) -> int:
+    """证据在正文里结束的位置。模型照抄时会丢掉不可见字符（\\u200b、\\xa0），按原样找不到，
+    就按归一化后的完整证据和原文位置映射找（10-12 R-920：8 道题因此挂不上"一面"）。找不到返回 -1。"""
+    target = normalize(evidence)
+    if not target:
+        return -1
+    i = body.find(evidence)
+    if i >= 0:
+        return i + len(evidence)
+    # 保留归一化字符到原文位置的映射，完整匹配证据；不能只匹配其中一行，
+    # 否则相似题目或跨行证据会被定位到更早的轮次。
+    chars, ends = [], []
+    for m in re.finditer(r"\w", body):
+        lowered = m.group().lower()
+        chars.extend(lowered)
+        ends.extend([m.end()] * len(lowered))
+    i = "".join(chars).find(target)
+    return ends[i + len(target) - 1] if i >= 0 else -1
+
+
+def round_sections(body: str) -> list[re.Match]:
+    """只用题目分组标题定位轮次。投递时间线、题目中的“第一轮对话”不算分组。"""
+    headings = []
+    for m in ROUND_RE.finditer(body):
+        start = body.rfind("\n", 0, m.start()) + 1
+        end = body.find("\n", m.end())
+        line_end = len(body) if end < 0 else end
+        prefix, suffix = body[start:m.start()], body[m.end():line_end]
+        if normalize(prefix) and not (start == 0 and companies_in(prefix)):
+            continue
+        if suffix and not re.match(r"[\s：:｜|（(\-—]", suffix):
+            continue
+        headings.append(m)
+    return headings
+
+
 def profile(post: Any, raw_text: str, raw_json: dict[str, Any] | None = None) -> dict[str, Any]:
     headline, body, comments = split_text(raw_text, raw_json)
     head_companies, body_companies = companies_in(headline), companies_in(body)
@@ -97,11 +137,21 @@ def profile(post: Any, raw_text: str, raw_json: dict[str, Any] | None = None) ->
     details = supplied.get("questions") or []
     detail_by_question = {normalize(d.get("question", "")): d for d in details if isinstance(d, dict)}
     rounds = list(dict.fromkeys(round_name(m) for m in ROUND_RE.finditer(body)))
+    sections = round_sections(body)
     rows = []
     for i, question in enumerate(post.interview_questions or []):
         if not isinstance(question, str) or not question.strip():
             continue
-        detail = detail_by_question.get(normalize(question), {})
+        nq = normalize(question)
+        # 10-12：模型有时在题目前加"一面："，明细里的同一道题没加，按原样对不上，出处和轮次全丢（R-2876 15 道 → 1 道）
+        detail = detail_by_question.get(nq)
+        if detail is None:
+            # 先去掉题目开头的轮次，再精确对应；有多个可能的明细时保持未知。
+            bare = re.sub(rf"^\s*{ROUND_RE.pattern}\s*[：:]\s*", "", question)
+            detail = detail_by_question.get(normalize(bare))
+        if detail is None:
+            candidates = [d for k, d in detail_by_question.items() if len(k) >= 5 and k in nq]
+            detail = candidates[0] if len(candidates) == 1 else {}
         evidence = evidence_line(question, body, detail.get("evidence"))
         qcompany = company
         if detail.get("company") and evidence and material == "firsthand":
@@ -110,11 +160,11 @@ def profile(post: Any, raw_text: str, raw_json: dict[str, Any] | None = None) ->
                 qcompany = specified.name
         qround = None
         if evidence:
-            position = body.find(evidence)
-            preceding = list(ROUND_RE.finditer(body[:position + len(evidence)])) if position >= 0 else []
+            end = _end_of(body, evidence)
+            preceding = [m for m in sections if m.start() < end] if end >= 0 else []
             if preceding:
                 qround = round_name(preceding[-1])
-        if qround is None and len(rounds) == 1:
+        if qround is None and len(rounds) == 1 and sections:
             qround = rounds[0]
         interview_date = None
         if detail.get("interview_date") and evidence and detail["interview_date"] in body:

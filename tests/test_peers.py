@@ -22,8 +22,11 @@ class FakeResponse:
 
 class FakePage:
     def __init__(self):
-        self.mouse = SimpleNamespace(wheel=lambda *a: None)
+        self.mouse = SimpleNamespace(wheel=lambda *a: None, move=lambda *a: None)
         self.request = SimpleNamespace(get=lambda url, **k: FakeResponse())
+
+    def locator(self, selector):
+        return SimpleNamespace(bounding_box=lambda **k: {"x": 900, "y": 100, "width": 400, "height": 700})
 
 
 class FakeCaller:
@@ -56,6 +59,18 @@ def test_brief_and_compose_keep_image_text_when_the_body_is_long():
     assert "上交硕士" in xhs_deep.brief(text, 2400) and "我也面了" in xhs_deep.brief(text, 2400)
     raw = RawItem(source="xhs", tier="B", kind="post", raw_text=text)
     assert "上交硕士" in compose(raw)
+
+
+def test_post_extraction_and_question_evidence_see_the_image_text():
+    """10-12：R-997 九张图约 7,000 字面经，抽取只读前 6,000 字（图片文字排在评论后面被截掉），同步题目时也只把标题和描述当正文。"""
+    from polaris.extract import post_input
+    from polaris.interviews import split_text
+
+    text = ("标题\n\n正文见图\n\n评论：\n" + "\n".join(f"- 评论{i}" * 20 for i in range(80))
+            + "\n\n图片里的文字：\n[图1]\n一面：讲一下 PPO 的目标函数")
+    assert "讲一下 PPO 的目标函数" in post_input(text) and "讲一下 PPO" not in text[:6000]
+    _, body, comments = split_text(text, {"note": {"title": "标题", "desc": "正文见图"}, "comments": [{"content": "评论0"}]})
+    assert "讲一下 PPO 的目标函数" in body and "PPO" not in comments
 
 
 def test_extract_one_counts_top_papers_and_normalizes_the_company():
@@ -95,3 +110,80 @@ def test_peers_search_filters_by_company_and_time_and_says_how_many(db):
     assert "样本太少" in out["hint"]
     assert peers_search(PeersSearchArgs(company="字节", since_days=730, stage="博士"))["summary"]["matched"] == 1
     assert "放宽条件" in peers_search(PeersSearchArgs(company="美团"))["hint"]
+
+
+def test_the_same_person_posting_twice_is_counted_once(db):
+    """10-12 抽查：同一个人隔天发两条求内推，被记成了两个人。"""
+    with session_scope() as s:
+        for days in (1, 2):
+            text = f"同一个人第 {days} 条"
+            raw = RawItem(source="xhs", tier="B", kind="post", raw_text=text, content_hash=content_hash(text), fetched_at=NOW,
+                          published_at=NOW - timedelta(days=days), raw_json={"note": {"user": {"userId": "u1"}}})
+            s.add(raw)
+            s.flush()
+            s.add(PeerProfile(raw_item_id=raw.id, source="xhs", published_at=raw.published_at, who="作者", stage="硕士",
+                              papers=[], internships=[], awards=[], target_company="字节跳动", big_company="字节跳动",
+                              job_type="日常实习", direction="Agent", outcome="进行中", evidence=text, prompt_version="test"))
+    out = peers_search(PeersSearchArgs(company="字节"))
+    assert out["summary"]["matched"] == 1 and out["items"][0]["days_ago"] == 1  # 留最新的那条
+
+
+def test_not_stating_internships_is_not_zero_internships(db):
+    """10-12 真实问答：工具把"没写实习"返回成空列表，模型说成了"0 实习拿到 offer"（R-997 原文只写了学历）。"""
+    with session_scope() as s:
+        for i, evidence in enumerate(("bg:双非本，985硕，通信工程转码", "28届研二0实习，拿到 Agent 日常实习",
+                                      "长沙作业帮有没有实习岗可以内推")):
+            raw = RawItem(source="xhs", tier="B", kind="post", raw_text=evidence, content_hash=content_hash(evidence),
+                          fetched_at=NOW, published_at=NOW - timedelta(days=i))
+            s.add(raw)
+            s.flush()
+            s.add(PeerProfile(raw_item_id=raw.id, source="xhs", published_at=raw.published_at, who="作者", stage="硕士",
+                              papers=[], internships=[], awards=[], target_company="阿里巴巴", big_company="阿里巴巴",
+                              job_type="日常实习", direction="Agent", outcome="拿到offer", evidence=evidence, prompt_version="test"))
+    out = peers_search(PeersSearchArgs(company="阿里"))
+    said = [x["internships"] for x in out["items"]]
+    assert said[0].startswith("没写") and said[1] == "原句写了没有实习" and said[2].startswith("没写")
+    assert out["items"][0]["papers"].startswith("没写") and out["summary"]["internships_not_stated"] == 2
+    assert out["summary"]["explicit_no_internships"] == 1 and out["summary"]["internships_median"] == 0
+
+
+def test_posts_without_people_are_not_read_again_every_round(db, monkeypatch):
+    """10-12：没抽出人的帖子不留记录，常驻采集每轮都会把它当成没抽过再抽一遍。"""
+    import polaris.peers as peers
+
+    calls = []
+
+    class FakeLLM:
+        def extract(self, *a, **k):
+            calls.append(1)
+            return SimpleNamespace(ok=True, value=PeerFacts(people=[]), call_ids=[None])
+
+    monkeypatch.setattr(peers, "LLM", FakeLLM)
+    with session_scope() as s:
+        text = "求问字节 Agent 实习一面一般问什么"
+        s.add(RawItem(source="xhs", tier="B", kind="post", raw_text=text, content_hash=content_hash(text), fetched_at=NOW,
+                      published_at=NOW))
+    assert peers.run(10)["read"] == 1 and peers.run(10)["read"] == 0 and len(calls) == 1
+
+
+def test_official_daily_is_not_repeated_after_a_restart(db):
+    """10-12：常驻采集重启后忘了今天已经整批采过官网，又采了 35 分钟。现在查库。"""
+    from polaris.daemon import BEIJING, official_done_today
+    from polaris.db.models import Run
+
+    now = datetime.now(BEIJING)
+    assert not official_done_today(now)
+    with session_scope() as s:
+        for source in ("tencent", "bytedance"):
+            s.add(Run(kind="collect", params={"source": source, "mode": "official-daily"}, status="ok", stats={}))
+    assert not official_done_today(now)  # 还差小红书招聘官网
+    with session_scope() as s:
+        s.add(Run(kind="collect", params={"source": "xhs_careers", "mode": "official-daily"}, status="ok", stats={}))
+    assert official_done_today(now)
+
+
+def test_ocr_html_and_code_fences_are_stripped():
+    raw = ("```html\n<html><body>\n<h2>个人背景</h2>\n<p>学历：双非本 9 硕</p>\n"
+           "<table><tr><td>一面</td><td>PPO</td></tr></table>\n</body></html>\n```")
+    out = xhs_deep.clean_ocr(raw)
+    assert "<" not in out and "```" not in out and "学历：双非本 9 硕" in out and "一面 PPO" in out

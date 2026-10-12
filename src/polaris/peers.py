@@ -15,7 +15,8 @@ from polaris.db.session import session_scope
 from polaris.extract import fit_columns
 from polaris.llm.client import LLM, parallel_map
 
-PROMPT_VERSION = "peer-v2"  # v2：学校只照抄、不展开缩写（v1 把"山财"写成了山西财经大学）
+PROMPT_VERSION = "peer-v3"  # v2：学校只照抄、不展开缩写（v1 把"山财"写成了山西财经大学）；
+# v3：转述、爆料、面经搬运号不记（v2 抽查 20 条里有 1 条爆料）
 MAX_CHARS = 9000
 # 正文、图片或评论里像是在讲某个人的背景或结果，才值得抽
 SIGNALS = re.compile(r"offer|上岸|oc|意向|bg|背景|简历|履历|论文|ccf|顶会|一作|实习经历|段实习|一面|二面|三面|终面|hr面|"
@@ -65,7 +66,9 @@ class PeerFacts(BaseModel):
 
 
 SYSTEM = """你从求职帖子（小红书、脉脉）里找"具体某个人"的求职背景和结果。
-- 只记录原文明确写到的人：发帖人自己，或评论区里讲自己背景、结果的人。招聘要求、泛泛建议、别人转述的传闻不算。
+- 只记录原文明确写到的人：发帖人自己，或评论区里讲自己背景、结果的人。招聘要求、泛泛建议不算。
+- 转述别人的不记：爆料、"他/她/我朋友/某同学拿到了……"、员工转述候选人的，一律不记。
+- 面经搬运号、培训机构号（只罗列题目，正文没有发帖人自己的经历）不记。
 - 一个人至少要有一项背景（阶段、学校、论文、实习、奖项）或一项结果（拿到 offer、挂在几面、进行中），否则不记。
 - 每个字段只照原文填，没写就留空或填"未说明"，不推测、不补全。学校只照抄原文的写法，缩写不要展开（"山财"就写"山财"）。
 - 论文按篇记；只写"两篇 CCF-A"就记两条 level=CCF-A。
@@ -83,15 +86,18 @@ def compose(raw: RawItem) -> str:
     return text[:MAX_CHARS]
 
 
-def pending(limit: int, source: str | None = None, redo: bool = False) -> list[RawItem]:
+def pending(limit: int, source: str | None = None, redo: bool = False, ids: list[int] | None = None) -> list[RawItem]:
     """还没按当前版本抽过、正文里像有"人和结果"的帖子。"""
     with session_scope() as s:
         done = select(PeerProfile.raw_item_id).where(PeerProfile.prompt_version == PROMPT_VERSION)
         stmt = select(RawItem).where(RawItem.kind == "post", RawItem.is_synthetic.is_(False))
-        if not redo:
-            stmt = stmt.where(RawItem.id.not_in(done))
+        if not redo:  # 抽过的（有人的有记录；没人的在原始数据上记了版本号）不再抽
+            stmt = stmt.where(RawItem.id.not_in(done),
+                              RawItem.raw_json["peer_version"].astext.is_distinct_from(PROMPT_VERSION))
         if source:
             stmt = stmt.where(RawItem.source == source)
+        if ids is not None:
+            stmt = stmt.where(RawItem.id.in_(ids))
         rows = s.execute(stmt.order_by(RawItem.published_at.desc().nulls_last())).scalars()
         items = [r for r in rows if SIGNALS.search(r.raw_text or "")]
         for r in items:
@@ -124,13 +130,14 @@ def extract_one(llm: LLM, raw: RawItem) -> list[dict[str, Any]] | None:
     return rows
 
 
-def run(limit: int, concurrency: int = 8, source: str | None = None, redo: bool = False) -> dict[str, int]:
+def run(limit: int, concurrency: int = 8, source: str | None = None, redo: bool = False,
+        ids: list[int] | None = None) -> dict[str, int]:
     """抽一批。重抽某条时先删它的旧记录。返回：看了几条帖子、几条里有人、一共几个人。"""
     from polaris.config import get_settings
     from polaris.db.models import PeerProfile as P
 
     llm = LLM()
-    items = pending(limit, source, redo)
+    items = pending(limit, source, redo, ids)
     results = parallel_map(lambda it: (it.id, extract_one(llm, it)), items, concurrency or get_settings().llm_concurrency)
     posts = people = failed = 0
     for res in results:
@@ -143,6 +150,8 @@ def run(limit: int, concurrency: int = 8, source: str | None = None, redo: bool 
                 s.query(P).filter(P.raw_item_id == rid).delete()
                 for row in rows:
                     s.add(P(**fit_columns(P, row)))
+                raw = s.get(RawItem, rid)  # 没抽出人也记一笔，免得每轮都重抽同一批（10-12 发现）
+                raw.raw_json = {**(raw.raw_json or {}), "peer_version": PROMPT_VERSION}
         except Exception:  # noqa: BLE001
             failed += 1
             continue

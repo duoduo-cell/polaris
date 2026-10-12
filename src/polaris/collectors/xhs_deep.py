@@ -26,10 +26,21 @@ from polaris.ingest import content_hash
 VERSION = "xhs-deep-1"
 MAX_IMAGES = 9
 MAX_COMMENTS = 80
-COMMENT_SCROLLS = 6
+COMMENT_SCROLLS = 24  # 每次加载 10 条，要滚两三次；80 条大约 20 次
 OCR_PROMPT = "把图片里的文字原样转写出来，保持原来的分行和顺序；看不清的字用□代替；没有文字就只回答“无文字”。不要解释。"
 # 先挑最可能有"人和结果"的笔记：提到 offer、背景、简历、论文、实习经历、几面的
 SIGNALS = r"offer|上岸|oc|意向|bg|背景|简历|履历|论文|ccf|顶会|一作|实习经历|段实习|一面|二面|三面|终面|hr面|转正|挂了|凉了"
+
+
+def clean_ocr(text: str) -> str:
+    """识别模型有时把表格、排版图转成 HTML 或包一层代码块（10-12 首批 34 张图里标签占 7%），去掉标记只留字。"""
+    import re
+
+    text = re.sub(r"^```\w*\s*$", "", text, flags=re.M)
+    text = re.sub(r"<br\s*/?>|</(?:p|h\d|li|tr|div)>", "\n", text, flags=re.I)
+    text = re.sub(r"</t[dh]>", " ", text, flags=re.I)
+    text = re.sub(r"<[^>\n]{1,200}>", "", text)
+    return re.sub(r"\n[ \t]*\n(?:[ \t]*\n)+", "\n\n", "\n".join(line.strip() for line in text.splitlines())).strip()
 
 
 def brief(text: str, limit: int = 2400) -> str:
@@ -75,19 +86,30 @@ def _image_urls(note: dict[str, Any]) -> list[str]:
 def _more_comments(caller: BrowserCaller, note_id: str, first: dict[str, Any]) -> list[dict[str, Any]]:
     """评论区往下翻几次，直到没有新的或到上限；读页面自己的状态数据，不另外调接口。"""
     best = (first or {}).get("list") or []
+    # 10-12 实测：鼠标不在评论区上时滚轮不起作用（库里每条都停在第一页 10 条，帖子显示 60–78 条）；
+    # 放上去以后要滚两三次到底才加载下一页 10 条，所以连续几次没变多才停
+    try:
+        box = caller.page.locator(".note-scroller").bounding_box(timeout=3000)
+        if box:
+            caller.page.mouse.move(box["x"] + box["width"] * random.uniform(0.3, 0.7),
+                                   box["y"] + box["height"] * random.uniform(0.5, 0.8))
+    except Exception:  # noqa: BLE001  没有评论区就用第一页
+        return best[:MAX_COMMENTS]
+    still = 0
     for _ in range(COMMENT_SCROLLS):
-        if len(best) >= MAX_COMMENTS or not (first or {}).get("hasMore", True):
+        if len(best) >= MAX_COMMENTS or not (first or {}).get("hasMore", True) or still >= 3:
             break
         try:
-            caller.page.mouse.wheel(0, random.randint(900, 1500))
+            caller.page.mouse.wheel(0, random.randint(1200, 2000))
             caller.sleep(random.uniform(1.2, 2.4))
             entry = caller._eval_json(STATE_NOTE, note_id) or {}
         except Exception:  # noqa: BLE001  翻不动就用已有的
             break
         now = (entry.get("comments") or {}).get("list") or []
         if len(now) <= len(best):
-            break
-        best, first = now, entry.get("comments") or {}
+            still += 1
+            continue
+        best, first, still = now, entry.get("comments") or {}, 0
     return best[:MAX_COMMENTS]
 
 
@@ -113,6 +135,7 @@ def _ocr(images: list[tuple[bytes, str]], run_id: int | None) -> list[str]:
                                prompt_version="xhs-ocr-v1").content or "").strip()
         except Exception as e:  # noqa: BLE001  一张读不出来不影响别的
             return f"（这张没读出来：{type(e).__name__}）"
+        text = clean_ocr(text)
         return "" if text in ("无文字", "无文字。") else text
 
     with ThreadPoolExecutor(max_workers=4) as pool:
