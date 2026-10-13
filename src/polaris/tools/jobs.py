@@ -196,11 +196,9 @@ def jobs_trend(args: JobsTrendArgs) -> dict:
 
 
 def jobs_search(args: JobsSearchArgs) -> dict:
-    order, note = ranked_ids(args.query, "jobs", args.company) if args.query else (None, None)
+    # 先核实结构化范围，避免在已无候选时仍付费换关键词；不在数据库事务中等待检索服务。
     with session_scope() as s:
         stmt = select(Job).where(Job.is_synthetic.is_(False), Job.status == "active")
-        if order is not None:
-            stmt = stmt.where(Job.id.in_(order))
         if args.company:
             stmt = stmt.where(_company_filter(Job.company_name, Job.company, args.company))
         if args.city:
@@ -219,24 +217,29 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             days = {"max_days_per_week": args.max_days_per_week,
                     "jd_without_days": s.scalar(stmt.where(Job.days_per_week.is_(None)).with_only_columns(func.count(Job.id))),
                     "least_days_in_jd": s.scalar(stmt.with_only_columns(func.min(Job.days_per_week))),
-                    "note": "只算 JD 写明了每周到岗天数的岗位；没写天数的要看原文或问 HR，不能当成符合"}
+                    "note": "关键词检索前的范围统计；只算 JD 写明天数的岗位，没写不能当成符合"}
             stmt = stmt.where(Job.days_per_week <= args.max_days_per_week)
-        rows = (s.execute(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)).scalars().all() if order is None else
-                _in_order(s.execute(stmt).scalars().all(), order, lambda j: j.id))
+        rows = s.scalars(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)).all()
         kinds = job_date_kinds(s, [j.id for j in rows])
         excluded = sum(kinds[j.id] != "published" for j in rows) if args.since_days and args.date_basis == "published" else 0
-        excluded_examples = []
+        excluded_rows = [j for j in rows if kinds[j.id] != "published"][:3] if excluded else []
         if args.since_days and args.date_basis == "published":
-            examples = [j for j in rows if kinds[j.id] != "published"][:3]
-            from polaris.match import matches
-
-            example_fits = matches(s, [j.id for j in examples])
-            example_sources = job_sources(s, [j.id for j in examples])
-            excluded_examples = [{"id": f"J-{j.id}", "title": j.title, "company": j.company or j.company_name,
-                                  "reported_date": j.posted_at.isoformat(), "date_kind": kinds[j.id],
-                                  "reason": "来源只给更新时间" if kinds[j.id] == "updated" else "无法核实是发布日期",
-                                  "match": example_fits.get(j.id), "sources": example_sources[j.id]} for j in examples]
             rows = [j for j in rows if kinds[j.id] == "published"]
+    candidates = len(rows)
+    order, note = ranked_ids(args.query, "jobs", args.company) if args.query and candidates else (None, None)
+    if order is not None:
+        ids = set(order)
+        rows = _in_order([j for j in rows if j.id in ids], order, lambda j: j.id)
+    retrieved = len(rows)
+    with session_scope() as s:
+        from polaris.match import matches
+
+        example_fits = matches(s, [j.id for j in excluded_rows]) if excluded_rows else {}
+        example_sources = job_sources(s, [j.id for j in excluded_rows]) if excluded_rows else {}
+        excluded_examples = [{"id": f"J-{j.id}", "title": j.title, "company": j.company or j.company_name,
+                              "reported_date": j.posted_at.isoformat(), "date_kind": kinds[j.id],
+                              "reason": "来源只给更新时间" if kinds[j.id] == "updated" else "无法核实是发布日期",
+                              "match": example_fits.get(j.id), "sources": example_sources[j.id]} for j in excluded_rows]
         rows = rows[args.offset: args.offset + args.limit + 1]
         items = [_job_row(j, args.response_format == "detailed") for j in rows[: args.limit]]
         sources = job_sources(s, [j.id for j in rows[:args.limit]])
@@ -266,9 +269,25 @@ def jobs_search(args: JobsSearchArgs) -> dict:
         result["excluded_examples"] = excluded_examples
     if note:
         result["search_note"] = note
-    if not items:
-        result["hint"] = ("没有符合条件的岗位。可以去掉一两个条件（比如城市、类型）、换个说法，"
-                          "或者库里确实还没采到这家公司的岗位——那就如实告诉用户。")
+    if not candidates:
+        status, action = "scope_empty", "stop"
+        hint = ("本地库在当前结构化条件及日期口径下没有候选，换关键词不能增加结果。保持用户条件并停止该范围的补查；"
+                "说明查询范围、采集时效和排除原因。不能推断全平台没有岗位；放宽条件须由用户明确允许。")
+    elif not retrieved:
+        status, action = "query_empty", "retry_query"
+        hint = ("结构化范围内有候选，但当前关键词检索未命中；这不证明没有符合需求的岗位。"
+                "保持所有筛选条件，最多换一种等价说法，或不带关键词查看同范围候选再核对；不要扩大日期、城市或类型。")
+    elif not items:
+        status, action = "page_exhausted", "previous_page"
+        hint = "当前页越过已检索候选末尾，不是没有岗位；复用前页结果或返回有效的offset，保持所有筛选条件。"
+    else:
+        status, action = "matches", "use_results"
+        hint = None
+    result["search"] = {"status": status, "action": action, "candidates_before_query": candidates,
+                        "retrieved_candidates": retrieved, "query_executed": bool(args.query and candidates),
+                        "note": "计数仅证明本地结构化范围，不证明方向语义或个人资格匹配；关键词召回最多取60块，不是全量"}
+    if hint:
+        result["hint"] = hint
     return result
 
 
@@ -427,7 +446,8 @@ TOOLS = [
              args_schema=JobsTrendArgs, func=jobs_trend, example='{"days": 14, "group_by": "company", "direction": "Agent"}'),
     ToolSpec(name="jobs_search",
              description="查岗位（多来源合并后的）：按公司、城市、类型、方向筛，给 query 时按相关度排，默认只看大厂。"
-                         "返回可读标题、关键字段和原始来源；各处说法不一致的字段会标出来。详情用 jobs_get。",
+                         "返回标题、来源及search诊断：scope_empty应停止同范围补查，query_empty允许保持条件有限改写，"
+                         "page_exhausted表示翻页越界；不自行放宽用户条件。详情用jobs_get。",
              args_schema=JobsSearchArgs, func=jobs_search, example='{"company": "字节", "city": "杭州", "query": "Agent"}'),
     ToolSpec(name="jobs_get", description="按编号取一个岗位的全部字段、任职要求、每条来源，以及说法不一致的字段取了哪个、为什么；"
                                           "detailed 再给职位描述全文。",

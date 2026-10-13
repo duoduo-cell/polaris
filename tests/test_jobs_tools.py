@@ -61,7 +61,9 @@ def test_jobs_search_filters_and_aliases(db):
     out = rt.invoke(REGISTRY["jobs_search"], {"city": "杭州", "big_only": False})
     assert f"J-{ids['small']}" in out
     out = rt.invoke(REGISTRY["jobs_search"], {"company": "美团"})
-    assert '"returned": 0' in out and "如实告诉用户" in out
+    empty = json.loads(out)
+    assert empty["returned"] == 0 and empty["search"]["status"] == "scope_empty"
+    assert empty["scope"]["company"] == "美团" and empty["search"]["action"] == "stop"
 
 
 def test_jobs_search_by_days_per_week_reports_jds_that_do_not_say(db):
