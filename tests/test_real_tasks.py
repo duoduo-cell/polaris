@@ -77,6 +77,16 @@ def test_recent_jobs_cannot_pass_by_searching_correct_window_then_widening():
     assert not next(c["ok"] for c in checks if c["name"] == "did_not_expand_requested_date_window")
 
 
+def test_followup_may_use_previous_turn_evidence_without_redundant_lookup():
+    calls = [{"tool": "jobs_get", "args": {"job_id": "J-2"}, "ok": True,
+              "output": '{"id":"J-2"}', "error_kind": None}]
+    turns = [{"answer": "第一个J-1，第二个J-2", "tool_calls": calls}, {"answer": "第二个J-2", "tool_calls": []}]
+    checks = ev.hard_checks({"kind": "followup_detail", "max_tools": 8}, turns, calls)
+    assert next(c["ok"] for c in checks if c["name"] == "retrieved_evidence")
+    checks = ev.hard_checks({"kind": "followup_detail", "max_tools": 8}, turns, [])
+    assert not next(c["ok"] for c in checks if c["name"] == "retrieved_evidence")
+
+
 def test_sparse_jobs_does_not_require_three_when_only_one_exists():
     case = {"take": 3}
     r = ev.finalize([], audit(recommended_ids=["J-1"]), ["J-1"], case)

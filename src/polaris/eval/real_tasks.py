@@ -17,19 +17,21 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, create_model
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.engine import make_url
 
 from polaris.config import ROOT, get_settings
 from polaris.db.models import InterviewQuestion, Job, PeerProfile, Post, Posting, RawItem
 from polaris.db.session import get_engine, session_scope
 from polaris.eval.answer_eval import RESET_TABLES, _allowed, _live_claim
+from polaris.eval.audit_packets import encode_review, review_refs
+from polaris.eval.claim_verifier import verify
 from polaris.interviews import normalize
 from polaris.results import REF_RE
 
 SPEC = ROOT / "eval/gold/tasks_v3.json"
 PRIVATE = ROOT / "data/eval/real_tasks"
-VERSION = "real-task-audit-v4"
+VERSION = "real-task-audit-v8"
 MODULE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 BASELINE_TABLES = ("memory_facts", "memory_events", "memory_suppressions", "job_followups", "job_followup_events")
 STATE_LOCK = 739514641
@@ -54,6 +56,9 @@ issues列出所有实质错误，用answer_line定位。工具参数错误放在
 后面写了免责声明不能抵消前面的错。USER是求职助手的使用者，R-帖子的作者/评论者是别人，不能混同。
 只给你的 extracted_fields 是抽取结果、未独立核实，不能当原文；工具汇总也不是独立原文。
 核验不过、材料不全、证据需要截断时 review_complete=false，不以猜测代替通过。
+review_complete只表示材料足够完成判断，已经确认答案错时仍应为true；答案有用与否另行判断。
+句子中的所有重要事实都需支持，不能用地点正确来支持发布日期，也不能用人数为零支持采集时间。
+原始层published_at是遗留来源日期字段，可能存更新时间；其名称不证明是发布日，按原文/原生字段区分，UTC需转北京时间。
 本评测衡量的有用是下面明确任务标准的代理，不能当作作者本人满意度。"""
 
 
@@ -309,7 +314,8 @@ def original_sources(refs: set[str]) -> dict[str, Any]:
                 continue
             out[f"R-{r.id}"] = {"text": r.raw_text, "source": r.source, "published_at": r.published_at,
                                  "fetched_at": r.fetched_at, "url": r.url, "content_hash": r.content_hash,
-                                 "raw_json": r.raw_json}
+                                 "raw_json": r.raw_json,
+                                 "date_field_semantics": "published_at是遗留来源日期，是否发布或更新看原文/原生字段；UTC转北京时间可能跨日"}
         return out
 
 
@@ -490,9 +496,11 @@ def hard_checks(case: dict[str, Any], turns: list[dict[str, Any]], calls: list[d
         f = case["filters"]
         add("requested_question_filters", any(c["tool"] == "questions_search" and c["ok"]
                                                and all(c["args"].get(k) == v for k, v in f.items()) for c in latest))
+        add("question_count_within_request", len({r for r in REF_RE.findall(answer) if r.startswith("Q-")}) <= case["take"])
     else:
+        evidence_calls = calls if case["kind"] == "followup_detail" else latest
         add("retrieved_evidence", any(c["ok"] and c["tool"] in ("posts_search", "posts_get", "questions_search",
-                                                                "peers_search", "jobs_get", "jobs_search") for c in latest))
+                                                                "peers_search", "jobs_get", "jobs_search") for c in evidence_calls))
     for card in turn.get("results", []):
         add("card_has_original_url", any(s.get("url") for s in card.get("sources", [])), card["id"])
     return checks
@@ -502,13 +510,25 @@ def judge(case, manifest, turns, calls, model: str, oracle: list[str] | None, pr
     from polaris.llm.client import LLM
 
     answer = turns[-1].get("answer") or ""
-    sources = original_sources(set(REF_RE.findall(answer)) | _allowed(calls))
+    sources = original_sources(review_refs(answer, calls))
     sources["USER"] = {"text": manifest["persona"], "source": "user_provided"}
     with session_scope() as s:
         active = list(s.scalars(select(Job).where(Job.is_synthetic.is_(False), Job.status == "active")))
         counts = {"active_jobs": len(active), "dated_jobs": sum(j.posted_at is not None for j in active)}
+        counts["job_raw_records_by_source"] = dict(s.execute(select(RawItem.source, func.count()).where(
+            RawItem.kind == "job", RawItem.is_synthetic.is_(False)).group_by(RawItem.source)).all())
+        counts["latest_job_fetch_utc"] = s.scalar(select(func.max(RawItem.fetched_at)).where(RawItem.kind == "job"))
+    job_queries = []
+    for call in calls:
+        if call["ok"] and call["tool"] == "jobs_search" and call["args"].get("date_basis", "published") == "published":
+            args = call["args"]
+            ids = job_oracle({"filters": args}, datetime.fromisoformat(manifest["as_of"]))
+            job_queries.append({"args": args, "publication_scope_ids_before_keyword_search": ids,
+                                "note": "独立结构化筛选；未执行query关键词召回，因此不能证明关键词匹配数"})
+    counts["job_queries"] = job_queries
+    counts["eligible_job_ids_scope"] = case.get("filters")
     counts.update(eligible_job_ids=oracle, peer_queries=cohort_counts(calls, datetime.fromisoformat(manifest["as_of"])))
-    sources["DB_ORACLE"] = {"text": json.dumps(counts, ensure_ascii=False), "source": "independent_sql_counts"}
+    sources["DB_ORACLE"] = {"text": json.dumps(counts, ensure_ascii=False, default=str), "source": "independent_sql_counts"}
     readable_calls = []
     for call in calls:
         try:
@@ -528,7 +548,8 @@ def judge(case, manifest, turns, calls, model: str, oracle: list[str] | None, pr
     except ValueError:
         return {"error": "missing_review_material", "review_complete": False}, packet
     packet["proof_refs"] = proofs
-    encoded = json.dumps(packet, ensure_ascii=False, default=str)
+    encoded = encode_review(packet)
+    packet["review_input_chars"] = len(encoded)
     if len(encoded) > PACKET_LIMIT:
         return {"error": "evidence_packet_too_large", "review_complete": False}, packet
     original_settings = get_settings()
@@ -551,6 +572,8 @@ def judge(case, manifest, turns, calls, model: str, oracle: list[str] | None, pr
         claim["evidence"] = [dict(proofs[ref]) for ref in claim.pop("evidence_refs")]
     audit["call_ids"] = r.call_ids
     audit["validation_errors"] = resolve_locators(audit, answer, sources) + validate_audit(audit, answer, sources)
+    if audit.get("review_complete") and not audit["validation_errors"]:
+        audit["validation_errors"].extend(verify(audit, sources, LLM(settings=settings), params=params, version=VERSION))
     return audit, packet
 
 
