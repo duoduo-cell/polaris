@@ -255,7 +255,10 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             if j.id in fits:
                 item["match"] = fits[j.id]
     has_more = len(rows) > args.limit
-    result: dict = {"returned": len(items), "items": items, "offset": args.offset,
+    result: dict = {"pagination": {"candidate_count": retrieved,
+                                  "count_basis": "关键词已召回的候选子集（不是所有相关岗位）" if args.query else "本地结构化范围全量候选",
+                                  "scope_candidate_count": candidates},
+                    "returned": len(items), "items": items, "offset": args.offset,
                     "next_offset": args.offset + args.limit if has_more else None,
                     "library": library_note("job", dated=bool(args.since_days))}
     result["scope"] = {"company": args.company, "city": args.city, "direction": args.direction, "job_type": args.job_type,

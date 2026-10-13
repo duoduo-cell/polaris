@@ -43,7 +43,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v20"  # v20：依据工具空结果诊断补查或停止；v19：保持用户日期窗口。
+PROMPT_VERSION = "main-v21"  # v21：展示条数与候选数区分；v20：空结果诊断；v19：保持用户日期窗口。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -208,6 +208,9 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 - 岗位搜索先看search诊断：scope_empty说明当前本地结构化范围无候选，停止同范围补查，解释时效与排除原因；
   query_empty只表示关键词没召回，可保持全部筛选换一种等价说法或查同范围不带关键词的候选；
   page_exhausted是翻页越界，复用前页或返回有效offset。不得把空检索、工具故障或未知日期说成全平台没岗位。
+- 列表先看pagination：shown/returned只是当前展示的条数；next_offset非空就不能说“只有这些”。
+  candidate_count按count_basis解释：无关键词时是本地结构化候选总数，有关键词时只是召回子集。
+  候选数不是适合用户或已逐条核实的岗位数；给一个例子不需要穷尽全部候选，未提供总数时不猜。
 - 同一个意思搜不到，最多换一种说法再试一次；不要为了"排除"去搜用户没问的公司。用户说的岗位或说法（"只要去 2 天的那个"）
   查两次都没有，就照实说库里没有、给最接近的，不要反复换说法证明它不存在。要看详情时挑最相关的、一次最多 5 个，
   同一步并行发出；已经查到的不要再查一遍。

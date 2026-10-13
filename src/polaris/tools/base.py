@@ -62,20 +62,33 @@ def render(data: Any) -> str:
     def encode(value):
         return json.dumps(value, ensure_ascii=False, default=str)
     out = json.loads(encode(data))
+    original_items = len(out["items"]) if isinstance(out, dict) and isinstance(out.get("items"), list) else None
+    base_offset = out.get("offset", (out.get("next_offset") or original_items) - original_items) if original_items is not None else 0
+
+    def sync_page() -> None:
+        nonlocal out
+        if not isinstance(out, dict) or not isinstance(out.get("items"), list):
+            return
+        shown = len(out["items"])
+        out["returned"] = shown
+        if original_items is not None and shown < original_items:
+            out["next_offset"] = base_offset + shown
+        page = {**out.get("pagination", {}), "shown": shown, "offset": base_offset,
+                "next_offset": out.get("next_offset"),
+                "note": "shown/returned只是当前展示条数，不是总数；next_offset非空表示还有候选。总数未明确提供时不能猜。"}
+        # 放在列表之前，避免模型先看到少量示例而把它们当成全部结果。
+        out = {"pagination": page, **{k: v for k, v in out.items() if k != "pagination"}}
+
+    sync_page()
     if len(encode(out)) <= MAX_OUTPUT_CHARS:
         return encode(out)
     if isinstance(out, dict):
         out["truncated"] = True
         out["hint"] = TRUNCATED_HINT
         if isinstance(out.get("items"), list):
-            original = len(out["items"])
             while len(out["items"]) > 1 and len(encode(out)) > MAX_OUTPUT_CHARS:
                 out["items"].pop()
-            kept = len(out["items"])
-            out["returned"] = kept
-            if kept < original:
-                base = out.get("offset", (out.get("next_offset") or original) - original)
-                out["next_offset"] = base + kept
+                sync_page()
         # 始终保留完整合法 JSON 和真实 URL；全文由详情接口直接返回。
         for key in ("jd_text", "question_details", "text", "interview_questions", "advice", "questions"):
             if len(encode(out)) <= MAX_OUTPUT_CHARS:
@@ -101,12 +114,14 @@ def render(data: Any) -> str:
                     return [compact(item) for item in value[:3]]
                 return value[:600] + "…" if isinstance(value, str) and len(value) > 600 else value
             out = compact(out)
+            sync_page()
         if len(encode(out)) > MAX_OUTPUT_CHARS:
-            out = {k: out[k] for k in ("id", "items", "returned", "offset", "next_offset") if k in out}
+            out = {k: out[k] for k in ("pagination", "search", "scope", "id", "items", "returned", "offset", "next_offset") if k in out}
             if "items" in out:
                 out["items"] = [{k: item[k] for k in ("id", "from", "display_title", "title") if k in item}
                                 for item in out["items"] if isinstance(item, dict)]
             out.update(truncated=True, hint=TRUNCATED_HINT)
+            sync_page()
     return encode(out)
 
 

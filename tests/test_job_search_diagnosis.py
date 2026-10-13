@@ -56,10 +56,15 @@ def test_keyword_miss_can_recover_without_changing_filters(db, monkeypatch):
     missing = jobs.jobs_search(args(query="LLM 应用工程"))
     assert missing["search"]["status"] == "query_empty"
     assert missing["search"]["candidates_before_query"] == 1
+    assert missing["pagination"]["candidate_count"] == 0
+    assert missing["pagination"]["scope_candidate_count"] == 1
+    assert "子集" in missing["pagination"]["count_basis"]
     assert missing["search_note"] == "语义服务不可用，已退回关键词"
     recovered = jobs.jobs_search(args())
     assert recovered["scope"] == missing["scope"]
     assert [j["id"] for j in recovered["items"]] == [f"J-{jid}"]
+    assert recovered["pagination"]["candidate_count"] == 1
+    assert "全量" in recovered["pagination"]["count_basis"]
 
 
 def test_scope_count_does_not_count_other_cities_and_preserves_ranking(db, monkeypatch):
