@@ -1,6 +1,7 @@
 export type Source = {
   source: string; label: string; url: string | null; city?: string | null; raw_id?: string;
   fetched_at?: string | null; published_at?: string | null; access?: string; availability?: string;
+  date_kind?: "published" | "updated" | "unknown";
 };
 export type Followup = {
   saved: boolean; status: string; status_label?: string; stage: string | null; note: string | null;
@@ -15,7 +16,7 @@ export type Question = {
 export type Check = { key: string; label: string; ok: boolean | null; detail: string };
 export type Match = {
   score: number; level: "good" | "ok" | "weak"; checks: Check[];
-  skills: { required: string[]; have: string[]; missing: string[]; known: boolean };
+  skills: { required: string[]; have: string[]; missing: string[]; not_stated?: string[]; known: boolean };
 };
 export type Result = {
   id: string; kind: "job" | "interview" | "question" | "referral" | "recruitment" | "study" | "post" | "raw";

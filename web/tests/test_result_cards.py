@@ -81,6 +81,21 @@ class ResultCardsRegression(unittest.TestCase):
         expect(dialog).not_to_be_visible()
         self.assertFalse(any(method == "POST" for method, _, _ in self.requests))
 
+    def test_unknown_skill_does_not_prefill_a_false_user_claim_and_update_is_labeled(self):
+        self.rows[0]["match"] = {"score": 59, "level": "weak", "checks": [],
+                                 "skills": {"required": ["Python", "PyTorch"], "have": ["Python"],
+                                            "missing": ["PyTorch"], "not_stated": ["PyTorch"], "known": True}}
+        self.rows[0]["sources"][0].update(published_at="2026-10-11T16:00:00+00:00", date_kind="updated")
+        self.page.get_by_test_id("result-J-1").get_by_role("button", name="查看详情").click()
+        dialog = self.page.get_by_role("dialog")
+        expect(dialog.get_by_text("待确认 PyTorch", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("来源更新于 2026-10-12", exact=False)).to_be_visible()
+        dialog.get_by_role("button", name="问北极星怎么自测", exact=True).click()
+        composer = self.page.locator("textarea:visible")
+        expect(composer).to_have_value(__import__("re").compile("掌握情况还没确认"))
+        self.assertNotIn("我还不会", composer.input_value())
+        self.assertFalse(any(method == "POST" for method, _, _ in self.requests))
+
     def test_bookmark_and_second_job_progress_survive_reload_separately(self):
         self.page.get_by_test_id("result-J-1").get_by_role("button", name="查看详情").click()
         dialog = self.page.get_by_role("dialog")
@@ -146,13 +161,13 @@ class ResultCardsRegression(unittest.TestCase):
         card = self.page.get_by_test_id("result-J-1")
         expect(card.get_by_text("要每周 5 天，你能去 4 天", exact=True)).to_be_visible()
         expect(card.get_by_text("1 项岗位没写", exact=True)).to_be_visible()
-        expect(card.get_by_text("缺 CUDA/算子", exact=True)).to_be_visible()
+        expect(card.get_by_text("待确认 CUDA/算子", exact=True)).to_be_visible()
         card.get_by_role("button", name="查看详情").click()
         dialog = self.page.get_by_role("dialog", name="结果详情")
         expect(dialog.get_by_text("很合适", exact=True)).to_be_visible()
-        dialog.get_by_role("button", name="问北极星怎么补").click()
+        dialog.get_by_role("button", name="问北极星怎么自测").click()
         expect(self.page.get_by_role("textbox")).to_have_value(
-            "合成公司 · 岗位1 这个岗位要求 CUDA/算子，我还不会。面试常怎么考？我该怎么在短时间里补上？")
+            "合成公司 · 岗位1 这个岗位要求 CUDA/算子，我的掌握情况还没确认。请给我自测题和答题要点，帮我判断需要补什么。")
 
 
     def test_chat_folds_question_references_into_a_list(self):

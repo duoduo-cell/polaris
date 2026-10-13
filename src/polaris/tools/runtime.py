@@ -6,6 +6,7 @@
 - 记账：每次调用（包括失败的、回放的）写一条 tool_calls
 """
 import json
+import re
 import time
 from collections import defaultdict, deque
 from typing import Any, Literal
@@ -48,6 +49,7 @@ class ToolRuntime:
         self.calls: list[dict[str, Any]] = []  # 本次运行的调用，评测时直接读
         self.results: dict[int, Any] = {}  # 完整结构化结果给界面；不受模型文本长度限制影响
         self.on_done: Any = None  # 每次调用结束后通知一下（网页显示"查到了多少"）；参数是调用记录和结构化结果
+        self.user_request: str | None = None
 
     def invoke(self, spec: ToolSpec, raw_args: dict[str, Any]) -> str:
         start = time.perf_counter()
@@ -56,6 +58,26 @@ class ToolRuntime:
         except ValidationError as e:
             return self._done(spec, raw_args, validation_error(spec, e).render(), False, "invalid_args", start)
         normalized = args.model_dump(mode="json")
+        if self.agent == "main" and spec.name == "jobs_search" and self.user_request:
+            # 只由当前用户原话授权，来源正文和模型自说的“看更新”不能放宽用户的发布日期要求。
+            wants_updated = bool(re.search(r"(?:看|查|找|筛|用|包含|允许)[^。！？;\n]{0,6}(?:更新时间|最近更新|最新更新)|"
+                                           r"不限发布时间", self.user_request))
+            if re.search(r"(?:不要|不用|不看|不能|别|不允许)[^。！？;\n]{0,8}(?:更新时间|最近更新|最新更新)", self.user_request):
+                wants_updated = False
+            if normalized.get("date_basis") == "reported" and not wants_updated:
+                return self._done(spec, normalized, "出错了：用户没有要求改查更新时间，不能把它冒充发布时间。\n"
+                                  "怎么改：用published及原日期窗口；已有excluded_examples会解释排除原因，"
+                                  "没有适合岗位就如实说，不用换日期口径凑数。", False, "constraint_violation", start)
+            # 只约束当前原话明确且唯一的天数窗口；多窗口比较、未明确天数时不猜。
+            windows = re.findall(r"(?:最新|最近|过去|近)\s*(\d{1,3}|[一二两三四五六七八九十])\s*天", self.user_request)
+            digits = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6,
+                      "七": 7, "八": 8, "九": 9, "十": 10}
+            days = {int(n) if n.isdigit() else digits[n] for n in windows}
+            can_widen = bool(re.search(r"(?:允许|可以|可)[^。！？;\n]{0,4}放宽|不限(?:时间|日期)", self.user_request))
+            if len(days) == 1 and not can_widen and normalized.get("since_days") not in days:
+                return self._done(spec, normalized, "出错了：查询天数与用户明确的日期窗口不一致。\n"
+                                  "怎么改：保持原窗口，不移除日期条件、不扩大到一周或更长；"
+                                  "不足就解释排除原因。", False, "constraint_violation", start)
         if self.agent == "main":  # 和用户对话时的刹车；评测和 MCP 照旧
             same = next((c for c in reversed(self.calls) if c["tool"] == spec.name and c["args"] == normalized and c["ok"]), None)
             if same is not None and not spec.live:  # 参数一模一样、这次回答里刚查过：直接给上次的结果

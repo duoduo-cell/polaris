@@ -15,7 +15,7 @@ from polaris.llm.client import LLM
 from polaris.memory.schema import ATTRIBUTES
 from polaris.memory.update import Candidate, Context, apply, card, render_card
 
-PROMPT_VERSION = "memory-extract-v4"  # v4：不想做某类岗位记成硬条件（10-12 探针里"不想做纯算法岗"丢了）
+PROMPT_VERSION = "memory-extract-v5"  # v5：保留用户明确说的实习/论文背景，不把缺失当零；v4：岗位硬条件。
 # 改口要有明确的说法。模型常把"换了个数"也标成改口（10-11 开发集、留出集和实测里都出现过："我每周能去 5 天"被当成改口，
 # 直接覆盖了刚说过的 4 天），所以代码再核对一遍：这句话里没有这些词，就不算改口，规则会先问你以哪个为准。
 CHANGE_WORDS = re.compile(r"改|变|换|现在|目前|其实|不再|不能|不考虑|算了|还是|说错|更正|纠正|调整|以后|之后|重新|不想|只能")
@@ -54,6 +54,11 @@ SYSTEM = """你帮求职助手"北极星"维护对用户的记忆。从用户这
 - 用户在改口（改成、现在、其实、换成、不再、算了还是……），change_signal=true。
 - 相对时间按今天的日期换算成具体日期，填进 valid_from / valid_to。
 - 不要把卡片里已有的事实原样再抽一遍，除非用户这句话又明确说了它。"""
+SYSTEM += """
+- 用户明确说的实习经历记 internship_experience、论文情况记 paper_experience。
+  “没有实习经历”“没有论文”是明确的背景事实：kind=stated、polarity=assert、value=无实习经历/无论文。
+  用户没提不代表没有，不能生成零经历事实。不把这两项放进skill/project或仅作为constraint。
+  找第一份实习是目标，不单凭“第一份”推断已无经历；不能把阅读论文或备考当作已有论文。"""
 SYSTEM += """
 - 投递和面试按具体岗位分开；用最近展示的岗位只解决指代，不把推荐、点击、收藏、阅读面经当作用户投递或掌握技术。
 - 公司有多个岗位而用户未说明是哪一个时，不猜具体岗位。job_ref 留空。

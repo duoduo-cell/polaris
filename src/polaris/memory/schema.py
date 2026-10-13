@@ -28,6 +28,8 @@ ATTRIBUTES: dict[str, Attr] = {a.name: a for a in [
     Attr("school", "学校", False),
     Attr("degree", "学历", False, example="硕士在读"),
     Attr("major", "专业", False),
+    Attr("internship_experience", "实习经历", False, example="明确说无实习经历，或已有实习公司的完整概述；没说不记"),
+    Attr("paper_experience", "论文情况", False, example="明确说无论文，或已发表/在投论文的完整概述；没说不记"),
     Attr("skill", "会的技术", True, example="LangGraph、RAG"),
     Attr("project", "做过的项目", True),
     Attr("company_like", "想去的公司", True, example="字节跳动"),

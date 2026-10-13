@@ -19,7 +19,7 @@ from polaris.db.session import session_scope
 from polaris.followups import states
 from polaris.interviews import profile
 from polaris.search.retrieve import SearchQuery, degraded, search
-from polaris.sources import source_dict
+from polaris.sources import date_kind, source_dict
 from polaris.tools.base import Page, ToolError, ToolSpec, untrusted
 
 JOB_TYPES = {"intern": "实习", "campus": "校招", "social": "社招"}
@@ -60,7 +60,9 @@ class JobsSearchArgs(Page):
     job_type: Literal["intern", "campus", "social"] | None = Field(None, description="intern 实习、campus 校招、social 社招")
     direction: str | None = Field(None, description="方向，如 Agent、RAG、大模型、后端、算法")
     big_only: bool = Field(True, description="只看风向标大厂名单里的公司")
-    since_days: int | None = Field(None, ge=1, le=365, description="只看最近多少天发布的岗位（没写发布日期的岗位会被排除）")
+    since_days: int | None = Field(None, ge=1, le=365, description="最近N个自然日（含今天）；发布日期未知的排除，不用抓取日期凑数")
+    date_basis: Literal["published", "reported"] = Field("published", description=(
+        "published只用明确来源发布日期；reported允许来源更新时间，只在用户要求看最近更新时用"))
     max_days_per_week: int | None = Field(None, ge=1, le=7, description=(
         "每周最多能去几天：只留 JD 写明的到岗天数不超过它的岗位。用户说每周能去几天、问有没有只要去 N 天的，用这个筛，"
         "不要把「每周2天」当关键词搜。没写天数的岗位不算进来，结果里另报个数"))
@@ -90,9 +92,23 @@ def job_sources(s, ids: list[int]) -> dict[int, list[dict[str, Any]]]:
     sources: dict[int, list[dict[str, Any]]] = {i: [] for i in ids}
     for jid, city, r in rows:
         source = source_dict(r.source, r.url, raw_id=r.id, city=city, fetched_at=r.fetched_at, published_at=r.published_at)
+        source["date_kind"] = date_kind(r)
         if not any(v["url"] == source["url"] and v["source"] == source["source"] and v["city"] == city for v in sources[jid]):
             sources[jid].append(source)
     return sources
+
+
+def job_date_kinds(s, ids: list[int]) -> dict[int, str]:
+    rows = s.execute(select(Posting.job_id, Posting.posted_at, RawItem).join(RawItem, RawItem.id == Posting.raw_item_id)
+                     .where(Posting.job_id.in_(ids))).all()
+    jobs = {j.id: j for j in s.scalars(select(Job).where(Job.id.in_(ids)))}
+    kinds: dict[int, set[str]] = {i: set() for i in ids}
+    for jid, posted, raw in rows:
+        job = jobs[jid]
+        if job.posted_at and posted == job.posted_at:
+            kinds[jid].add(date_kind(raw))
+    return {jid: "published" if "published" in values else "updated" if "updated" in values else "unknown"
+            for jid, values in kinds.items()}
 
 
 def library_note(kind: str, dated: bool = False) -> dict[str, Any]:
@@ -111,12 +127,14 @@ def library_note(kind: str, dated: bool = False) -> dict[str, Any]:
         missing = [label(src) for src in (("boss",) if kind == "job" else ("xhs", "maimai", "nowcoder")) if src not in counts]
         out: dict[str, Any] = {"scope": "本地库：常驻采集存下的副本，不是刚刚去网站或平台现搜的",
                                "latest_fetch": latest.astimezone(BEIJING).strftime("%Y-%m-%d %H:%M") if latest else None,
-                               "by_source": have + (f"；{'、'.join(missing)}还没有采到" if missing else "")}
+                               "by_source": "原始采集记录数（不同来源可能是同一岗位，不可相加当岗位数）：" + have
+                               + (f"；{'、'.join(missing)}还没有采到" if missing else "")}
         if dated:
             total = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active"))
             known = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active",
                                                                           Job.posted_at.is_not(None)))
-            out["dated"] = f"在库岗位里写了发布日期的只有 {known}/{total} 个，按时间筛只能看这些"
+            out["dated"] = (f"在库岗位有来源日期的为 {known}/{total} 个（可能是发布或更新）；"
+                            "仅明确发布日期能进入 published 筛选，具体排除数量见 scope")
     return out
 
 
@@ -194,7 +212,7 @@ def jobs_search(args: JobsSearchArgs) -> dict:
         if args.big_only:
             stmt = stmt.where(Job.company_id.is_not(None))
         if args.since_days:
-            stmt = stmt.where(Job.posted_at >= date.today() - timedelta(days=args.since_days))
+            stmt = stmt.where(Job.posted_at >= date.today() - timedelta(days=args.since_days - 1), Job.posted_at <= date.today())
         days = None
         if args.max_days_per_week:
             # 10-12 回答评测：没有这个筛选时，模型拿"每周2天"做全文检索，换了 16 种说法、调到上限也答不准
@@ -203,25 +221,49 @@ def jobs_search(args: JobsSearchArgs) -> dict:
                     "least_days_in_jd": s.scalar(stmt.with_only_columns(func.min(Job.days_per_week))),
                     "note": "只算 JD 写明了每周到岗天数的岗位；没写天数的要看原文或问 HR，不能当成符合"}
             stmt = stmt.where(Job.days_per_week <= args.max_days_per_week)
-        if order is None:
-            rows = s.execute(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)
-                             .limit(args.limit + 1).offset(args.offset)).scalars().all()
-        else:
-            rows = _in_order(s.execute(stmt).scalars().all(), order, lambda j: j.id)
-            rows = rows[args.offset: args.offset + args.limit + 1]
+        rows = (s.execute(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)).scalars().all() if order is None else
+                _in_order(s.execute(stmt).scalars().all(), order, lambda j: j.id))
+        kinds = job_date_kinds(s, [j.id for j in rows])
+        excluded = sum(kinds[j.id] != "published" for j in rows) if args.since_days and args.date_basis == "published" else 0
+        excluded_examples = []
+        if args.since_days and args.date_basis == "published":
+            examples = [j for j in rows if kinds[j.id] != "published"][:3]
+            from polaris.match import matches
+
+            example_fits = matches(s, [j.id for j in examples])
+            example_sources = job_sources(s, [j.id for j in examples])
+            excluded_examples = [{"id": f"J-{j.id}", "title": j.title, "company": j.company or j.company_name,
+                                  "reported_date": j.posted_at.isoformat(), "date_kind": kinds[j.id],
+                                  "reason": "来源只给更新时间" if kinds[j.id] == "updated" else "无法核实是发布日期",
+                                  "match": example_fits.get(j.id), "sources": example_sources[j.id]} for j in examples]
+            rows = [j for j in rows if kinds[j.id] == "published"]
+        rows = rows[args.offset: args.offset + args.limit + 1]
         items = [_job_row(j, args.response_format == "detailed") for j in rows[: args.limit]]
         sources = job_sources(s, [j.id for j in rows[:args.limit]])
         progress = states(s, [j.id for j in rows[:args.limit]])
+        from polaris.match import matches
+
+        fits = matches(s, [j.id for j in rows[:args.limit]])
         for j, item in zip(rows[:args.limit], items, strict=True):
             item["sources"] = sources[j.id][:3]
             item["source_count"] = len(sources[j.id])
             item["followup"] = progress[j.id]
+            item["posted_at_kind"] = kinds[j.id]
+            if j.id in fits:
+                item["match"] = fits[j.id]
     has_more = len(rows) > args.limit
     result: dict = {"returned": len(items), "items": items, "offset": args.offset,
                     "next_offset": args.offset + args.limit if has_more else None,
                     "library": library_note("job", dated=bool(args.since_days))}
+    result["scope"] = {"company": args.company, "city": args.city, "direction": args.direction, "job_type": args.job_type,
+                       "since_days": args.since_days, "date_basis": args.date_basis,
+                       "date_from": (date.today() - timedelta(days=args.since_days - 1)).isoformat() if args.since_days else None,
+                       "date_to": date.today().isoformat(), "excluded_unconfirmed_publication_dates": excluded,
+                       "note": "来源发布日期不保证是岗位首次上线；更新时间、首次采到、最后采到均不能冒充发布时间"}
     if days:
         result["days_filter"] = days
+    if excluded_examples:
+        result["excluded_examples"] = excluded_examples
     if note:
         result["search_note"] = note
     if not items:
@@ -246,6 +288,11 @@ def jobs_get(args: JobsGetArgs) -> dict:
         out["sources"] = job_sources(s, [j.id])[j.id]
         out["field_sources"] = j.field_sources
         out["status"] = j.status
+        out["posted_at_kind"] = job_date_kinds(s, [j.id])[j.id]
+        from polaris.match import matches
+
+        if fit := matches(s, [j.id]).get(j.id):
+            out["match"] = fit
         if j.conflicts:  # 说法不一致的字段：取了哪个、为什么、另外的说法来自哪里
             out["conflicts"] = [{"field": c["field"], "chosen": c["chosen"], "rule": c["rule"],
                                  "others": [{"value": a["value"], "sources": a["sources"]} for a in c["alternatives"]]}

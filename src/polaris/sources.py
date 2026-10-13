@@ -1,4 +1,5 @@
 """可读来源标签和真实 URL。绝不由模型拼链接。"""
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -21,6 +22,21 @@ def safe_url(value: str | None) -> str | None:
 
 def label(source: str) -> str:
     return LABELS.get(source, source)
+
+
+def date_kind(raw: Any) -> str:
+    """原始层把发布/更新都放在published_at；给使用者保留实际口径，不能拿更新时间冒充首发。"""
+    data = raw.raw_json or {}
+    if raw.source in ("xhs", "maimai") and raw.published_at:
+        return "published"
+    if any(data.get(k) for k in ("publishTime", "publish_time", "publishDate", "postedOn", "datePosted")):
+        return "published"
+    body = raw.raw_text or ""
+    if re.search(r"^(?:发布日期|发布时间|发布于|发布|Posted on)\s*[：:]", body, re.M | re.I):
+        return "published"
+    if data.get("LastUpdateTime") or re.search(r"^(?:更新时间|更新于|Last updated)\s*[：:]", body, re.M | re.I):
+        return "updated"
+    return "unknown"
 
 
 def source_dict(source: str, url: str | None, *, raw_id: int | None = None, fetched_at: Any = None,

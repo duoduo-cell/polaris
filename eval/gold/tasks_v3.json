@@ -1,0 +1,18 @@
+{
+  "version": "real-tasks-v3",
+  "description": "源于作者的问题及实际使用场景；不是所有题都来自真实历史问句。原始资料和标准答案只存本机。开发、留出、测试在优化前划分。",
+  "cases": [
+    {"id":"D1","split":"dev","kind":"recent_jobs","origin":"作者原始需求","ask":"找最新三天的大厂 Agent 实习，最多推荐三个，告诉我发布时间和推荐理由，每个都要能点回原始来源。不到三个就如实说。","filters":{"direction":"Agent","job_type":"intern","since_days":3,"big_only":true},"take":3,"max_tools":10},
+    {"id":"D2","split":"dev","kind":"offer_background","origin":"作者原始问题","ask":"最近一个月拿到大厂 Agent 或大模型实习 offer 的人都是什么背景？跟我比我差在哪？","directions":["Agent","大模型","后训练"],"filters":{"job_type":"实习","since_days":30,"outcome":"拿到offer","big_only":true},"max_tools":12},
+    {"id":"D3","split":"dev","kind":"interviews","origin":"作者原始问题","ask":"字节的算法或后训练实习，最近有人面过吗？面了几轮、难不难、他们什么背景？按最近90天查，把实习、校招、备考整理分清楚。","filters":{"company":"字节","job_type":"实习","since_days":90,"big_only":true},"max_tools":12},
+    {"id":"D4","split":"dev","kind":"sparse_jobs","origin":"作者真实到岗条件的变体","ask":"腾讯的 Agent 实习有没有每周最多去两天的？只看JD明确写了天数的，没写的不算符合。没有就直说，不要换成校招或别的公司。","filters":{"company":"腾讯","direction":"Agent","job_type":"intern","max_days_per_week":2,"big_only":true},"take":3,"max_tools":6},
+    {"id":"H1","split":"heldout","kind":"recent_jobs","origin":"时效和城市约束改写","ask":"北京最近七天发布的 RAG 实习，帮我挑最多两个大厂岗位，分别给原链接。不够就说明，不要拿采集时间充当发布时间。","filters":{"city":"北京","direction":"RAG","job_type":"intern","since_days":7,"big_only":true},"take":2,"max_tools":8},
+    {"id":"H2","split":"heldout","kind":"offer_background","origin":"同阶段背景场景改写","ask":"最近60天，腾讯有哪些本科生拿到了 Agent 或大模型实习offer？只看本科拿到offer的，不要拿硕士、校招或挂掉的人凑数。","directions":["Agent","大模型"],"filters":{"company":"腾讯","stage":"本科","job_type":"实习","since_days":60,"outcome":"拿到offer","big_only":true},"max_tools":8},
+    {"id":"H3","split":"heldout","kind":"questions","origin":"真实面经和来源需求改写","ask":"字节实习一面最近90天真正问过哪些RAG题？最多五道，要原句证据和原帖链接，备考题库不算。","filters":{"company":"字节","job_type":"intern","round":"1面","material":"firsthand","since_days":90},"take":5,"max_tools":8},
+    {"id":"H4","split":"heldout","kind":"followup_detail","origin":"用户岗位卡片详情场景","setup":["按我之前的条件推荐两个北京的大厂Agent实习，并给原始来源；如果不足两个就直说。"],"ask":"第二个岗位的团队在做什么？逐条说明我已有项目能举证哪些要求，没写过的经历不要替我补。","max_tools":8},
+    {"id":"T1","split":"test","kind":"recent_jobs","origin":"时效、数量不足和方向约束改写","ask":"只找最近三天的大厂后训练实习，最多三个。告诉我哪些字段没有写，岗位发布日期和你抓取的日期要分开。不要拿Agent应用岗凑数。","filters":{"direction":"后训练","job_type":"intern","since_days":3,"big_only":true},"take":3,"max_tools":8},
+    {"id":"T2","split":"test","kind":"offer_background","origin":"公司对比场景改写","ask":"按最近30天的大厂Agent实习offer样本，对比字节和腾讯的背景；分别说已知和没写的学历、论文、实习数量，不足以判断门槛就明说。","directions":["Agent"],"companies":["字节","腾讯"],"filters":{"job_type":"实习","since_days":30,"outcome":"拿到offer","big_only":true},"max_tools":10},
+    {"id":"T3","split":"test","kind":"material_audit","origin":"作者面经鱼龙混杂问题改写","ask":"帮我检查字节最近90天的大模型面经：本人亲历、粉丝投稿、备考整理分别给例子。哪类能用来判断实习流程，哪类不能？没有就如实说。","filters":{"company":"字节","since_days":90},"max_tools":10},
+    {"id":"T4","split":"test","kind":"irrelevant","origin":"避免无用工具调用的边界需求","ask":"用两句话解释工具调用和任务编排的区别，不用查岗位或帖子。","max_tools":0}
+  ]
+}

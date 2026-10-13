@@ -56,6 +56,19 @@ def test_change_signal_updates_and_history_is_kept(db):
         assert old.status == "superseded" and old.superseded_at == T0 + timedelta(days=5)
 
 
+def test_explicit_empty_background_is_retained_and_can_later_change(db):
+    say(C("internship_experience", "无实习经历", statement="用户明确说没有实习经历"))
+    say(C("paper_experience", "无论文", statement="用户明确说没有论文"))
+    with session_scope() as s:
+        rendered = render_card(card(s, T0.date()))
+        assert "实习经历" in rendered and "无实习经历" in rendered
+        assert "论文情况" in rendered and "无论文" in rendered
+    say(C("internship_experience", "腾讯一段实习", change_signal=True), T0 + timedelta(days=2))
+    with session_scope() as s:
+        assert [f.value for f in known_at(s, T0 + timedelta(days=1)) if f.attribute == "internship_experience"] == ["无实习经历"]
+    assert values_on(T0.date() + timedelta(days=3), "internship_experience") == ["腾讯一段实习"]
+
+
 def test_stale_statement_is_replaced_without_asking(db):
     say(C("grad_year", "2027"))
     assert say(C("grad_year", "2028"), T0 + timedelta(days=40))[0]["op"] == "update"

@@ -4,6 +4,7 @@
 分数只是这些条目的加权汇总，条目本身才是重点。岗位没写的条件记为"没写"，不算对也不算错。
 你的条件来自记忆卡片（和主动推送用的是同一份，proactive/daily.profile_from_memory）；卡片里什么都没有时不打分。
 """
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -36,8 +37,26 @@ def _check(key: str, label: str, ok: bool | None, detail: str) -> dict[str, Any]
     return {"key": key, "label": label, "ok": ok, "detail": detail}
 
 
-def job_match(job: Job, p: Profile) -> dict[str, Any]:
+def job_match(job: Job, p: Profile, *, background: dict[str, str] | None = None) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
+    background = background or {}
+    reqs = [str(r) for r in (job.requirements or [])]
+    graduate_only = next((r for r in reqs if re.search(r"博士|硕士及以上|Ph\.?D|doctor(?:al|ate)", r, re.I)
+                          and not re.search(r"本科|bachelor|undergrad|优先|preferred|preferably", r, re.I)), None)
+    paper_required = next((r for r in reqs if re.search(r"至少[^。\n]{0,40}(?:一篇|1\s*篇|论文)|"
+                                                       r"at least\s+(?:one|1)[^.;\n]{0,60}(?:publication|paper)", r, re.I)
+                           and not re.search(r"优先|preferred|preferably|加分", r, re.I)), None)
+    degree = background.get("degree")
+    if graduate_only:
+        undergrad = bool(degree and re.search(r"本科|bachelor|undergrad", degree, re.I))
+        # 只识别明确矛盾；未知学历、硕博各自是否达标不由这个保守规则猜。
+        checks.append(_check("degree", "学历", False if undergrad else None,
+                             f"岗位要求：{graduate_only}；你目前：{degree or '未记录'}"))
+    if paper_required:
+        papers = background.get("paper_experience")
+        explicit_none = papers in ("无论文", "没有论文")
+        checks.append(_check("paper", "论文", False if explicit_none else None,
+                             f"岗位要求：{paper_required}；你的论文情况：{papers or '未记录'}"))
     company = _company(job.company or job.company_name)
     if p.companies_avoid and company and company in {_company(c) for c in p.companies_avoid}:
         checks.append(_check("avoid", "公司", False, f"你说过不想去{company}"))
@@ -84,22 +103,30 @@ def job_match(job: Job, p: Profile) -> dict[str, Any]:
     def value(c: dict[str, Any]) -> float:
         return 1.0 if c["ok"] else UNKNOWN if c["ok"] is None else 0.0
 
-    hard = [c for c in checks if c["key"] in ("avoid", "city", "type", "days", "months")]
+    hard = [c for c in checks if c["key"] in ("avoid", "city", "type", "days", "months", "degree", "paper")]
     hard_score = sum(map(value, hard)) / len(hard) if hard else UNKNOWN
     role_score = role if role is not None else UNKNOWN
     skill_score = len(have) / len(required) if p.skills and required else UNKNOWN
     score = round(100 * (0.5 * hard_score + 0.25 * role_score + 0.25 * skill_score))
     if any(c["ok"] is False for c in hard) or role == 0:
         score = min(score, 59)  # 有硬条件明确对不上，分数再高也不算合适
+    eligibility = "incompatible" if any(c["ok"] is False for c in hard) else "uncertain"
     return {"score": score, "level": "good" if score >= 80 else "ok" if score >= 60 else "weak", "checks": checks,
-            "skills": {"required": required, "have": have, "missing": missing, "known": bool(p.skills)}}
+            "eligibility": eligibility, "note": "已知硬门槛不符就不推荐；未记录的技能不代表不会，分数不是录用概率。",
+            "skills": {"required": required, "have": have, "missing": missing,
+                       "not_stated": [s for s in required if s not in mine], "known": bool(p.skills)}}
 
 
 def matches(s: Any, job_ids: list[int], p: Profile | None = None) -> dict[int, dict[str, Any]]:
     """一批岗位各自的匹配；记忆里还没有条件时返回空。"""
     from sqlalchemy import select
 
+    personalized = p is None
     p = p or profile()
     if p is None or not job_ids:
         return {}
-    return {j.id: job_match(j, p) for j in s.scalars(select(Job).where(Job.id.in_(job_ids)))}
+    from polaris.memory.update import card
+
+    background = {f.attribute: f.value for f in card(s, datetime.now(UTC).date())
+                  if f.attribute in ("degree", "paper_experience")} if personalized else {}
+    return {j.id: job_match(j, p, background=background) for j in s.scalars(select(Job).where(Job.id.in_(job_ids)))}

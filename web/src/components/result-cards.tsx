@@ -34,7 +34,7 @@ function SkillPills({ match, limit = 6 }: { match: Match; limit?: number }) {
   if (!shown.length) return null;
   return <div className="flex flex-wrap gap-1.5">
     {shown.slice(0, limit).map(([s, ok]) => <span key={s} className={`rounded-md px-1.5 py-0.5 text-xs ${ok ? "border border-line text-foreground"
-      : ok === false ? "border border-dashed border-faint text-muted" : "bg-soft text-muted"}`}>{ok === false ? `缺 ${s}` : s}</span>)}
+      : ok === false ? "border border-dashed border-faint text-muted" : "bg-soft text-muted"}`}>{ok === false ? `待确认 ${s}` : s}</span>)}
     {shown.length > limit && <span className="text-xs text-faint self-center">等 {shown.length} 项</span>}
   </div>;
 }
@@ -42,6 +42,12 @@ function SkillPills({ match, limit = 6 }: { match: Match; limit?: number }) {
 function when(r: Result): string | null {
   const day = r.posted_at ?? r.published ?? r.last_seen;
   return day ? day.slice(0, 10) : null;
+}
+
+function sourceDay(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" });
 }
 
 function SourceList({ result }: { result: Result }) {
@@ -54,8 +60,8 @@ function SourceList({ result }: { result: Result }) {
           打开来源 <ExternalLink size={12} aria-hidden />
         </a> : <span className="text-muted text-[13px]">缺少原始链接</span>}
       </div>
-      <p className="text-xs text-muted mt-1">{s.published_at ? `来源发布于 ${s.published_at.slice(0, 10)} · ` : ""}
-        {s.fetched_at ? `采集于 ${s.fetched_at.slice(0, 10)}` : "采集时间未说明"}
+      <p className="text-xs text-muted mt-1">{sourceDay(s.published_at) ? `${s.date_kind === "published" ? "来源发布于" : s.date_kind === "updated" ? "来源更新于" : "来源日期"} ${sourceDay(s.published_at)} · ` : ""}
+        {sourceDay(s.fetched_at) ? `采集于 ${sourceDay(s.fetched_at)}` : "采集时间未说明"}
         {s.access === "may_require_login" ? " · 平台可能要求登录" : ""} · 页面现在是否还在没有核验
       </p>
     </div>)}
@@ -142,6 +148,7 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
   const router = useRouter();
   const { setInput } = useChatSession();
   const match = detail.match;
+  const notStated = match?.skills.not_stated ?? match?.skills.missing ?? [];
   function ask(text: string) { setInput(text); close(); router.push("/chat"); }
   if (!match) {
     return <section className="rounded-xl bg-soft px-4 py-3 text-sm text-muted flex items-center justify-between gap-3">
@@ -164,12 +171,12 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
       </li>)}
     </ul>
     {match.skills.required.length > 0 && <div className="space-y-1.5">
-      <p className="text-xs text-muted">{match.skills.known ? `岗位要的技能：你有 ${match.skills.have.length} 项，还缺 ${match.skills.missing.length} 项`
+      <p className="text-xs text-muted">{match.skills.known ? `岗位要的技能：已记录 ${match.skills.have.length} 项，另有 ${notStated.length} 项待确认`
         : "岗位要的技能（还不知道你会什么，跟北极星说说就能对比）"}</p>
       <SkillPills match={match} limit={20} />
-      {match.skills.missing.length > 0 && <Button variant="ghost" icon={MessageCircle} className="!px-2 -ml-2 text-accent"
-        onClick={() => ask(`${name} 这个岗位要求 ${match.skills.missing.slice(0, 3).join("、")}，我还不会。面试常怎么考？我该怎么在短时间里补上？`)}>
-        问北极星怎么补
+      {notStated.length > 0 && <Button variant="ghost" icon={MessageCircle} className="!px-2 -ml-2 text-accent"
+        onClick={() => ask(`${name} 这个岗位要求 ${notStated.slice(0, 3).join("、")}，我的掌握情况还没确认。请给我自测题和答题要点，帮我判断需要补什么。`)}>
+        问北极星怎么自测
       </Button>}
     </div>}
   </section>;

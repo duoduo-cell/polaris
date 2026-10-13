@@ -43,7 +43,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v17"  # v4：中文摘要；v5：探针后的诚实、效率和解读规则；v6：现查；v7：趋势、详情最多 5 个；v8：不替用户编项目细节；
+PROMPT_VERSION = "main-v19"  # v19：执行边界保持用户日期窗口；v18：明确匹配矛盾；v17：背景口径。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -220,6 +220,11 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 - 统计数字要说口径：kg_stats 数的是库里全部在招岗位，不是"近一个月"。问变化和趋势用 jobs_trend，它的 caveats
   （快照才几天、采集刚开始）必须照实转告，数据不够就说谈不了，不能拿全部在招的数当趋势。
 - 推荐岗位时按卡片里的条件筛（城市、类型、方向、到岗天数），说清为什么合适、哪里不完全符合；不符合条件的不要推荐。
+  jobs_search/jobs_get 的 match.eligibility=incompatible 是明确硬门槛冲突，不当作推荐。
+  命中都不适合时先说“暂无适合岗位”，列明具体不匹配原因；用岗位名称及真实链接解释，不引用其J-编号生成推荐卡。
+  uncertain 是信息不足，需要说明未确认项；技能not_stated不等于用户不会。不要为了凑三个放入不合适的岗位。
+  按时间找岗位以scope的日期窗口和date_basis为准；posted_at_kind=updated是更新时间，不说新发布。
+  查发布日为空时如实说没有确证的新发布岗位，不悄悄用reported、扩大日期或换方向来凑。
 - 只根据工具返回的内容回答，来源引用岗位 J-12、帖子 P-3、原帖 R-3 或题目 Q-5；找不到就如实说查了什么、没找到。
   记忆是后台上下文，回答中不展示 M- 编号、内部槽位或完整记忆卡；用“你之前提到”自然描述已知背景。
 - 推荐三个岗位时只选择三个结果，用公司和岗位名称介绍，每项引用 J- 编号以生成卡片；未选择的命中不要罗列编号。
@@ -396,6 +401,12 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
          should_stop: Callable[[], bool] | None = None,
          ) -> tuple[dict[str, Any] | None, ToolRuntime, PolarisTracer, str | None, int]:
     runtime = ToolRuntime(run_id=run_id, thread_id=thread_id, agent="main")
+    if isinstance(payload, dict):
+        user_messages = [m for m in payload.get("messages", []) if getattr(m, "type", None) == "human"
+                         or (isinstance(m, dict) and m.get("role") in ("user", "human"))]
+        if user_messages:
+            last_user = user_messages[-1]
+            runtime.user_request = text_of(last_user.get("content") if isinstance(last_user, dict) else last_user.content)
     tools = runtime.langchain_tools([REGISTRY[n] for n in TOOLS])
     tracer = PolarisTracer(purpose=purpose, run_id=run_id, prompt_version=PROMPT_VERSION, recorder=DbRecorder())
     stop = should_stop or (lambda: False)
