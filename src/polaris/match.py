@@ -37,12 +37,32 @@ def _check(key: str, label: str, ok: bool | None, detail: str) -> dict[str, Any]
     return {"key": key, "label": label, "ok": ok, "detail": detail}
 
 
+GRADUATE = re.compile(r"博士|Ph\.?D|doctor(?:al|ate)|"
+                      r"硕士(?:研究生)?(?:(?:及|或)?以上|学历|学位|在读)|"
+                      r"(?:攻读|就读)[^，,。;；\n]{0,12}硕士|"
+                      r"\bmaster(?:['’]s|s)?\s+(?:degree|student|candidate|program)|\bM\.?Sc\.?\b", re.I)
+PREFERRED = re.compile(r"优先|preferred|preferably|加分|a plus|nice.to.have", re.I)
+DEGREE_ALTERNATIVE = re.compile(r"学历不限|不限学历|不限制学历|同等(?:实践|工作)?经验|"
+                                r"equivalent (?:practical |work |professional )?experience", re.I)
+OPTIONAL_DEGREE = re.compile(r"不要求|无需|不是必须|不强制|not required|not mandatory|optional", re.I)
+
+
+def _graduate_requirement(requirements: list[str]) -> str | None:
+    for original in requirements:
+        # 明确接受本科或经验替代时，不把研究生字样当作本科排除条件。
+        if re.search(r"本科|bachelor|undergrad", original, re.I) or DEGREE_ALTERNATIVE.search(original):
+            continue
+        for clause in re.split(r"[，,。;；\n]", original):
+            if GRADUATE.search(clause) and not PREFERRED.search(clause) and not OPTIONAL_DEGREE.search(clause):
+                return original
+    return None
+
+
 def job_match(job: Job, p: Profile, *, background: dict[str, str] | None = None) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     background = background or {}
     reqs = [str(r) for r in (job.requirements or [])]
-    graduate_only = next((r for r in reqs if re.search(r"博士|硕士及以上|Ph\.?D|doctor(?:al|ate)", r, re.I)
-                          and not re.search(r"本科|bachelor|undergrad|优先|preferred|preferably", r, re.I)), None)
+    graduate_only = _graduate_requirement(reqs)
     paper_required = next((r for r in reqs if re.search(r"至少[^。\n]{0,40}(?:一篇|1\s*篇|论文)|"
                                                        r"at least\s+(?:one|1)[^.;\n]{0,60}(?:publication|paper)", r, re.I)
                            and not re.search(r"优先|preferred|preferably|加分", r, re.I)), None)

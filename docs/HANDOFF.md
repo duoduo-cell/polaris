@@ -20,11 +20,11 @@
 - 调用与回答：`data/eval/real_tasks/candidate-v19-heldout/`、`candidate-v19-test/`；完整工具参数、返回及失败保留在 `.generated.json`。完整任务通过率尚未成立。
 - 局部审查：同目录下 `candidate-D1-audit-v8/`、`baseline-D4-audit-v8/`；不能外推为整批质量结论。
 - 持久化验证：`data/eval/real_tasks/queue-browser-20261013.json`；独立队列库 `polaris_eval_queue_20261013` 保留，测试 API 8001 已关闭。
-- 最近全量后端回归日志：`data/probe/role-alias-full-regression.log`（352 项）。数量对照汇总：`data/eval/real_tasks/pagination-comparison.json`。
+- 最近全量后端回归日志：`data/probe/degree-requirements-full-regression.log`（381 项）。数量对照汇总：`data/eval/real_tasks/pagination-comparison.json`。
 
 ## 恢复后的第一步
 
-先读 DEVLOG 的 main-v22/v23 对照和 `data/eval/real_tasks/background-grounding-comparison.json`。背景专项已有改善，临时查询写入边界已修，证据见 `memory-scope-comparison.json`；历史11条偏好核查无查询误存、保留；Engineering别名修复已验证。下一步读取 `qualification-gap-readonly.json` 并核原始JD，处理明确硕士门槛漏识别，不把加分项当硬条件。已观察题仅作回归。Docker关闭已恢复数据库，当前生产API/采集状态未重新验收；不照旧运行快照自行重启采集。不要先扩大评分器，也不要直接重跑整批旧评测。来源更新不能当发布时间，未记载不能当没有；检索为空、硬门槛不符、工具故障分别处理。
+先读 DEVLOG 的 main-v22/v23 对照和 `data/eval/real_tasks/background-grounding-comparison.json`。背景专项已有改善，临时查询写入边界已修，证据见 `memory-scope-comparison.json`；历史11条偏好核查无查询误存、保留；Engineering别名修复已验证。学历规则也已修，39条变化均核原文，专项证据见 `degree-requirements-review.json`。下一步核结果卡语义与真实任务整体表现；详情引用不等于推荐，不照旧线索重复修复。已观察题仅作回归。Docker关闭已恢复数据库，当前生产API/采集状态未重新验收；不照旧运行快照自行重启采集。不要先扩大评分器，也不要直接重跑整批旧评测。来源更新不能当发布时间，未记载不能当没有；检索为空、硬门槛不符、工具故障分别处理。
 
 ## 必须守住
 
