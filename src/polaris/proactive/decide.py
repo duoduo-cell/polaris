@@ -36,7 +36,7 @@ JOB_TYPE_NAMES = {"intern": "实习", "campus": "校招", "social": "社招"}
 # 方向 = 概念（Agent、大模型、RAG……）+ 职能（开发、算法、产品……）。只看概念会把"Agent 开发"和"Agent 产品""Agent 算法"混为一谈
 # （10-11 在真实数据上试跑时，德勤的数据科学内推、百度的 AI 产品实习都被当成"Agent 开发"推了），所以职能也要对得上。
 FUNCTIONS = {
-    "开发": ("开发", "研发", "工程", "后端", "前端", "全栈", "架构", "engineer", "developer", "infra"),
+    "开发": ("开发", "研发", "工程", "后端", "前端", "全栈", "架构", "engineering", "engineer", "developer", "infra"),
     "算法": ("算法", "研究", "researcher", "scientist", "algorithm"),
     "产品": ("产品", "product"),
     "运营": ("运营",), "测试": ("测试",), "设计": ("设计",), "数据": ("数据分析", "数据科学", "data scientist"),
@@ -124,9 +124,9 @@ def role_hit(role: str, item: "Item") -> float:
     （10-11 真实数据上试跑：方向标签是抽取时打的，偏宽，"大数据开发"也带着 Agent 标签，所以标题里有才算强匹配。）"""
     want_funcs = _functions(role)
     concept = _low(role)
-    for words in FUNCTIONS.values():
-        for w in words:
-            concept = concept.replace(w, "")
+    # 长词先剥离，避免先删除engineer后把Engineering残留为ing，造成同义职能不匹配。
+    for word in sorted({w for words in FUNCTIONS.values() for w in words}, key=len, reverse=True):
+        concept = concept.replace(word, "")
     concept = concept.strip("-·/、 ") or _low(role)
     text = _low(f"{item.title} {item.text}")
     if not (concept in text or any(concept in _low(d) or _low(d) == concept for d in item.directions)):

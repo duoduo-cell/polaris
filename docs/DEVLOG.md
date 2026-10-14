@@ -9,6 +9,16 @@
 
 ## 轮次
 
+### 10-14历史偏好核查与Engineering别名修复
+
+生产库仅只读核查全部偏好属性及状态：现存11条均来自同一段个人背景，各来源可定位到main线程用户原话1条，未发现临时查询来源的城市/公司偏好，因此保留全部记录、不清理真实库。核查材料 `data/eval/real_tasks/historical-preference-readonly-20261014.json`。生产背景比冻结评测背景更丰富，不能把旧副本中的“未记录技术”外推到作者当前背景。
+
+复现真实漏匹配：同一Agent开发岗，Agent Engineering得0，Agent Engineer/Agent开发得1；engineer先被删除后残留ing。仅补Engineering职能词，长词优先剥离；算法、研究、产品及部门名中的“开发”继续按原边界处理，标签-only仍0.6弱匹配。
+
+在冻结513个在招岗位上逐条旧/新比较，新Engineering与Agent开发全量等价；246个结果变化，仅证明别名一致，不是246个正确推荐或准确率提升。J-175的实际jobs_get方向反馈已返回Agent Engineering；材料 `role-alias-real-snapshot.json`、`role-alias-jobs-get-proof.json`，均在私有评测目录。相关45项、全量352项后端回归通过，Ruff/diff通过，日志 `data/probe/role-alias-full-regression.log`。候选未部署，采集未操作。
+
+读匹配规则另发现3条硕士条件可能漏识别（研究生及以上/或以上/以上），仅是抽取字段线索，保存 `qualification-gap-readonly.json`；下一步先核原始JD，再修明确硬门槛表达，不能把加分学历当门槛。跨模型、完整任务事实审查与部署仍未完成。
+
 ### 10-14临时查询与长期偏好隔离（main-v24 / memory-extract-v6，候选）
 
 旧版把“找一个北京的字节Agent实习”写为北京/字节偏好：同背景真实抽取3次均污染，2次为生效记忆、1次为待确认。新增候选scope（profile/request）及原话分句evidence，写入前核对查询证据；request不新增、确认或作废个人记忆，不产生偏好追问。被跳过候选以request_only审计，与本轮记忆共用事务，后台保留原因；不把审计显示成“已记住”。主agent不再声称本次筛选已保存为偏好。没有修改记忆更新算法、表结构、前端或采集。
