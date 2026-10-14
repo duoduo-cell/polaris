@@ -9,6 +9,18 @@
 
 ## 轮次
 
+### 10-14背景证据与请求范围（main-v22 → v23，候选）
+
+原始背景未说明项目架构；数据库statement保存了“担任负责人”，旧卡片仅显示项目名。v22只改主agent背景投影：保留项目/成果自述，标明推测和证据边界，不更改记忆表或前端。原问题3次均保留负责人、不再断言单链路；明确三个Agent与明确无Multi-Agent的两类控制各1次均能区分。但前两次准备建议仍预设用户有分层/淘汰策略，已保留失败。
+
+进一步发现主提示要求每个岗位解读强制讲面试准备，与“只回答所问”冲突。v23保留v22背景投影，仅撤掉强制模板，按请求展开。相同B1回归3次全部保留负责人、未知实现待确认，没有questions_search；10次工具均成功。完整参数/返回/状态逐项核实落库，最后一次原话与答复也核实落库。仍出现1次将临时查字节抽成待确认长期偏好；全任务事实质量与跨模型收益未验收，不报告总体通过率。
+
+证据：`data/eval/real_tasks/background-grounding-spec.json`（修改前控制）、`background-grounding-baseline.json`（复用原3次基线）、`background-v22-candidate/`、`background-v22-controls/`、`background-v22-input-proof.json`（实际模型请求）、`background-v22-review.json`、`background-v23-scope-recovered/`、`background-grounding-comparison.json`。初轮相关50项回归通过，v23相关13项通过；Ruff及diff通过。本轮未重跑全量，最近全量324项属于v21。
+
+环境恢复：中断后核实Docker关闭、5432未监听；原v23进程最终连接超时，测试有跳过，不算通过。仅启动现有Docker Desktop与polaris-db-1，健康后新目录重测，原失败日志保留。没有启动图谱/API/小红书容器，没有操作采集浏览器。候选未部署；旧API运行描述仅是此前核查，不能当作当前在线状态。
+
+下一轮聚焦临时查询条件与长期用户偏好混淆；已观察的控制题仅作回归，不再称未见。
+
 ### 10-14数量口径修复（main-v21，候选未部署）
 
 **本轮只改分页/截断契约**：共享 render 在列表前保留 pagination，明确展示数、是否有下一页、候选数及计数范围；删减条目后同步 returned、shown 和 next_offset，最后一页被截断仍可继续。岗位工具区分结构化全量候选与关键词召回子集，二者都不是适合用户的岗位数。主 agent 按该契约解释数量。没有修改用户背景推断规则、评分器、采集或前端视觉。

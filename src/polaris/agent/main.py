@@ -43,7 +43,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v21"  # v21：展示条数与候选数区分；v20：空结果诊断；v19：保持用户日期窗口。
+PROMPT_VERSION = "main-v23"  # v23：按用户请求展开岗位解读；v22：项目证据边界；v21：数量口径。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -217,10 +217,15 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 回答规则：
 - 只回答用户问的。不要在末尾附带没被要求的岗位推荐或清单；结尾最多一句"要不要我……"。
 - 不推荐的岗位、帖子不要写编号（写了编号就会生成卡片），用名字带过即可。
-- 解读一个岗位时讲透四件事：这个团队/产品在做什么（从 JD 和部门名推断，用常识补充时注明"按常识"）；每条要求实际在考什么、
-  面试会怎么问（引用面经题）；用户有什么能举证、缺什么；具体怎么准备（哪几道题、补什么）。不写"夯实基础、多做项目"这类空话。
+- 岗位解读按用户所问的范围展开。只问匹配与待确认项，就对照JD和已知背景，给岗位链接；
+  不自动附加面经、备考清单或项目实现建议，不为这些未请求的内容调用questions_search。
+  用户明确问团队、要求含义或面试准备时，再展开相应部分；从JD/部门推断或用常识补充时注明依据。
+  准备建议应具体，但未知的实现用条件句，不预设用户已有分层、淘汰策略、记忆、编排或多轮检索。
 - 结合用户的项目教怎么答时，只给思路和要讲清的点（"讲清你的记忆分了几层、为什么"），不替用户编他项目里的实现细节、数字和效果；
   记忆里没有的就说"按你实际做的填"，或者先问用户。
+  项目名称不能证明用户用了哪种架构、框架、接口、评测或多轮上下文，也不能证明没用；
+  未说明的实现标待确认，不称“单链路”“纯应用”“没有多Agent”。只有用户明确自述做过或没做过，才按该事实对照。
+  技术的一般能力与用户实际实现分开；建议采用“如果你实现过X，可举证Y”，不把准备建议说成已有经历。
 - 求职信息时效性很强：引用帖子、面经、背景时写上发帖日期和距今多久（如"10-11 的帖子，前天"），优先用最近的；
   汇总时说清样本量和时间范围（"最近 30 天 7 个人里……"）；库里最新的也很旧时照实说，需要时用 platform_search 现搜。
 - 统计数字要说口径：kg_stats 数的是库里全部在招岗位，不是"近一个月"。问变化和趋势用 jobs_trend，它的 caveats
@@ -320,9 +325,20 @@ def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_mo
                     HumanInTheLoopMiddleware(interrupt_on=approval_policy())])
 
 
+def _background_context(facts: list[Any]) -> str:
+    """供主 agent 使用的项目证据；保留已存的职责表述，不从项目名推演具体实现。"""
+    text = render_card(facts)
+    projects = [f for f in facts if f.attribute == "project" and f.statement]
+    if projects:
+        text += "\n\n已保存的项目/成果表述（自述按原意使用，推测不能当已确认事实）：\n"
+        text += "\n".join(f"- {'用户自述' if f.kind == 'stated' else '推测，待核实'}：{f.statement}" for f in projects)
+        text += "\n证据边界：只确认上述具体表述；没有说明的架构、Agent数量、技术实现和效果均未知，不能推为有或没有。"
+    return text
+
+
 def _system_prompt(now: datetime, questions: list[str]) -> str:
     with session_scope() as s:
-        card_text = render_card(card(s, now.date()))
+        card_text = _background_context(card(s, now.date()))
         from polaris.followups import context
         if progress := context(s):
             card_text += "\n\n用户明确保存的具体岗位状态（按岗位分别记录）：\n" + progress
