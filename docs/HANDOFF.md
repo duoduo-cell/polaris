@@ -1,6 +1,6 @@
 # 接续入口（2026-10-14 更新）
 
-用户已要求恢复研发；当前在冻结副本验证 main-v23 候选。接续按下列入口，保留采集与隐私边界；不把候选当作已部署或已验收。
+用户已要求恢复研发；当前在冻结副本验证 main-v24 候选。接续按下列入口，保留采集与隐私边界；不把候选当作已部署或已验收。
 
 ## 阅读顺序
 
@@ -13,18 +13,18 @@
 
 ## 接续所需状态
 
-- 已保存的代码修正提交 `2428267`、`fe730a1`、`7e6945d`，已本地保存、未推送；main-v23 候选未部署。真实 API 上次核查为 v17（8000），前端 3000；本次未重新核查进程状态。
+- 已保存的代码修正提交 `2428267`、`fe730a1`、`7e6945d`，已本地保存、未推送；main-v24 候选未部署。真实 API 上次核查为 v17（8000），前端 3000；本次未重新核查进程状态。
 - 专用评测库：`polaris_eval_tasks_20261012`。冻结清单：`data/eval/real_tasks/manifest-20261012.json`；固定时钟 `2026-10-12T15:17:13.014659+00:00`。不要覆盖真实库或重建原始基线。
 - 原始背景：本机 `data/profile.md`。原始与候选基线均已保留；生成任务按现有脚本恢复对应基线，禁止并发重置同一副本。
 - 已使用题集：`eval/gold/tasks_v3.json`，开发、留出、测试都已观察，后续视作回归材料。
 - 调用与回答：`data/eval/real_tasks/candidate-v19-heldout/`、`candidate-v19-test/`；完整工具参数、返回及失败保留在 `.generated.json`。完整任务通过率尚未成立。
 - 局部审查：同目录下 `candidate-D1-audit-v8/`、`baseline-D4-audit-v8/`；不能外推为整批质量结论。
 - 持久化验证：`data/eval/real_tasks/queue-browser-20261013.json`；独立队列库 `polaris_eval_queue_20261013` 保留，测试 API 8001 已关闭。
-- 最近全量后端回归日志：`data/probe/pagination-full-regression.log`（324 项）。数量对照汇总：`data/eval/real_tasks/pagination-comparison.json`。
+- 最近全量后端回归日志：`data/probe/memory-scope-full-regression.log`（336 项）。数量对照汇总：`data/eval/real_tasks/pagination-comparison.json`。
 
 ## 恢复后的第一步
 
-先读 DEVLOG 的 main-v22/v23 对照和 `data/eval/real_tasks/background-grounding-comparison.json`。背景专项已有改善，下一轮处理临时查询条件被抽为长期偏好；已观察题仅作回归。Docker关闭已恢复数据库，当前生产API/采集状态未重新验收；不照旧运行快照自行重启采集。不要先扩大评分器，也不要直接重跑整批旧评测。来源更新不能当发布时间，未记载不能当没有；检索为空、硬门槛不符、工具故障分别处理。
+先读 DEVLOG 的 main-v22/v23 对照和 `data/eval/real_tasks/background-grounding-comparison.json`。背景专项已有改善，临时查询写入边界已修，证据见 `memory-scope-comparison.json`；下一步只读核对历史偏好来源和确认记录，不全删既有记忆。已观察题仅作回归。Docker关闭已恢复数据库，当前生产API/采集状态未重新验收；不照旧运行快照自行重启采集。不要先扩大评分器，也不要直接重跑整批旧评测。来源更新不能当发布时间，未记载不能当没有；检索为空、硬门槛不符、工具故障分别处理。
 
 ## 必须守住
 

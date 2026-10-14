@@ -4,6 +4,7 @@
 新增、更新、作废、追问这些决定不交给模型，免得同一句话两次跑出不同的记忆。
 """
 import re
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
@@ -15,7 +16,7 @@ from polaris.llm.client import LLM
 from polaris.memory.schema import ATTRIBUTES
 from polaris.memory.update import Candidate, Context, apply, card, render_card
 
-PROMPT_VERSION = "memory-extract-v5"  # v5：保留用户明确说的实习/论文背景，不把缺失当零；v4：岗位硬条件。
+PROMPT_VERSION = "memory-extract-v6"  # v6：临时请求与个人偏好分开；v5：明确的实习/论文背景。
 # 改口要有明确的说法。模型常把"换了个数"也标成改口（10-11 开发集、留出集和实测里都出现过："我每周能去 5 天"被当成改口，
 # 直接覆盖了刚说过的 4 天），所以代码再核对一遍：这句话里没有这些词，就不算改口，规则会先问你以哪个为准。
 CHANGE_WORDS = re.compile(r"改|变|换|现在|目前|其实|不再|不能|不考虑|算了|还是|说错|更正|纠正|调整|以后|之后|重新|不想|只能")
@@ -37,6 +38,8 @@ class FactCandidate(BaseModel):
     change_signal: bool = Field(False, description="用户明确在改口（改成、现在、其实、换成、不再……）")
     valid_from: date | None = Field(None, description="从哪天起成立；用户说了将来或过去的时间才填，换算成日期")
     valid_to: date | None = Field(None, description="到哪天为止；用户说了才填")
+    scope: Literal["profile", "request"] = Field("profile", description="profile用户本人背景/偏好/进度；request仅本次查询条件")
+    evidence: str = Field("", description="用户原话中的完整连续分句，包含本人意愿或事实，不能改写、只摘公司/城市词或引用卡片")
 
 
 class Extraction(BaseModel):
@@ -60,6 +63,13 @@ SYSTEM += """
   用户没提不代表没有，不能生成零经历事实。不把这两项放进skill/project或仅作为constraint。
   找第一份实习是目标，不单凭“第一份”推断已无经历；不能把阅读论文或备考当作已有论文。"""
 SYSTEM += """
+- 本次找/查/推荐某公司、城市、方向的岗位只是request，不是长期偏好，不生成company_like、target_city、target_role等profile事实。
+- “以后/长期只考虑”“我想去北京工作”“记住这个偏好”是profile；个人能力、实际可到岗时间、投递/面试进度也属于profile。
+- 混合句逐条分开：例如“我会Python，这次只查上海腾讯岗位”，只保存Python，不保存上海/腾讯偏好。
+  “我以后优先杭州，今天先查北京”保存杭州，查询北京仅标request。kind=inferred也不能把request升级为待确认偏好。
+- 每条候选填scope和evidence；request可返回用于审计，但不会进入个人记忆；没有本人事实时可返回空列表。
+"""
+SYSTEM += """
 - 投递和面试按具体岗位分开；用最近展示的岗位只解决指代，不把推荐、点击、收藏、阅读面经当作用户投递或掌握技术。
 - 公司有多个岗位而用户未说明是哪一个时，不猜具体岗位。job_ref 留空。
 - 只是在备考某公司的资料，不代表已经投递、收到面试邀请或参加了面试。
@@ -72,17 +82,52 @@ def _attr_table() -> str:
                      + (f"，例：{a.example}" if a.example else "") for a in ATTRIBUTES.values())
 
 
-def extract(llm: LLM, message: str, card_text: str, today: date, run_id: int | None = None) -> list[Candidate]:
+PREFERENCE_ATTRS = {"target_city", "target_role", "company_like", "company_avoid", "constraint", "job_type",
+                    "days_per_week", "duration_months", "available_from", "salary_expect"}
+REQUEST = re.compile(r"(?:查|搜|找|筛|推荐|看看|对比)[^。！？；;\n]{0,35}(?:岗位|职位|实习|面经)|"
+                     r"(?:这次|这轮|今天)[^。！？；;\n]{0,12}(?:只看|只查|只搜)")
+PERSONAL = re.compile(r"以后|长期|一直|求职目标|记住|我(?:只)?(?:想去|希望去|打算去|优先|更喜欢|不想去)|我(?:每周|能到岗|可以到岗)")
+
+
+def _request_reason(f: FactCandidate, message: str) -> str | None:
+    if f.scope == "request":
+        return "仅本次查询条件，不写入个人偏好或待确认记忆"
+    if f.attribute not in PREFERENCE_ATTRS:
+        return None
+    # 候选证据按分句核对，避免整句有查询动词就删掉同句真实能力/长期偏好。
+    if f.evidence and f.evidence in message:
+        start = message.index(f.evidence)
+        left = max((message.rfind(c, 0, start) for c in "，,。！？；;\n"), default=-1) + 1
+        end = start + len(f.evidence)
+        right = min((pos for c in "，,。！？；;\n" if (pos := message.find(c, end)) >= 0), default=len(message))
+        clause = message[left:right]
+        if REQUEST.search(clause) and not PERSONAL.search(clause):
+            return "证据分句是查询请求，不是用户本人偏好"
+    elif REQUEST.search(message):
+        return "查询中的偏好候选缺少可核实的本人表述，不写入记忆"
+    return None
+
+
+def extract(llm: LLM, message: str, card_text: str, today: date, run_id: int | None = None,
+            on_request: Callable[[FactCandidate, str], None] | None = None) -> list[Candidate]:
     prompt = (f"今天是 {today.isoformat()}（{'一二三四五六日'[today.weekday()]}）。\n\n属性表：\n{_attr_table()}\n\n"
               f"现在记着的：\n{card_text}\n\n用户这句话：{message}")
     r = llm.extract(prompt, Extraction, purpose="memory_extract", role="extract", system=SYSTEM,
                     prompt_version=PROMPT_VERSION, run_id=run_id, temperature=0)
     if not r.ok or r.value is None:
         raise RuntimeError(f"记忆抽取失败：{r.error}")
+    accepted = []
+    for f in r.value.facts:
+        reason = _request_reason(f, message)
+        if reason:
+            if on_request:
+                on_request(f, reason)
+        else:
+            accepted.append(f)
     return [Candidate(attribute=f.attribute, value=f.value, statement=f.statement, kind=f.kind, polarity=f.polarity,
                       change_signal=f.change_signal, qualifier=f.qualifier, valid_from=f.valid_from, valid_to=f.valid_to,
                       job_ref=f.job_ref)
-            for f in r.value.facts]
+            for f in accepted]
 
 
 def remember(message: str, *, llm: LLM | None = None, now: datetime | None = None, thread_id: str | None = None,
@@ -99,7 +144,14 @@ def remember(message: str, *, llm: LLM | None = None, now: datetime | None = Non
         if recent:
             context += "\n最近展示的岗位（只用于解析指代）：\n" + "\n".join(
                 f"J-{j.id} {j.company} · {j.title}" for j in recent)
-        candidates = extract(llm, message, context, now.date(), run_id)
+        def audit_request(f: FactCandidate, reason: str) -> None:
+            from polaris.db.models import MemoryEvent
+
+            # 与本轮记忆共用事务；只作后台审计，不显示为“记住了”或生成追问。
+            s.add(MemoryEvent(op="request_only", attribute=f.attribute, qualifier=f.qualifier, value=f.value,
+                              reason=reason, source_text=message, run_id=run_id, thread_id=thread_id, created_at=now))
+
+        candidates = extract(llm, message, context, now.date(), run_id, on_request=audit_request)
         ctx = Context(s, now, message, thread_id, run_id)
         events, questions = [], []
         explicit = has_change_words(message)
