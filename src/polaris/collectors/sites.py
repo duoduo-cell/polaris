@@ -94,8 +94,25 @@ class XhsCareersCollector:
     def __init__(self, pause: tuple[float, float] = (1.0, 2.5), max_jobs: int = 60):
         self.pause, self.max_jobs = pause, max_jobs
 
+    @staticmethod
+    def _navigate(page, url: str) -> None:
+        from playwright.sync_api import TimeoutError as NavigationTimeout
+
+        # 页面响应后，下面仍逐项等岗位链接或任职资格；不让无关资源的加载挡住正文。
+        for attempt in range(3):
+            try:
+                response = page.goto(url, wait_until="commit", timeout=45000)
+            except NavigationTimeout:
+                if attempt == 2:
+                    raise
+                time.sleep(2.0 ** (attempt + 1))
+                continue
+            if response is not None and response.status >= 400:
+                raise RuntimeError(f"小红书招聘官网返回 HTTP {response.status}，停止本轮")
+            return
+
     def _links(self, page, keyword: str, max_pages: int) -> list[tuple[str, str]]:
-        page.goto(f"{XHS_JOBS}/campus/position?{urlencode({'keyword': keyword, 'direction': 'rd'})}", wait_until="domcontentloaded")
+        self._navigate(page, f"{XHS_JOBS}/campus/position?{urlencode({'keyword': keyword, 'direction': 'rd'})}")
         page.wait_for_selector('a[href^="/campus/position/"]', timeout=30000)
         found: dict[str, str] = {}
         for _ in range(max_pages):
@@ -115,7 +132,7 @@ class XhsCareersCollector:
         return list(found.items())[: self.max_jobs]
 
     def _detail(self, page, href: str) -> str | None:
-        page.goto(XHS_JOBS + href, wait_until="domcontentloaded")
+        self._navigate(page, XHS_JOBS + href)
         # 页面先渲染标题和占位的"-"，正文后到；要等"任职资格"到页脚之间真的有内容
         ready = """() => {
             const t = document.body.innerText, m = t.match(/任职资格|任职要求|职位要求/);

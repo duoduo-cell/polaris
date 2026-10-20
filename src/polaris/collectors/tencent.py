@@ -49,12 +49,21 @@ class TencentCollector:
     mode: ClassVar[Literal["search", "site"]] = "search"
 
     def __init__(self, client: httpx.Client | None = None, page_size: int = 20, pause: tuple[float, float] = (0.6, 1.6),
-                 with_detail: bool = True):
+                 with_detail: bool = True, network_retries: int = 2):
         self.client = client or httpx.Client(timeout=20, headers=HEADERS)
         self.page_size, self.pause, self.with_detail = page_size, pause, with_detail
+        self.network_retries = max(0, network_retries)
 
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
-        r = self.client.get(f"{BASE}/{path}", params={"timestamp": _ts(), "language": "zh-cn", **params})
+        # 只对只读 GET 的连接/读取故障有限退避；HTTP 拒绝、限流和业务错误仍立即交回调用者。
+        for attempt in range(self.network_retries + 1):
+            try:
+                r = self.client.get(f"{BASE}/{path}", params={"timestamp": _ts(), "language": "zh-cn", **params})
+                break
+            except (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ConnectError, httpx.ReadError):
+                if attempt == self.network_retries:
+                    raise
+                time.sleep(min(8.0, 2.0 ** (attempt + 1)))
         r.raise_for_status()
         data = r.json()
         if data.get("Code") != 200:
