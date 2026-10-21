@@ -9,6 +9,16 @@
 
 ## 轮次
 
+### 10-21整体开发手册：把下一步落实为可验收工作单（本次仅文档）
+
+沿用既有整体手册、16 项验收设计和三轮路线，未另建重复文档。核对当前 HEAD `112afd6`、AGENTS／HANDOFF／PURPOSE／STATUS、既有研究，以及 align/build、search/index 和工作区反例。诊断及元数据／空向量补处理已在 `112afd6` 本地提交，修正 STATUS、TECH、HANDOFF 和 DEVELOPMENT 中的过时未提交描述。
+
+本次实际运行 `.\.venv\Scripts\python.exe -X utf8 -m pytest tests/test_knowledge_consistency.py -q --tb=short`：退出码 1，5 项失败、0 跳过。旧全量切块移除新面经（全量／指定帖子两入口），旧对齐移除新岗位，题目预先提交导致切块失败不能整体回滚，caller 已加载对象导致使用旧正文。测试使用真实隔离 `polaris_test`、合成数据及 Event 控制交错，无模型／平台；不是线上事故证据。测试文件原已在工作区，本次未改动，未提交；没有用历史 102 项通过替代这组失败。
+
+DEVELOPMENT 第 6 节新增通俗说明、三类问题、拟选方案和四步工作单；PURPOSE 同步第一轮的当前小步与门槛。共享事务保护、锁忙待重试与缓存处理均仍待实现；清理保护、历史恢复启用和整链延迟仍需独立验收。保留既有八个来源／前端未提交文件，不混入本次文档提交。
+
+2026-10-21 联网读取 PostgreSQL 官方锁文档 `https://www.postgresql.org/docs/current/explicit-locking.html`，确认事务级协作锁随事务结束释放；仅约束参与同一协议的入口。未新增依赖、修改业务源码或操作采集／真实数据／冻结副本。本节点六份文档的 30 个本地文件链接存在，`git diff --check` 通过；没有将链接存在检查写成全部锚点或外部网址可用检查。
+
 ### 10-21开发手册开篇收敛（仅文档）
 
 本次按作者“清楚知道怎样提出问题、优化和增强”的要求核对 AGENTS、HANDOFF、PURPOSE、STATUS、已有研究和工作区；抽查 align/build、search/index、audit、maintenance，确认全量刷新仍跨事务且直接入口并发边界待处理，没有将诊断候选或历史隔离通过数当成已启用。
