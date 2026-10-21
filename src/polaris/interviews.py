@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from polaris.companies import _pattern, load, match
 from polaris.db.models import InterviewQuestion, Post, RawItem
+from polaris.search.locking import acquire_knowledge_write
 
 MATERIAL_LABELS = {"firsthand": "面经记录（作者自述）", "study": "备考/经验整理", "uncertain": "资料性质待核实"}
 ROUND_RE = re.compile(r"(?:第?([一二三四五六七八九十1-9])\s*面|([一二三四五六七八九十1-9])\s*轮(?:面试)?)")
@@ -190,7 +191,9 @@ def profile(post: Any, raw_text: str, raw_json: dict[str, Any] | None = None) ->
 
 def sync_questions(s: Session, post_ids: list[int] | None = None, *, skip_locked: bool = False) -> dict[str, int]:
     """稳定 key 保留题号，不调模型。按帖更新，在线同步可以跳过正在抽取的帖子。"""
-    stmt = select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)
+    acquire_knowledge_write(s)
+    s.flush()
+    stmt = select(Post, RawItem).execution_options(populate_existing=True).join(RawItem, RawItem.id == Post.raw_item_id)
     if post_ids is not None:
         stmt = stmt.where(Post.id.in_(post_ids))
     rows = s.execute(stmt.with_for_update(of=Post, skip_locked=skip_locked)).all()

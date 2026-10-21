@@ -14,6 +14,7 @@ from polaris.align.resolve import RESOLVED_FIELDS, resolve
 from polaris.companies import load as load_companies
 from polaris.db.models import Company, Job, Posting, RawItem
 from polaris.db.session import session_scope
+from polaris.search.locking import acquire_knowledge_write
 
 FIELD_COLUMNS = {f: f for f in RESOLVED_FIELDS} | {"city": "city"}
 
@@ -33,11 +34,13 @@ def load_views(session: Session | None = None) -> list[PostingView]:
     return views
 
 
-def ensure_companies() -> dict[str, int]:
+def ensure_companies(session: Session | None = None) -> dict[str, int]:
+    if session is None:
+        with session_scope() as s:
+            return ensure_companies(s)
     rows = [{"name": c.name, "aliases": list(c.aliases), "is_big": True} for c in load_companies()]
-    with session_scope() as s:
-        s.execute(insert(Company).values(rows).on_conflict_do_nothing(index_elements=["name"]))
-        return dict(s.execute(select(Company.name, Company.id)).all())
+    session.execute(insert(Company).values(rows).on_conflict_do_nothing(index_elements=["name"]))
+    return dict(session.execute(select(Company.name, Company.id)).all())
 
 
 OFFICIAL_DAILY = {"tencent": "tencent:careers", "bytedance": "bytedance:campus", "xhs_careers": "xhs:careers"}
@@ -97,11 +100,12 @@ def alignment_rows(views: list[PostingView], snapshots: dict[str, Any],
 
 
 def run_align() -> dict[str, Any]:
-    views = load_views()
-    rows = alignment_rows(views, official_snapshots(), ensure_companies())
     stats: Counter = Counter()
-    keys_seen = {row["key"] for row, _ in rows}
     with session_scope() as s:
+        acquire_knowledge_write(s)
+        views = load_views(s)
+        rows = alignment_rows(views, official_snapshots(s), ensure_companies(s))
+        keys_seen = {row["key"] for row, _ in rows}
         for row, posting_ids in rows:
             stmt = insert(Job).values(row)
             stmt = stmt.on_conflict_do_update(index_elements=["key"], set_={c: stmt.excluded[c] for c in row if c != "key"})

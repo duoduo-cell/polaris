@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from polaris.db.models import Run
 from polaris.db.session import get_engine, session_scope
 from polaris.runs import git_commit
+from polaris.search.locking import KnowledgeWriteBusy
 
 KIND = "knowledge_refresh"
 STATE_LOCK = 2026102101
@@ -135,10 +136,24 @@ def _claim(run_id: int, generation: int, stage: str, now: datetime) -> bool:
                 run.stats = {**stats, "error": error, "failed_stage": stage}
             return False
         attempts[stage] = attempts.get(stage, 0) + 1
+        stats.pop("waiting_for", None)
         run.status = "running"
         run.stats = {**stats, "attempts": attempts, "current_stage": stage,
                      "next_at": (now + RETRY_DELAY).isoformat()}
         return True
+
+
+def _defer_busy(run_id: int, stage: str, now: datetime) -> None:
+    """撤回本次 claim 的一次计数；新代待办和已有失败次数均保留。"""
+    with _state() as (_, run):
+        if run is None or run.id != run_id:
+            return
+        stats = dict(run.stats)
+        attempts = dict(stats["attempts"])
+        attempts[stage] = max(0, attempts.get(stage, 0) - 1)
+        run.status = "pending"
+        run.stats = {**stats, "attempts": attempts, "waiting_for": "knowledge_writer",
+                     "next_at": (now + RETRY_DELAY).isoformat()}
 
 
 def _record(run_id: int, generation: int, stage: str, result: dict[str, Any],
@@ -207,6 +222,9 @@ def run_pending(*, now: datetime | None = None) -> dict[str, Any]:
                     if not isinstance(result, dict):
                         raise TypeError(f"{stage} returned a non-dict result")
                     error = _error(stage, result)
+                except KnowledgeWriteBusy:
+                    _defer_busy(run_id, stage, _now(now))
+                    break
                 except Exception as exc:  # noqa: BLE001  中断不伪装成失败，留下已持久化的 running
                     error = f"{type(exc).__name__}: {exc}"[:200]
                     result = {"error": error}

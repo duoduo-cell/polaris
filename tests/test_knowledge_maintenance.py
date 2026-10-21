@@ -15,6 +15,7 @@ from polaris.db.session import session_scope
 from polaris.ingest import RawItemIn, ingest_raw_items
 from polaris.search import index
 from polaris.search import maintenance as m
+from polaris.search.locking import acquire_knowledge_write
 from polaris.search.retrieve import SearchQuery, keyword, vector
 
 NOW = datetime(2026, 10, 21, 8, tzinfo=UTC)
@@ -113,6 +114,38 @@ def test_worker_lock_prevents_two_workers_but_allows_dirty_notification(db, monk
             conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": m.WORKER_LOCK})
     mock_stages(monkeypatch)
     assert m.run_pending(now=NOW)["status"] == "ok"
+
+
+@pytest.mark.parametrize("new_generation", [False, True])
+def test_derived_writer_busy_preserves_failure_allowance_and_generation(db, monkeypatch, new_generation):
+    m.request_refresh("synthetic", now=NOW)
+    real_execute = m._execute
+
+    def fail(stage):
+        raise RuntimeError("controlled initial failure")
+
+    monkeypatch.setattr(m, "_execute", fail)
+    assert m.run_pending(now=NOW)["stats"]["attempts"]["align"] == 1
+
+    def execute(stage):
+        if new_generation:
+            m.request_refresh("new data during competing claim", now=NOW + m.RETRY_DELAY)
+        return real_execute(stage)
+
+    monkeypatch.setattr(m, "_execute", execute)
+    with session_scope() as owner:
+        acquire_knowledge_write(owner)
+        out = m.run_pending(now=NOW + m.RETRY_DELAY)
+    assert out["status"] == "pending"
+    assert out["stats"]["attempts"]["align"] == 1  # 不清掉原失败，也不消耗本次额度。
+    assert out["stats"]["waiting_for"] == "knowledge_writer"
+    assert out["params"]["generation"] == (2 if new_generation else 1)
+    assert out["stats"]["stages"] == ({} if new_generation else {
+        "align": {"state": "failed", "result": {"error": "RuntimeError: controlled initial failure"}, "at": NOW.isoformat()}})
+    assert m.run_pending(now=NOW + m.RETRY_DELAY)["reason"] == "cooldown"
+    mock_stages(monkeypatch)
+    done = m.run_pending(now=NOW + 2 * m.RETRY_DELAY)
+    assert done["status"] == "ok" and "waiting_for" not in done["stats"]
 
 
 def test_new_generation_during_execution_cannot_be_marked_complete(db, monkeypatch):

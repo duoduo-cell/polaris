@@ -9,6 +9,24 @@
 
 ## 轮次
 
+### 10-21派生知识一致性收尾与整体手册校准（候选，未部署）
+
+接续已授权的开发，核对 `dfb8ca5` 和工作区，保留八个来源／前端修改。原五项失败由读取前共享事务写锁、同 Session 对齐／全量切块，以及 caller 缓存重读修复；独立 `sync_questions` 也参与。新增 `search/locking.py`，复用 PostgreSQL 事务 advisory lock `2026102103`，不新增依赖、表或迁移。指定帖子同步入口本次未发现生产调用方，不宣称线上已接通。
+
+维护 worker 遇忙只扣回本次 claim 的增量，保留旧失败次数及新代待办，记录 waiting_for 并冷却 5 分钟；直接 refresh 任一步异常后停止下游，忙时标可重试但不持久排队。原五项转绿后补充互斥、回滚释放、caller 脏对象、锁忙不写和代次／失败额度边界。验证期间发现 Session.scalar 自动 flush 会先写 caller 脏对象，使用 no_autoflush 后相应反例通过；另有两项测试缺 keyword 查询参数，修正测试调用，不计产品缺陷。
+
+本节点定向检查曾先通过 consistency／maintenance／results；为核对完整影响范围，本次单进程运行：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m pytest tests/test_knowledge_consistency.py tests/test_knowledge_audit.py tests/test_embedding_consistency.py tests/test_knowledge_maintenance.py tests/test_daemon.py tests/test_search.py tests/test_align.py tests/test_results.py tests/test_jobs_tools.py -o addopts='' -q -ra --tb=short
+```
+
+退出码 0，**117 项通过、0 跳过**，4 条既有 SQLAlchemy ARRAY any 弃用告警；其中一致性文件 13 项。隔离 polaris_test、合成数据、假服务，含真实双线程／事务交错、回滚和实际关键词／向量检索。对本节点七个源码／测试文件的 Ruff 通过，`git diff --check` 通过。没有运行真实模型／平台、前端浏览器整体验收或全量测试，没有启动／停止采集、修改真实库／冻结副本／凭据，也未部署。
+
+按作者“希望看懂整体怎样开发”的要求，继续维护 DEVELOPMENT，未另建平行方案。首屏用“明明采到新岗位却搜不到”示范怎样提问、定位、分组修复、验证后优化、按需求增强；更新实际一致性工作单的红转绿证据。同步 TECH、STATUS、HANDOFF、PURPOSE，清除“当前五项尚未修复”等过时状态；历史失败记录保留，计划不计为已完成。外部依据沿用已有八仓库、反馈补查及 10-21 PostgreSQL 官方核查，本次未重新联网普查或新增外部核验结论。
+
+六份文档共 30 个本地文件链接存在；没有据此宣称全部锚点或外部链接在线可用。保留候选：共享锁仅协调参与入口，不跨全部步骤、不覆盖所有原文／抽取写入、不在向量网络等待期间持有。全局锁限制派生并发，未证明性能收益；持续竞争不承诺完成时间。全量清理与诊断／执行快照差异仍未解决，不能对真实库恢复。下一步依 PURPOSE 先设计清理／恢复执行保护与反例，再实现、隔离验证和测整链延迟；不能称第一轮或整体项目完成。
+
 ### 10-21整体开发手册：把下一步落实为可验收工作单（本次仅文档）
 
 沿用既有整体手册、16 项验收设计和三轮路线，未另建重复文档。核对当前 HEAD `112afd6`、AGENTS／HANDOFF／PURPOSE／STATUS、既有研究，以及 align/build、search/index 和工作区反例。诊断及元数据／空向量补处理已在 `112afd6` 本地提交，修正 STATUS、TECH、HANDOFF 和 DEVELOPMENT 中的过时未提交描述。

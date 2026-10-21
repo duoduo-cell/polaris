@@ -13,6 +13,7 @@ from polaris.db.models import Job, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
 from polaris.llm.client import LLM, parallel_map
 from polaris.search.chunking import CHUNK_FIELDS, Chunk, chunk_values, job_chunks, post_chunks
+from polaris.search.locking import KnowledgeWriteBusy, acquire_knowledge_write
 
 EMBED_GROUP = 50  # 每个线程一次送多少块（客户端内部再按服务的上限每批 10 条）
 EMBED_CONCURRENCY = 4
@@ -49,10 +50,13 @@ def _sync_chunks(s: Session, chunks: list[Chunk], old: dict[str, Any]) -> dict[s
 
 
 def sync_post_chunks(s: Session, post_ids: list[int], *, skip_locked: bool = True) -> dict[str, int]:
-    """在线修复指定帖子：同一事务锁住帖子并同步题目和块，保留岗位及其他帖子的索引。"""
+    """指定帖子同步：先取得共同写锁再锁帖子；调用方负责提交或异常回滚。"""
     from polaris.interviews import sync_questions
 
-    rows = s.execute(select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)
+    acquire_knowledge_write(s)
+    s.flush()  # populate_existing 前保存调用方合法的脏对象，不能静默覆盖它们。
+    rows = s.execute(select(Post, RawItem).execution_options(populate_existing=True)
+                     .join(RawItem, RawItem.id == Post.raw_item_id)
                      .where(Post.id.in_(post_ids)).with_for_update(of=Post, skip_locked=skip_locked)).all()
     ids = [p.id for p, _ in rows]
     questions = sync_questions(s, ids)
@@ -67,9 +71,9 @@ def sync_chunks() -> dict[str, int]:
     from polaris.interviews import sync_questions
 
     with session_scope() as s:
+        acquire_knowledge_write(s)
         sync_questions(s)
-    chunks = build_chunks()
-    with session_scope() as s:
+        chunks = build_chunks(s)
         old = {r["key"]: r for r in s.execute(select(*(getattr(SearchChunk, f) for f in CHUNK_FIELDS))).mappings()}
         return _sync_chunks(s, chunks, old)
 
@@ -118,7 +122,7 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
 
 def refresh(align: bool = True, graph: bool = True) -> dict[str, Any]:
     """新数据进来后把知识层刷新一遍：对齐成岗位 → 切块 → 算新块的向量 → 重建图谱。每步都可以重复跑，没变的不动。
-    这是直接刷新入口；daemon 使用 maintenance 持久补跑。此入口不共享其执行锁，各步错误只记录。"""
+    直接入口与 daemon 共用派生写入保护；步骤失败或竞争时停止后续步骤，不自动持久重试。"""
     out: dict[str, Any] = {}
     steps = []
     if align:
@@ -136,4 +140,7 @@ def refresh(align: bool = True, graph: bool = True) -> dict[str, Any]:
             out[name] = fn()
         except Exception as e:  # noqa: BLE001
             out[name] = {"error": f"{type(e).__name__}: {e}"[:200]}
+            if isinstance(e, KnowledgeWriteBusy):
+                out[name]["retryable"] = True
+            break
     return out
