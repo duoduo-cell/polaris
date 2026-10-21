@@ -1,0 +1,23 @@
+{
+  "method": "synthetic local function probe; no network or database writes",
+  "results": [
+    {
+      "case": "short_loading_page",
+      "body_length": 11,
+      "returns_missing_page": true,
+      "expected_missing_page": false
+    },
+    {
+      "case": "long_valid_post_with_update_banner",
+      "body_length": 149,
+      "returns_missing_page": true,
+      "expected_missing_page": false
+    },
+    {
+      "case": "valid_post_control",
+      "body_length": 132,
+      "returns_missing_page": false,
+      "expected_missing_page": false
+    }
+  ]
+}

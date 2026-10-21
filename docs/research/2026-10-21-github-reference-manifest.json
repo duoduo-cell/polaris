@@ -1,0 +1,185 @@
+{
+  "checked_at_utc": "2026-10-21T04:35:53Z",
+  "local_head": "d816fbf1b23517ab6b6b6e9af8d2766b5c76a233",
+  "scope": "8 selected repositories; repository metadata, README and selected source/tests. External projects were not installed, run or benchmarked. HEAD metadata collected after reads; file blob hashes identify actual inspected content.",
+  "repositories": [
+    {
+      "repository": "career-ops-hq/career-ops",
+      "url": "https://github.com/career-ops-hq/career-ops",
+      "head": "c87e0f05a5bf3b0e7bff1f6c87fd0865191e7da7",
+      "head_commit_date": "2026-10-20T20:05:56Z",
+      "archived": false,
+      "pushed_at": "2026-10-20T20:20:20Z",
+      "license_api": "MIT",
+      "stars_at_lookup": 76008
+    },
+    {
+      "repository": "datawhalechina/hello-agents",
+      "url": "https://github.com/datawhalechina/hello-agents",
+      "head": "36f583c233ea5cee4537ef93455702b55053af18",
+      "head_commit_date": "2026-10-13T22:28:54Z",
+      "archived": false,
+      "pushed_at": "2026-10-13T22:28:54Z",
+      "license_api": "NOASSERTION",
+      "stars_at_lookup": 83958
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "url": "https://github.com/langchain-ai/deepagents",
+      "head": "4f8a6566d1c06c04f5d8d9614706f72ce64532e3",
+      "head_commit_date": "2026-10-20T21:00:50Z",
+      "archived": false,
+      "pushed_at": "2026-10-21T01:46:41Z",
+      "license_api": "MIT",
+      "stars_at_lookup": 30461
+    },
+    {
+      "repository": "langchain-ai/open_deep_research",
+      "url": "https://github.com/langchain-ai/open_deep_research",
+      "head": "1b7d2e80db9faa586165c60e09096dbbfd483a64",
+      "head_commit_date": "2026-08-10T18:13:29Z",
+      "archived": true,
+      "pushed_at": "2026-08-10T18:13:37Z",
+      "license_api": "MIT",
+      "stars_at_lookup": 12678
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "url": "https://github.com/shengjidaguai-china/BossHunter",
+      "head": "50bbbbe7e15932fa33b5f6b2969fae77ffa197e4",
+      "head_commit_date": "2026-10-12T03:41:39Z",
+      "archived": false,
+      "pushed_at": "2026-10-13T23:51:11Z",
+      "license_api": "NOASSERTION",
+      "stars_at_lookup": 1301
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "url": "https://github.com/siyuansdsd/OfferGraph",
+      "head": "f1ee6dbe609a0b808832855e22cef4386ed2fdc4",
+      "head_commit_date": "2026-06-19T11:20:42Z",
+      "archived": false,
+      "pushed_at": "2026-06-23T13:54:23Z",
+      "license_api": "Apache-2.0",
+      "stars_at_lookup": 41
+    },
+    {
+      "repository": "speedyapply/JobSpy",
+      "url": "https://github.com/speedyapply/JobSpy",
+      "head": "8dd83cdd194b6e27f6487eb09b2b2a10117d9a1c",
+      "head_commit_date": "2026-10-20T00:15:41Z",
+      "archived": false,
+      "pushed_at": "2026-10-20T00:15:43Z",
+      "license_api": "MIT",
+      "stars_at_lookup": 4520
+    },
+    {
+      "repository": "Tencent/WeKnora",
+      "url": "https://github.com/Tencent/WeKnora",
+      "head": "e18fb23ed12e24795f165c62448ad50dd71d7caa",
+      "head_commit_date": "2026-10-21T03:02:25Z",
+      "archived": false,
+      "pushed_at": "2026-10-21T03:02:25Z",
+      "license_api": "NOASSERTION",
+      "stars_at_lookup": 34895
+    }
+  ],
+  "reviewed_files": [
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "README.md",
+      "file_blob_sha": "0b08bdc77ed17d1960586ab50ea2f5535d11aa30",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "ARCHITECTURE.md",
+      "file_blob_sha": "a0f16745fcc9903d205d55b78b554dd29bdacd9b",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "DATA_CONTRACT.md",
+      "file_blob_sha": "dfc11150354d72e590d420c823c7a0166b92edab",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "liveness-core.mjs",
+      "file_blob_sha": "e0d490e05957661af0cdb956b22e798b0f0318ad",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "path": "README.md",
+      "file_blob_sha": "e67ab0852818976bd960ff04ab79fee9a43e6407",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "path": "src/bosshunter/web/tasks.py",
+      "file_blob_sha": "9f3530390f1cc4bbb9f05fe430e2009d80af0cfc",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "path": "tests/test_collection_runs.py",
+      "file_blob_sha": "44bd4ea26350231947e1f5c0b63a08726d1a403d",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "path": "README.md",
+      "file_blob_sha": "5918c2ea5a5646eb792911093e508b23e217b854",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "path": "tools/approval.py",
+      "file_blob_sha": "59263fc89391301798b8ce3f3ae1be87f99ffaad",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "path": "README.md",
+      "file_blob_sha": "efa13c884a5f984cf30c5da8f571fc9264e20216",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "path": "libs/deepagents/deepagents/graph.py",
+      "file_blob_sha": "5e08084b17ccbfc051ab891e35508f884813d4f7",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "path": "libs/deepagents/deepagents/middleware/summarization.py",
+      "file_blob_sha": "273b43ac77ae9453cd6a700464db9f09bf4e2e09",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "langchain-ai/open_deep_research",
+      "path": "README.md",
+      "file_blob_sha": "5bfa38ac55fc7a5835b3d5c9a848d71e74c68d60",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "speedyapply/JobSpy",
+      "path": "README.md",
+      "file_blob_sha": "ecc01c57e75a81842d801d4c772c0fe9224a47a9",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "Tencent/WeKnora",
+      "path": "README.md",
+      "file_blob_sha": "48a8cbd2eb82ac0ffff64ecb1e9d602beb56ff5c",
+      "inspection": "selected content; not execution or whole-repository audit"
+    },
+    {
+      "repository": "datawhalechina/hello-agents",
+      "path": "README.md",
+      "file_blob_sha": "61819beeeaf757d8ae6faeb7963c3d0e320877ed",
+      "inspection": "README and curriculum, lines 1-110"
+    }
+  ]
+}

@@ -9,6 +9,18 @@
 
 ## 轮次
 
+### 10-21完整调研、代码审计与接续记忆更新
+
+用户要求上网/GitHub 全面参考同类项目，评估当前方向和开发顺序；随后明确要求完整保存、更新文件夹记忆并清理旧内容，供新 Agent 开工。研究覆盖 career-ops、BossHunter、OfferGraph、JobSpy、Deep Agents、Open Deep Research、WeKnora、Hello-Agents；重点阅读选定源码与测试，保存仓库 HEAD、归档状态与阅读文件 blob SHA。未安装运行竞品，不作性能优劣排名。两份完整结论在 `research/2026-10-21-github-and-project-audit.md`、`research/2026-10-21-production-direction.md`。
+
+核对产品 HEAD d816fbf：工具预算/校验、持久队列、记忆与检索已有工程基础，但整体验收和独立公开交付未完成。产品定位收敛为中国 LLM/Agent 实习证据型求职工作台；可靠执行是主线，现有检索/记忆维护、上下文按失败深入。第一轮是来源核验可信性，后续顺序统一更新 PURPOSE，没有新建独立研发主线。
+
+新反例：patch `_fetch_public_page` 的两个合成输入分别为加载提示和含“该职位已更新”的正常正文，均被 `_refetch` 当页面消失；正常正文对照不触发。无真实网站请求或业务库写入；不是实站错误率。公开结果存 `research/2026-10-21-liveness-counterexamples.json`，原探针留 data/probe。采集成功状态与后处理触发缺口为代码审计；长期画像/本次条件差异尚待端到端验证，不把风险记为已复现事故。
+
+六组既有测试共50项通过、退出码0：chat_tasks/job_search_diagnosis/recency_policy/memory_request_scope/matching_constraints/budget；polaris_test、假模型、临时锁与简报目录。没有重跑全量391、真实模型整批和前端浏览器测试。12:45只读确认daemon进程和日志活动，数据库/图谱监听，API/网页未监听，没有停止采集或接管浏览器。
+
+保存时重写 HANDOFF/STATUS，删除旧当前状态里的 v17在线暗示、10-14首步和历史待办，历史证据仍留本日志及带日期报告。更新根目录/项目 AGENTS、CLAUDE、README 和 PLAN 路由，统一 PURPOSE 优先级。将已审查的非敏感聚合计数与合成反例保存到 research JSON，真实原文、个人背景、登录态和模型输出保持本机。原有三个前端未提交文件保持原样，仅文档本地保存，不推送、不新建会话、不修改产品代码。
+
 ### 10-20采集恢复与全链路核查
 
 用户要求继续、全面采集并解释框架。恢复现有Docker数据库与Neo4j、打开原有登录资料夹并启动常驻采集，保留原文和登录态本机边界。六个已实现来源均有今天的实际写入；19:29快照新增126条，来源与待抽取数见COLLECTION-2026-10-20.md。未接入渠道没有算作完成覆盖。
