@@ -73,7 +73,10 @@ def sync_chunks() -> dict[str, int]:
 
 
 def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str, Any]:
-    """给没算过向量、或正文变了的块算向量。失败的那组留着，下次再跑会补上。"""
+    """给待处理块算向量；写回时校验正文版本，晚到结果不覆盖新内容或已完成向量。
+
+    embedded 只计实际写入数，remaining 从数据库重新统计；不保证并发请求只调用服务一次。
+    """
     if limit is not None and limit <= 0:
         raise ValueError("embedding limit must be positive")
     with session_scope() as s:
@@ -87,11 +90,15 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
 
     def run(group: list[Any]) -> int:
         vecs = llm.embed([r.content for r in group], purpose="chunk_embed")
+        saved = 0
         with session_scope() as s:
             for r, v in zip(group, vecs, strict=True):
-                s.execute(update(SearchChunk).where(SearchChunk.id == r.id)
-                          .values(embedding=v, embedded_hash=r.content_hash, embed_model=llm.settings.embed_model))
-        return len(group)
+                result = s.execute(update(SearchChunk).where(
+                    SearchChunk.id == r.id, SearchChunk.content_hash == r.content_hash,
+                    SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash))
+                    .values(embedding=v, embedded_hash=r.content_hash, embed_model=llm.settings.embed_model))
+                saved += result.rowcount
+        return saved
 
     results = parallel_map(run, groups, EMBED_CONCURRENCY)
     errors = [str(r)[:200] for r in results if isinstance(r, Exception)]

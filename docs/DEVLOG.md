@@ -9,6 +9,21 @@
 
 ## 轮次
 
+### 10-21向量晚到结果与实际完成数（候选）
+
+沿数据可用性并发边界检查 `search/index.py`：向量请求期间不持有数据库事务是合理的，但原写回只按 ID 更新，会让旧请求覆盖新版已完成的向量；检索虽然用正文指纹排除旧向量，却因此失去新版可用结果。另有已删除块仍按请求组大小计为 embedded 的错误。
+
+先新增四个受控反例，实际运行全部失败；进一步让断言先检查真实持久状态，再复测，确认旧指纹／向量覆盖及删除后完成数错误。修复用单条 SQL UPDATE 同时检查 ID、请求正文指纹和仍待处理条件，按实际更新行数计数，不在网络等待期间持事务，不新增锁服务或依赖。成功更新由数据库竞争决定；两个服务调用仍可能都发生，不承诺节省这部分调用成本。内容变化未写回的行保留待处理，正常行可独立完成。
+
+新增六项测试：旧请求晚于新版完成、只变正文后下一遍补处理、同正文另一调用已完成、请求期间删除、两个真实线程用 Barrier 同时请求、混合批次只补变化行。使用隔离 polaris_test、假向量服务与实际 pgvector 查询；无真实平台／模型调用。
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_embedding_consistency.py tests/test_knowledge_maintenance.py tests/test_daemon.py tests/test_search.py tests/test_results.py tests/test_jobs_tools.py -q -ra
+.\.venv\Scripts\python.exe -m ruff check src/polaris/search/index.py tests/test_embedding_consistency.py
+```
+
+72 项通过、0 跳过，Ruff 通过；4 条既有 ARRAY any 弃用告警。仅本子机制验证，没有真实可用延迟或性能提升结论。全量切块旧快照覆盖、对齐并发、历史漏排队仍未收拢；未部署，不改变采集、真实数据、凭据或冻结副本。下一步仍按 PURPOSE，不把这个节点算整轮完成。
+
 ### 10-21整体开发手册：实际问题卡与验收记录（仅文档）
 
 按作者“我不懂，清晰列出怎么提出问题、优化和增强”的要求复核已有 DEVELOPMENT、PURPOSE、STATUS、HANDOFF、研究及关键候选源码／测试。沿用原手册，补充四句非技术审查问题、以 `6fa7a2e` 已验证隔离反例填写的问题卡、每轮收尾验收模板；当前路线仍只在 PURPOSE 维护，不新增平行待办。
