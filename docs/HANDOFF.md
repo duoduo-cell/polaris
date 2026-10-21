@@ -8,9 +8,10 @@
 
 1. 项目根目录：`D:\黑客松\polaris-docs\polaris`；上层工作区 `D:\黑客松` 只有入口，别在那里重建项目。
 2. 读 `AGENTS.md` → [PURPOSE.md](PURPOSE.md) 的当前目标/后续路线 → [STATUS.md](STATUS.md)。本文件给具体接续信息。
+   作者要求易懂、可执行的整体开发说明，见 [DEVELOPMENT.md](DEVELOPMENT.md)；PURPOSE 含接下来三轮执行卡。手册讲执行方法，不能代替当前状态核查或把计划算成完成。
 3. 完整阅读 [GitHub 对标与项目审计](research/2026-10-21-github-and-project-audit.md)，再按需要看 [生产方向与岗位面经调研](research/2026-10-21-production-direction.md)。8 个仓库的检索状态、HEAD 与阅读文件 blob SHA 见 [来源清单](research/2026-10-21-github-reference-manifest.json)。没有运行竞品，不宣称性能胜出。
 4. 先检查 `git status --short`、当前 HEAD 与三个前端未提交文件；只读确认运行进程，不重启采集或占用其浏览器。
-5. 第一轮处理来源核验把“无法核验”误判为“下线”的问题，完成下述设计、实现和隔离验证；本次保存没有修复业务代码。
+5. 来源核验、官网失败状态/冷却重试、无新增补处理以及知识持久补跑均已有候选与隔离证据，未部署。先读 TECH 的知识补跑契约；下一步按 PURPOSE 收拢历史未排队数据的发现／人工出口和直接刷新并发边界，再测实际可检索延迟，不从头重做补跑设计。
 
 ## 当前目标与有效决定
 
@@ -26,9 +27,21 @@
 - 分支 `main`。本轮研究对应产品代码 HEAD：`d816fbf1b23517ab6b6b6e9af8d2766b5c76a233`，官网有界网络恢复已在此提交。本次文档保存如有后续提交，用 `git log -1` 查，不把研究基线 SHA 当最新文档提交。
 - 主 Agent `main-v24`、记忆抽取 `memory-extract-v6`、真实任务审查 `real-task-audit-v8`；候选未完成整体验收，未部署。
 - 本轮开始前已有且未验收/未提交的前端修改：`web/src/components/result-cards.tsx`、`web/src/lib/results.ts`、`web/tests/test_result_cards.py`。共 87 增/7 删，涉及明确不符、待确认及方向匹配解释。本轮没有覆盖或纳入文档提交；接手先读差异，不能当作已通过浏览器验收。
+- 接续迭代另有未提交来源核验修复：`src/polaris/live.py`、`src/polaris/tools/live.py`、`src/polaris/agent/steps.py`、`src/polaris/agent/main.py`、`tests/test_live_tools.py`。与上述前端改动分开审阅，不要覆盖或回滚。
+- 官网失败重试候选修改 `src/polaris/daemon.py`、`tests/test_peers.py`：仅成功运行计入当日完成，失败来源冷却一小时后重试，常驻循环在全部来源成功后才标记当天完成。新增普通轮次补处理：无新增时当前来源最多补抽 10 条结构化记录和 20 条帖子画像；抽取失败不会完成标记，可在下一轮重试；无新/补处理数据时不刷新知识层或主动推送。新增 `tests/test_daemon.py` 三项回归。定向验证：daemon 3、peers 12、live tools 25、main/agent 10 项通过，Ruff/diff 通过。live tools 有一项既有 ToolRuntime 搜索测试本轮挂起后中断，未计入通过数。未做真实官网故障注入；工作区候选未部署，14:31 未找到匹配的运行中 daemon。
 - 本地 checkout 没有配置 Git remote；不能外推作者没有其他公开仓库。仅本地提交，不推送。
 
-## 第一轮：来源核验可信性
+### 接续开发：知识补跑候选
+
+新增 `src/polaris/search/maintenance.py`、`tests/test_knowledge_maintenance.py`；修改 index、daemon、cli、extract、runs。复用 Run 持久阶段，失败冷却 5 分钟、每核心步骤连续失败／中断最多 3 次、每遍向量 200 块；daemon 无采集任务仍处理。抽取结果和官网成功快照各与待办同事务，避免业务提交后通知丢失。命令及完整限制见 TECH；没有新依赖或迁移。
+
+2026-10-21 本轮验证：`test_daemon.py test_knowledge_maintenance.py test_search.py test_jobs_tools.py test_peers.py test_scouts.py` 共 61 项；`test_db.py test_collectors.py test_align.py test_api.py` 共 35 项，合计 96 项通过、0 跳过。使用隔离 polaris_test、合成数据、假模型／平台；包括真实子进程直接退出和实际关键词／向量检索。未跑全量、真实模型、真实平台或网页验收，未重启采集。全局 Run hook 会给之后的官网成功快照排队，但不会自动处理历史快照／未排队积压。
+
+已知待收拢：直接 refresh/index/在线同步不共享 coordinator 执行锁；历史未排队积压不自动发现；对齐／切块仍全量；图谱错误可见但核心完成后不自动补图谱；主动推送不等待核心完成。不能把本轮子机制当整轮已验收。已有前端与来源核验改动继续保留，提交状态以 git status/log 为准。
+
+## 第一轮：来源核验可信性（已实现，未部署）
+
+研究交接时，下面的反例尚未修复；接续迭代已按“页面可读取/明确关闭/无法核验”实现。`source_open.status=open` 只表示原链接可读取，不证明岗位仍在招聘；`closed` 需要明确关闭证据；网络、访问或内容证据不足为 `unknown`。旧字段 `online` 仍兼容，unknown 为 `null`。Agent 提示、工具说明和轨迹摘要均遵守此语义。
 
 已验证反例：`src/polaris/live.py` 的 `GONE_WORDS` 含过宽“该职位已”；`_refetch` 在字节/小红书官网分支把命中词或正文少于 80 字映射为 None，随后 `open_source` 返回 `online=False` 和下线说明。
 
@@ -40,31 +53,34 @@
 
 公开合成结果快照：[liveness-counterexamples](research/2026-10-21-liveness-counterexamples.json)。只证明代码反例，不是实站事故或真实错误率。原探针仍留 `data/probe/direction_liveness_probe_20261021.json`。
 
-实施前阅读：`src/polaris/live.py`、`src/polaris/tools/live.py`（如路径变化先搜索注册）、`tests/test_live_tools.py`、`src/polaris/tools/runtime.py`，核查所有调用者及工具返回契约。本轮仅复现了官网分支，其他来源同类判断需要审阅，不能一并宣称已修。
+实施前阅读：`src/polaris/live.py`、`src/polaris/tools/live.py`、`tests/test_live_tools.py`、`src/polaris/tools/runtime.py`，并审阅了 Agent 轨迹摘要和系统提示的调用契约。
 
-建议设计：确认开放 / 确认关闭 / 无法核验，附原因和核验时间；网络、认证、拦截、未加载与 404/410 或明确关闭证据分开。HTTP 200 本身也不保证在招。具体契约先结合现有调用者提出，不直接新建一整套框架。
+实际设计：状态为 open / closed / unknown，附原因、证据和核验时间；网络、拦截、限流、未加载、空结果、其它 HTTP/API 错误与 404/410 或明确关闭证据分开。HTTP 200 和可读正文均不保证仍在招。调用预算、锁和来源版本写回逻辑保留。
 
 验收：加载页、有效更新文案、拦截、超时、真关闭和正常正文分开；无法核验不能输出确定下线。保持来源版本/变更记录、预算、锁与既有正常路径。全部先用假采集器与隔离库；不访问真实采集浏览器。记录修复前后反例和剩余范围，再向作者讲解结果。
 
-本轮通过后，按 PURPOSE 当前顺序进入数据可用性，再做本次条件与卡片一致性，最后完成真实任务对照和合成演示。详细验收标准见研究报告，不再扩展通用评分器。
+隔离验证：`tests/test_live_tools.py` 退出码 0；`tests/test_main_agent.py tests/test_agent.py` 10 项通过；补充的页面可读语义针对性回归 21 项通过；Ruff 和 `git diff --check` 通过。覆盖加载页、有效“该职位已更新”正文、验证拦截、明确关闭、HTTP 404/410/429/503、超时、腾讯业务码/空响应及轨迹摘要。没有真实平台/模型验证，不代表实站误判率，候选未部署。
+
+按 PURPOSE 当前顺序进入数据可用性，再做本次条件与卡片一致性，最后完成真实任务对照和合成演示。详细验收标准见研究报告，不再扩展通用评分器。
 
 ## 已验证、未验证及证据
 
 - 2026-10-21：六个既有文件共 50 项通过、退出码 0：`test_chat_tasks.py`、`test_job_search_diagnosis.py`、`test_recency_policy.py`、`test_memory_request_scope.py`、`test_matching_constraints.py`、`test_budget.py`（均在 `tests/`）。使用 `polaris_test`、假模型和临时锁/简报目录。未跑真实模型整批验收、前端浏览器验收或全量 391 项。
+- 2026-10-21 接续候选：`test_daemon.py` 3、`test_peers.py` 12、`test_live_tools.py`（排除一项挂起的旧 ToolRuntime 搜索用例）25、`test_main_agent.py` + `test_agent.py` 10 项通过；Ruff 和 `git diff --check` 通过。没有全量或端到端验收。
 - 2026-10-20：391 项全量后端回归通过属于当时网络恢复提交，过程见 [DEVLOG](DEVLOG.md) 与 [采集核查](COLLECTION-2026-10-20.md)，不能当今天全套或端到端成功率。
-- 代码审计另见：`daemon.official_done_today` 没有筛选成功状态；后处理由 new_ids 非空触发，旧积压可能不推进；`results.entities` 默认长期画像与本次筛选路径不同，后者是待端到端核查的风险。
+- 代码审计状态：官网失败冷却、无新增补抽和知识持久补跑均有候选，未部署。daemon 使用 maintenance，直接 `search.refresh()` 仍为旧的单次捕获错误入口；历史未排队失败不自动发现。实际“可检索”完成状态和真实延迟仍待整链验收。`results.entities` 默认长期画像与本次筛选路径不同，仍待端到端核查。
 - 任务重启会标记 interrupted/waiting_approval，不是已实现自动无缝恢复；上下文清理后的精确旧证据回读不完整；匹配分数不是录用概率；卡片 ID 有来源不等于每句结论有依据。
 - 合成公开演示尚未完成。现有 sandbox 是真实库副本，synthetic 又被默认查询排除，不能直接公开。
 
 ## 运行快照及查询方式
 
-**2026-10-21 12:45 北京时间的只读快照，接手必须重查，不能当作持续在线承诺：**
+**2026-10-21 14:31 北京时间的只读快照，接手必须重查，不能当作持续在线承诺：**
 
-- 两条 Python daemon 进程 PID `27136`、`2004`，均于 12:15:57 启动；可能是启动器与工作进程，不能据进程条数判定重复采集。
-- `data/logs/daemon.log` 最后写入 12:45:07。5432/7687 监听，3000/8000 未监听。计划任务 `Polaris 常驻采集` 当时枚举值为 1（Disabled），与独立运行进程是不同状态，不据任务状态停止/重启任何进程。
+- 未找到匹配的 daemon 进程；计划任务 `Polaris 常驻采集` 显示 Ready，但任务信息最近运行时间为 10 月 19 日，结果码 `3221225786`。日志最后写入 14:05:36。本轮没有启动、停止或重启 daemon；任务 Ready 和旧日志不能证明采集正在运行或持续成功。
+- 当前工作区修改未加载到任何已核实的运行进程；接手时应先只读复核任务与进程，再决定是否需要用户处理启动状态。不要因历史快照自动重启。
 - 只读查进程：`Get-CimInstance Win32_Process`，筛选 python/polaris daemon，避免输出含凭据的完整命令行；查日志用 `Get-Item data/logs/daemon.log`，需内容时只看必要片段且不外传原文。
 - 10-21 先前登录探针：小红书/脉脉缓存有登录标记，Boss 缓存为 false；缓存与真实请求认证不同，未重新逐平台验证。遇验证让用户在对应本人账号窗口处理，不重复盲目登录或绕过。
-- 不运行 `scripts/dev/restart_daemon_when_idle.ps1`：它会停止/强杀/重启采集，不是只读状态探针。
+- 不运行 `scripts/dev/restart_daemon_when_idle.ps1`：它会停止/强杀/重启采集，不是只读状态探针。启用登录任务并不代表 Boss 已登录，也不保证机器关机或网络异常时采集。
 
 ## 历史证据仅在需要时读取
 
@@ -78,4 +94,4 @@
 
 不改 `.env`，不暴露凭据；不覆盖既有前端改动；不停止/重启采集，不占用采集浏览器；测试使用隔离库且 `polaris_test` 单进程；外部消息/投递/发布按用户授权；不自动建新会话。完整限制见 AGENTS。
 
-> $project-handoff 在 D:\黑客松\polaris-docs\polaris 接续北极星。读取 AGENTS.md、docs/HANDOFF.md（编号 polaris-research-20261021）、PURPOSE 和 STATUS，以及两份 10-21 调研。核对当前版本、三个前端未提交改动及采集状态。按已保存方向，先处理 live.py 将无法核验误判下线的问题：展示反例和接口设计，再实现一个机制，用假采集器与隔离库验收，保存前后证据。保留所有隐私、采集和本地提交边界，逐轮讲解，不重复全量调研。
+> 在 D:\黑客松\polaris-docs\polaris 接续北极星。读取 AGENTS.md、docs/HANDOFF.md（编号 polaris-research-20261021）、PURPOSE、STATUS、DEVELOPMENT 和 TECH 知识补跑契约，以及两份 10-21 调研。核对当前版本和前端等已有改动。来源核验、官网失败冷却、无新增补抽、知识持久补跑与事务排队已有候选及隔离证据，未部署，不重复实现。按 PURPOSE 先收拢历史未排队数据的发现／人工出口及直接刷新并发边界，再做真实链路可用性验收。保留隐私、采集与本地提交边界，逐轮讲解，不重复全量调研。

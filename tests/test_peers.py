@@ -182,6 +182,23 @@ def test_official_daily_is_not_repeated_after_a_restart(db):
     assert official_done_today(now)
 
 
+def test_failed_official_source_is_not_marked_done_or_retried_during_cooldown(db):
+    from datetime import timedelta
+
+    from polaris.daemon import BEIJING, OFFICIAL_RETRY_COOLDOWN, official_done_today, official_pending_sources
+    from polaris.db.models import Run
+
+    now = datetime.now(BEIJING)
+    with session_scope() as s:
+        s.add(Run(kind="collect", params={"source": "tencent", "mode": "official-daily"}, status="ok", stats={}))
+        s.add(Run(kind="collect", params={"source": "bytedance", "mode": "official-daily"}, status="failed",
+                  stats={}, started_at=now - timedelta(minutes=10)))
+
+    assert not official_done_today(now)
+    assert official_pending_sources(now) == {"xhs_careers"}
+    assert official_pending_sources(now + OFFICIAL_RETRY_COOLDOWN) == {"bytedance", "xhs_careers"}
+
+
 def test_ocr_html_and_code_fences_are_stripped():
     raw = ("```html\n<html><body>\n<h2>个人背景</h2>\n<p>学历：双非本 9 硕</p>\n"
            "<table><tr><td>一面</td><td>PPO</td></tr></table>\n</body></html>\n```")

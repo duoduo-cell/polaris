@@ -20,6 +20,8 @@
 11. `docs/research/`：带日期的岗位、工程方向与 GitHub 对标研究
 12. `docs/STACK.md`、`docs/REFERENCE_WEKNORA.md`：历史选型与对标，按需查阅
 
+执行方法：[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) 解释如何提出问题、分类定位、修复优化、按证据增强、验证和交付；作者不必先懂框架。优先级仍只在 PURPOSE 维护，不把手册样例当成已完成能力。
+
 技术判断要有依据：查官方文档、GitHub、工程团队的公开文章或论文，并在文档里注明出处；拿不准的先做小实验。
 
 ## 怎么工作

@@ -48,3 +48,8 @@ def run_scope(kind: str, params: dict[str, Any] | None = None,
         with session_scope(engine) as session:
             run = session.get(Run, run_id)
             run.status, run.stats, run.finished_at = status, stats, datetime.now(UTC)
+            if kind == "collect" and status == "ok" and (params or {}).get("mode") == "official-daily":
+                from polaris.search.maintenance import request_refresh
+
+                # 成功快照影响岗位时效；即使无新原文，也必须和完成状态一起落待办。
+                request_refresh("official-snapshot", session=session)

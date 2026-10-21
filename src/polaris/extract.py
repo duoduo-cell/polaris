@@ -154,10 +154,14 @@ def run_extract(kind: str, limit: int, run_id: int | None, concurrency: int, sou
     results = parallel_map(lambda it: fn(llm, it, run_id), items, concurrency)
     rows = [fit_columns(model, r) for r in results if isinstance(r, dict)]
     saved: list[dict[str, Any]] = []
+    from polaris.search.maintenance import request_refresh
+
     for row in rows:  # 一条一条存：一条出错不连累整批
         try:
             with session_scope() as s:
                 s.add(model(**row))
+                # 抽取和待办同成同败，关闭“已保存但还没通知就退出”的窗口。
+                request_refresh(f"extract:{kind}", session=s)
             saved.append(row)
         except Exception:  # noqa: BLE001  存不进去的留在待抽里，下次重抽
             pass

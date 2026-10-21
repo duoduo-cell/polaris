@@ -5,7 +5,7 @@
 from collections import Counter
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -74,11 +74,15 @@ def sync_chunks() -> dict[str, int]:
 
 def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str, Any]:
     """给没算过向量、或正文变了的块算向量。失败的那组留着，下次再跑会补上。"""
-    llm = llm or LLM()
+    if limit is not None and limit <= 0:
+        raise ValueError("embedding limit must be positive")
     with session_scope() as s:
         stmt = (select(SearchChunk.id, SearchChunk.content, SearchChunk.content_hash)
                 .where(SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash)).order_by(SearchChunk.id))
         rows = s.execute(stmt.limit(limit) if limit else stmt).all()
+    if not rows:
+        return {"pending": 0, "embedded": 0, "failed_groups": 0, "errors": [], "remaining": 0}
+    llm = llm or LLM()
     groups = [rows[i:i + EMBED_GROUP] for i in range(0, len(rows), EMBED_GROUP)]
 
     def run(group: list[Any]) -> int:
@@ -91,13 +95,16 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
 
     results = parallel_map(run, groups, EMBED_CONCURRENCY)
     errors = [str(r)[:200] for r in results if isinstance(r, Exception)]
+    with session_scope() as s:
+        remaining = s.scalar(select(func.count()).select_from(SearchChunk).where(
+            SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash)))
     return {"pending": len(rows), "embedded": sum(r for r in results if isinstance(r, int)), "failed_groups": len(errors),
-            "errors": errors[:3]}
+            "errors": errors[:3], "remaining": remaining}
 
 
 def refresh(align: bool = True, graph: bool = True) -> dict[str, Any]:
     """新数据进来后把知识层刷新一遍：对齐成岗位 → 切块 → 算新块的向量 → 重建图谱。每步都可以重复跑，没变的不动。
-    常驻采集每轮抽取完调一次；某一步出错只记下来，不影响后面的步骤和采集。"""
+    这是直接刷新入口；daemon 使用 maintenance 持久补跑。此入口不共享其执行锁，各步错误只记录。"""
     out: dict[str, Any] = {}
     steps = []
     if align:

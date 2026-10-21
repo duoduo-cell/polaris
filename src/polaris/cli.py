@@ -630,6 +630,30 @@ def metrics_m4() -> None:
     typer.echo(m4.REPORT.read_text(encoding="utf-8"))
 
 
+@app.command("knowledge-status")
+def knowledge_status() -> None:
+    """只读查看知识待办、步骤结果、错误、到期时间和次数；不触发模型或采集。"""
+    from polaris.search.maintenance import status
+
+    typer.echo(json.dumps(status(), ensure_ascii=False, indent=2))
+
+
+@app.command("knowledge-retry")
+def knowledge_retry() -> None:
+    """只将耗尽的知识待办重新排队；修好原因后人工使用，不启动采集。"""
+    from polaris.search.maintenance import retry
+
+    typer.echo(json.dumps(retry(), ensure_ascii=False, indent=2))
+
+
+@app.command("knowledge-work")
+def knowledge_work() -> None:
+    """执行一遍已到期知识待办（可能调用向量服务），不启动采集／浏览器。"""
+    from polaris.search.maintenance import run_pending
+
+    typer.echo(json.dumps(run_pending(), ensure_ascii=False, indent=2))
+
+
 @app.command()
 def index(embed: bool = typer.Option(True, help="同时给新块算向量"), graph: bool = typer.Option(True, help="同时重建知识图谱")) -> None:
     """检索的底子：jobs 和 posts 切块写进 chunks、算向量，重建 Neo4j 知识图谱。都可以重复跑。"""

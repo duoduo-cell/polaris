@@ -7,7 +7,7 @@
 import sys
 import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from polaris.browser import attached, is_running, open_browser
@@ -82,28 +82,43 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
         for obj in (collector, getattr(collector, "caller", None)):
             if hasattr(obj, "close"):
                 obj.close()
-    if r["new_ids"]:
-        try:  # 抽取或提词出错不影响继续采
-            kind, raw_source = POST_SOURCES[source]
-            out = run_extract(kind, len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, raw_source)
-            added = discover_queries(r["new_ids"], r["run_id"]) if source == "xhs" else []
-            echo(f"  [{source}] 抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
-            from polaris.peers import run as extract_peers
+    kind, raw_source = POST_SOURCES[source]
+    data_changed = bool(r["new_ids"])
+    try:  # 按现有 pending 顺序限量补处理，不保证新项优先
+        out = run_extract(kind, len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, raw_source)
+        data_changed = data_changed or out["extracted"] > 0
+        added = discover_queries(r["new_ids"], r["run_id"]) if source == "xhs" and r["new_ids"] else []
+        echo(f"  [{source}] 抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
+        from polaris.peers import run as extract_peers
 
-            peers = extract_peers(len(r["new_ids"]) + 20, source=raw_source)  # 帖子里"人和结果"（背景、offer、几面）
-            if peers["people"]:
-                echo(f"  [{source}] 人和结果：{peers['with_people']} 条帖子里有 {peers['people']} 个人")
-        except Exception as e:  # noqa: BLE001
-            echo(f"  [{source}] 抽取或提词出错（采集继续）：{e}"[:200])
-        from polaris.search.index import refresh
+        peers = extract_peers(len(r["new_ids"]) + 20, source=raw_source)  # 帖子里"人和结果"（背景、offer、几面）
+        data_changed = data_changed or peers["people"] > 0
+        if peers["people"]:
+            echo(f"  [{source}] 人和结果：{peers['with_people']} 条帖子里有 {peers['people']} 个人")
+    except Exception as e:  # noqa: BLE001
+        echo(f"  [{source}] 抽取或提词出错（采集继续）：{e}"[:200])
+    if data_changed:
+        from polaris.search.maintenance import request_refresh
 
-        k = refresh()  # 对齐、切块、向量、图谱跟上新数据（M4）；各步自己兜住错误
-        errors = {name: v["error"] for name, v in k.items() if isinstance(v, dict) and "error" in v}
-        chunks = k.get("chunks", {})
-        echo(f"  [{source}] 知识层：新块 {chunks.get('new', 0)}、改动 {chunks.get('changed', 0)}，"
-             f"算向量 {k.get('embed', {}).get('embedded', 0)}" + (f"；出错 {errors}"[:200] if errors else ""))
+        request_refresh(f"daemon:{source}")  # 先持久化，失败／退出后无新增也能继续
+        maintain_knowledge(echo)
         proactive(echo, f"  [{source}] ")
     return r
+
+
+def maintain_knowledge(echo: Callable[[str], None] = print) -> None:
+    """只做已排队的本地知识维护，不依赖采集窗口、浏览器或平台认证。"""
+    from polaris.search.maintenance import run_pending
+
+    try:
+        out = run_pending()
+        if out["ran"]:
+            stats = out.get("stats", {})
+            error = stats.get("error") or stats.get("graph_error")
+            echo(f"[知识层] 待办 {out['run_id']}：{out['status']}"
+                 + (f"；{error}"[:220] if error else ""))
+    except Exception as e:  # noqa: BLE001  数据库等维护故障不能阻止采集
+        echo(f"[知识层] 维护出错：{e}"[:220])
 
 
 def proactive(echo: Callable[[str], None], prefix: str = "") -> None:
@@ -120,10 +135,10 @@ def proactive(echo: Callable[[str], None], prefix: str = "") -> None:
 
 
 OFFICIAL_RAW = {"tencent": "tencent:careers", "bytedance": "bytedance:campus", "xhs_careers": "xhs:careers"}
+OFFICIAL_RETRY_COOLDOWN = timedelta(hours=1)
 
 
-def official_done_today(now: datetime) -> bool:
-    """今天官网整批重采过没有：查库里的采集记录，不只看进程内存（10-12：重启一次就又整批采一遍，约 35 分钟）。"""
+def _official_runs_today(now: datetime) -> list[tuple[str, str, datetime]]:
     from sqlalchemy import select
 
     from polaris.db.models import Run
@@ -131,8 +146,26 @@ def official_done_today(now: datetime) -> bool:
 
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     with session_scope() as s:
-        done = s.scalars(select(Run.params["source"].astext).where(
-            Run.kind == "collect", Run.params["mode"].astext == "official-daily", Run.started_at >= start)).all()
+        return list(s.execute(select(Run.params["source"].astext, Run.status, Run.started_at).where(
+            Run.kind == "collect", Run.params["mode"].astext == "official-daily", Run.started_at >= start)).all())
+
+
+def official_pending_sources(now: datetime) -> set[str]:
+    """未成功来源到一小时冷却期后才重试，避免一次超时导致每轮重采全部官网。"""
+    rows = _official_runs_today(now)
+    done = {source for source, status, _ in rows if status == "ok"}
+    latest: dict[str, datetime] = {}
+    for source, _, started_at in rows:
+        if source and source not in done and (source not in latest or started_at > latest[source]):
+            latest[source] = started_at
+    cutoff = now.astimezone(UTC) - OFFICIAL_RETRY_COOLDOWN
+    return {source for source in OFFICIAL_RAW if source not in done
+            and (source not in latest or latest[source].astimezone(UTC) <= cutoff)}
+
+
+def official_done_today(now: datetime) -> bool:
+    """今天官网整批重采过没有：查库里的采集记录，不只看进程内存（10-12：重启一次就又整批采一遍，约 35 分钟）。"""
+    done = {source for source, status, _ in _official_runs_today(now) if status == "ok"}
     return set(OFFICIAL_RAW) <= set(done)
 
 
@@ -144,8 +177,13 @@ def official_daily(echo: Callable[[str], None] = print) -> None:
     from polaris.collectors.tencent import TencentCollector
     from polaris.extract import run_extract
 
+    pending = official_pending_sources(datetime.now(BEIJING))
+    if not pending:
+        return
     makers = {"tencent": TencentCollector, "bytedance": ByteDanceCollector, "xhs_careers": XhsCareersCollector}
     for source, make in makers.items():
+        if source not in pending:
+            continue
         try:
             q.ensure_seeded(source)
             n = len(q.existing(source))
@@ -155,15 +193,15 @@ def official_daily(echo: Callable[[str], None] = print) -> None:
         except Exception as e:  # noqa: BLE001  一个官网出错不影响别的
             echo(f"  [官网 {source}] 出错：{e}"[:200])
     try:
-        from polaris.search.index import refresh
-
-        refresh()  # 对齐时据此标出下架的岗位
+        # 成功快照和抽取已在各自事务中排队；不能把失败批次也当成新快照。
+        maintain_knowledge(echo)
     except Exception as e:  # noqa: BLE001
         echo(f"  [官网] 刷新知识层出错：{e}"[:200])
 
 
 def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) -> bool:
     """看一遍各来源，能采的跑一轮。返回这次有没有跑。"""
+    maintain_knowledge(echo)
     notified = notified if notified is not None else set()
     today = datetime.now(BEIJING).date().isoformat()
     due = []
@@ -257,10 +295,11 @@ def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
             morning_done = now.date().isoformat()
         if now.hour >= 9 and official_done != now.date().isoformat() and official_done_today(now):
             official_done = now.date().isoformat()  # 今天已经采过（比如进程重启了）
-        if now.hour >= 9 and official_done != now.date().isoformat():
-            echo(f"[官网] {now:%H:%M} 每天整批重采一次")
+        if now.hour >= 9 and official_done != now.date().isoformat() and official_pending_sources(now):
+            echo(f"[官网] {now:%H:%M} 检查待采官网来源")
             official_daily(echo)
-            official_done = now.date().isoformat()
+            if official_done_today(datetime.now(BEIJING)):
+                official_done = now.date().isoformat()
         try:
             ran = tick(echo, notified)
         except Exception as e:  # noqa: BLE001  一轮出错不让整个常驻进程退出
