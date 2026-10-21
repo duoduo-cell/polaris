@@ -11,7 +11,7 @@
 import hashlib
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 from polaris.interviews import profile
@@ -35,7 +35,7 @@ class Chunk:
     job_id: int | None = None
     post_id: int | None = None
     companies: tuple[str, ...] = ()
-    published_at: datetime | None = None
+    published_at: datetime | date | None = None
     is_synthetic: bool = False
 
     @property
@@ -45,6 +45,22 @@ class Chunk:
     @property
     def content_hash(self) -> str:
         return hashlib.blake2b(self.content.encode("utf-8"), digest_size=16).hexdigest()
+
+
+CHUNK_FIELDS = ("key", "kind", "job_id", "post_id", "companies", "header", "body", "content", "content_hash",
+                "published_at", "is_synthetic")
+
+
+def chunk_values(chunk: Chunk) -> dict[str, Any]:
+    """持久字段共用一份定义；岗位日期按 UTC 零点保存，不把元数据变化当正文变化。"""
+    values = {field: getattr(chunk, field) for field in CHUNK_FIELDS}
+    values["companies"] = list(chunk.companies)
+    published = chunk.published_at
+    if isinstance(published, date) and not isinstance(published, datetime):
+        values["published_at"] = datetime.combine(published, time.min, tzinfo=UTC)
+    elif isinstance(published, datetime) and published.tzinfo is None:
+        values["published_at"] = published.replace(tzinfo=UTC)
+    return values
 
 
 def header(*parts: Any) -> str:

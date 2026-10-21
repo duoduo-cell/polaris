@@ -7,35 +7,36 @@ from typing import Any
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from polaris.db.models import Job, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
 from polaris.llm.client import LLM, parallel_map
-from polaris.search.chunking import Chunk, job_chunks, post_chunks
+from polaris.search.chunking import CHUNK_FIELDS, Chunk, chunk_values, job_chunks, post_chunks
 
 EMBED_GROUP = 50  # 每个线程一次送多少块（客户端内部再按服务的上限每批 10 条）
 EMBED_CONCURRENCY = 4
 
 
-def build_chunks() -> list[Chunk]:
-    with session_scope() as s:
-        jobs = s.execute(select(Job).order_by(Job.id)).scalars().all()
-        posts = s.execute(select(Post, RawItem.raw_text, RawItem.source, RawItem.raw_json)
-                          .join(RawItem, RawItem.id == Post.raw_item_id).order_by(Post.id)).all()
-        return [c for j in jobs for c in job_chunks(j)] + [c for p, text, src, raw in posts for c in post_chunks(p, text, src, raw)]
+def build_chunks(session: Session | None = None) -> list[Chunk]:
+    """只计算，不同步题目或写库；允许诊断复用同一只读快照。"""
+    if session is None:
+        with session_scope() as s:
+            return build_chunks(s)
+    jobs = session.execute(select(Job).options(defer(Job.embedding)).order_by(Job.id)).scalars().all()
+    posts = session.execute(select(Post, RawItem.raw_text, RawItem.source, RawItem.raw_json)
+                            .join(RawItem, RawItem.id == Post.raw_item_id).order_by(Post.id)).all()
+    return [c for j in jobs for c in job_chunks(j)] + [c for p, text, src, raw in posts for c in post_chunks(p, text, src, raw)]
 
 
-def _sync_chunks(s: Session, chunks: list[Chunk], old: dict[str, str]) -> dict[str, int]:
+def _sync_chunks(s: Session, chunks: list[Chunk], old: dict[str, Any]) -> dict[str, int]:
     stats: Counter = Counter()
     for c in chunks:
-        if old.get(c.key) == c.content_hash:
+        row = chunk_values(c)
+        if c.key in old and all(old[c.key][field] == value for field, value in row.items()):
             stats["unchanged"] += 1
             continue
         stats["changed" if c.key in old else "new"] += 1
-        row = {"key": c.key, "kind": c.kind, "job_id": c.job_id, "post_id": c.post_id, "companies": list(c.companies),
-               "header": c.header, "body": c.body, "content": c.content, "content_hash": c.content_hash,
-               "published_at": c.published_at, "is_synthetic": c.is_synthetic}
         stmt = insert(SearchChunk).values(row)
         s.execute(stmt.on_conflict_do_update(index_elements=["key"], set_={k: stmt.excluded[k] for k in row if k != "key"}))
     keys = {c.key for c in chunks}
@@ -56,7 +57,8 @@ def sync_post_chunks(s: Session, post_ids: list[int], *, skip_locked: bool = Tru
     ids = [p.id for p, _ in rows]
     questions = sync_questions(s, ids)
     chunks = [c for p, r in rows for c in post_chunks(p, r.raw_text, r.source, r.raw_json)]
-    old = dict(s.execute(select(SearchChunk.key, SearchChunk.content_hash).where(SearchChunk.post_id.in_(ids))).all())
+    old = {r["key"]: r for r in s.execute(select(*(getattr(SearchChunk, f) for f in CHUNK_FIELDS))
+                                        .where(SearchChunk.post_id.in_(ids))).mappings()}
     return {**_sync_chunks(s, chunks, old), "posts": len(ids), "questions": questions["questions"],
             "skipped_posts": len(post_ids) - len(ids)}
 
@@ -68,8 +70,13 @@ def sync_chunks() -> dict[str, int]:
         sync_questions(s)
     chunks = build_chunks()
     with session_scope() as s:
-        old = dict(s.execute(select(SearchChunk.key, SearchChunk.content_hash)).all())
+        old = {r["key"]: r for r in s.execute(select(*(getattr(SearchChunk, f) for f in CHUNK_FIELDS))).mappings()}
         return _sync_chunks(s, chunks, old)
+
+
+def embedding_pending():
+    """与检索可用条件对应；指纹一致而向量为空也必须补处理。"""
+    return SearchChunk.embedding.is_(None) | SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash)
 
 
 def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str, Any]:
@@ -81,7 +88,7 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
         raise ValueError("embedding limit must be positive")
     with session_scope() as s:
         stmt = (select(SearchChunk.id, SearchChunk.content, SearchChunk.content_hash)
-                .where(SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash)).order_by(SearchChunk.id))
+                .where(embedding_pending()).order_by(SearchChunk.id))
         rows = s.execute(stmt.limit(limit) if limit else stmt).all()
     if not rows:
         return {"pending": 0, "embedded": 0, "failed_groups": 0, "errors": [], "remaining": 0}
@@ -95,7 +102,7 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
             for r, v in zip(group, vecs, strict=True):
                 result = s.execute(update(SearchChunk).where(
                     SearchChunk.id == r.id, SearchChunk.content_hash == r.content_hash,
-                    SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash))
+                    embedding_pending())
                     .values(embedding=v, embedded_hash=r.content_hash, embed_model=llm.settings.embed_model))
                 saved += result.rowcount
         return saved
@@ -104,7 +111,7 @@ def embed_pending(llm: LLM | None = None, limit: int | None = None) -> dict[str,
     errors = [str(r)[:200] for r in results if isinstance(r, Exception)]
     with session_scope() as s:
         remaining = s.scalar(select(func.count()).select_from(SearchChunk).where(
-            SearchChunk.embedded_hash.is_distinct_from(SearchChunk.content_hash)))
+            embedding_pending()))
     return {"pending": len(rows), "embedded": sum(r for r in results if isinstance(r, int)), "failed_groups": len(errors),
             "errors": errors[:3], "remaining": remaining}
 

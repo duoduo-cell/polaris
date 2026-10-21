@@ -646,6 +646,22 @@ def knowledge_retry() -> None:
     typer.echo(json.dumps(retry(), ensure_ascii=False, indent=2))
 
 
+@app.command("knowledge-diagnose")
+def knowledge_diagnose() -> None:
+    """全量只读检查历史未抽取、对齐、切块／题目及向量积压；不调用模型或采集。"""
+    from polaris.search.audit import diagnose
+
+    typer.echo(json.dumps(diagnose(), ensure_ascii=False, indent=2))
+
+
+@app.command("knowledge-enqueue")
+def knowledge_enqueue(allow_prune: bool = typer.Option(False, help="确认沿用全量对齐清理旧岗位的行为")) -> None:
+    """诊断后显式排队历史知识积压；不执行。已有待办不重置，耗尽需独立 retry。"""
+    from polaris.search.audit import enqueue_refresh
+
+    typer.echo(json.dumps(enqueue_refresh(allow_prune=allow_prune), ensure_ascii=False, indent=2))
+
+
 @app.command("knowledge-work")
 def knowledge_work() -> None:
     """执行一遍已到期知识待办（可能调用向量服务），不启动采集／浏览器。"""
