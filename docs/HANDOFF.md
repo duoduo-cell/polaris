@@ -11,13 +11,17 @@
    作者要求易懂、可执行的整体开发说明，见 [DEVELOPMENT.md](DEVELOPMENT.md)；PURPOSE 含接下来三轮执行卡。手册讲执行方法，不能代替当前状态核查或把计划算成完成。
 3. 完整阅读 [GitHub 对标与项目审计](research/2026-10-21-github-and-project-audit.md)，再按需要看 [生产方向与岗位面经调研](research/2026-10-21-production-direction.md)。8 个仓库的检索状态、HEAD 与阅读文件 blob SHA 见 [来源清单](research/2026-10-21-github-reference-manifest.json)。没有运行竞品，不宣称性能胜出。
 4. 先检查 `git status --short`、当前 HEAD 与三个前端未提交文件；只读确认运行进程，不重启采集或占用其浏览器。
-5. 来源核验、官网失败冷却、无新增补处理、知识持久补跑、历史诊断及派生写入一致性均已有候选与隔离证据，未部署。先读 TECH 契约及下方最新一致性结果；下一步按 PURPOSE 设计清理／恢复执行保护并准备反例，之后实现与隔离验证，再测实际可检索延迟，不从头重做已有机制。
+5. 来源核验、官网失败冷却、无新增补处理、知识持久补跑、历史诊断及派生写入一致性均已有候选与隔离证据，未部署。先读 TECH 契约及下方最新一致性结果；清理执行保护最新已隔离通过（136 项），下一步按 PURPOSE 测实际可检索延迟，不从头重做已有机制。
 
 ## 当前目标与有效决定
 
-### 2026-10-21 文档交付时的在途修改核对
+### 2026-10-21 最新清理保护节点（候选，未部署）
 
-整体手册继续维护在 DEVELOPMENT，PURPOSE 仍是唯一路线。以 `084ee39` 加工作区核对：清理保护已经开始，不再是“尚未实现或复现”。上轮反例修前记录为 8 失败、1 通过，本次未重跑；旧 117 项通过不覆盖当前修改。未提交 `src/polaris/align/pruning.py`、`src/polaris/align/build.py`、`src/polaris/search/audit.py`、`tests/test_alignment_pruning.py`，必须保留。源码确认 audit 的人工记录保护位于 return 后不可达，worker 尚未传递许可／处理 blocked，空输入规则未接齐；当前不构成可运行节点。先补齐并隔离验证，再测延迟；不对真实库恢复。本次仅校正文档，未继续改业务代码或运行业务测试。下方较早记录中的“先设计”按这个最新状态理解。
+接续 `31f4d32` 的半成品已补齐。清理保存固定 Job ID／版本（除 embedding 的 Job 列及 Posting ID 集合），空输入、有人工记录、候选变化或旧代许可均阻止并回滚；NULL key 始终 unmanaged。worker 保存 blocked 和原因，不自动重试、不消耗旧失败额度；重新诊断可恢复合法清理，新通知／通用 retry 不解锁。执行前以 Run 的 FOR SHARE 核验代次，和通知 UPDATE 串行；通知先提交则旧许可拒绝，清理先核验则通知等清理提交后登记新代，旧任务不能完成新代。
+
+历史修前 8 失败、1 通过；基础修后 9 通过。扩展后曾 59 通过、1 失败，为测试只建笔记却要求事件，补齐合成事件后 60 通过；最终加代次竞争边界，十文件 **136 通过、0 跳过**，4 条既有 ARRAY 弃用告警。真实隔离 PostgreSQL、合成数据、假向量，包含真实锁等待及关键词／pgvector 查询。晚到跟进在清理已持父行锁时可能明确外键失败，不保证两个并发操作都成功。完整命令及 Ruff／diff 见 DEVLOG。
+
+本节点源码：align/pruning、align/build、search/audit、search/maintenance、cli 及 pruning／audit 测试；同步六份文档。提交状态查 git log/status，八个既有来源／前端文件保留单独未提交。不新增依赖／表／迁移，不启用真实库恢复，不操作采集／模型／冻结副本。下一步测整链实际可检索延迟，整轮和网页任务未验收。下方 102／117 等是历史证据，清理规则以本节和 TECH 最新表为准。
 
 - 最终目的：找到 LLM / Agent 实习；项目既是可核实作品，也是作者每天使用的工具。
 - 本轮调研后的定位：面向中国 LLM / Agent 实习求职者的证据型求职工作台。连续任务为“本次条件找岗 → 核验时效与来源 → 解释符合/不符/未知 → 基于所选岗位准备面试 → 记录用户确认的跟进”。
@@ -41,11 +45,11 @@
 
 2026-10-21 本轮验证：`test_daemon.py test_knowledge_maintenance.py test_search.py test_jobs_tools.py test_peers.py test_scouts.py` 共 61 项；`test_db.py test_collectors.py test_align.py test_api.py` 共 35 项，合计 96 项通过、0 跳过。使用隔离 polaris_test、合成数据、假模型／平台；包括真实子进程直接退出和实际关键词／向量检索。未跑全量、真实模型、真实平台或网页验收，未重启采集。全局 Run hook 会给之后的官网成功快照排队，但不会自动处理历史快照／未排队积压。
 
-当前锁边界：直接入口不共享 coordinator 整遍执行锁，但对齐／切块／题目入口已共享下述事务写锁。历史未排队积压不自动发现；对齐／切块仍全量，清理执行保护待验收；图谱核心完成后不自动补跑；主动推送不等待核心完成。不能把子机制当整轮已验收。已有前端与来源核验改动继续保留，提交状态以 git status/log 为准。
+当前锁边界：直接入口不共享 coordinator 整遍执行锁，但对齐／切块／题目入口已共享下述事务写锁。历史未排队积压不自动发现；对齐／切块仍全量，清理执行保护已有隔离证据；图谱核心完成后不自动补跑；主动推送不等待核心完成。不能把子机制当整轮已验收。已有前端与来源核验改动继续保留，提交状态以 git status/log 为准。
 
 诊断小步已本地提交 `112afd6`：新增 `src/polaris/search/audit.py`、`tests/test_knowledge_audit.py`，修改 `align/build.py`、`search/index.py`、`search/chunking.py`、`cli.py`，复用规则、只读诊断与显式排队。最初 9 通过、2 失败；后续已修复 `_sync_chunks` 只按正文指纹跳过元数据更新、`embed_pending` 忽略空向量但同指纹两项。选取／条件写回／剩余统计统一条件，保留既有晚到结果保护；诊断清理计数复用实际 NOT IN 条件，含有／无分组的 NULL-key 语义。
 
-既有隔离测试：audit 17 项，与 embedding_consistency、knowledge_maintenance、daemon、search、align、results、jobs_tools 当时共 102 项通过、0 跳过，4 条既有 ARRAY any 弃用告警。使用 polaris_test、合成数据、假向量，含实际 BM25／pgvector 查询、元数据日期过滤、只读 repeatable read、另一事务并发提交、重复排队不清检查点、实际清理范围。最新相邻集合及并发修复见下节；没有部署或真实平台／模型验收。勿把诊断当全库健康保证；`--allow-prune` 是允许全量清理的开关，不是执行时固定删除清单，**不可对真实库执行排队恢复**。下一步收拢清理／恢复执行保护，再测整链实际可用延迟。诊断已提交；八个既有来源／前端改动继续单独保留未提交。
+既有隔离测试：audit 17 项，与 embedding_consistency、knowledge_maintenance、daemon、search、align、results、jobs_tools 当时共 102 项通过、0 跳过，4 条既有 ARRAY any 弃用告警。使用 polaris_test、合成数据、假向量，含实际 BM25／pgvector 查询、元数据日期过滤、只读 repeatable read、另一事务并发提交、重复排队不清检查点、实际清理范围。最新相邻集合及并发修复见下节；没有部署或真实平台／模型验收。勿把诊断当全库健康保证；旧 `--allow-prune` 当时仅为开关；最新已改为固定 ID／版本许可，见上方节点；当前仍不可对真实库执行排队恢复。下一步测整链延迟。诊断已提交；八个既有来源／前端改动继续单独保留未提交。
 
 后续候选已收拢向量写回竞争：`embed_pending` 用请求正文指纹和当前待处理条件原子写回，按实际更新数计完成，避免旧请求覆盖新向量／同内容已完成向量。新增 `tests/test_embedding_consistency.py` 六项，含真实双线程竞争、混合批次和实际 pgvector 查询；与 maintenance/daemon/search/results/jobs_tools 共 72 项隔离通过、0 跳过，Ruff 通过。没有新依赖／迁移或真实模型调用；不保证并发服务调用去重，不解决全量切块旧快照覆盖，完整并发边界仍待收拢。
 
@@ -55,11 +59,11 @@
 
 **上述是修改前记录，现已修复并转绿。** 新增 `search/locking.py`，派生入口 `run_align`、`sync_chunks`、`sync_post_chunks`、独立 `sync_questions` 在读取前取共享事务锁 `2026102103`；对齐及全量切块各自同 Session 读写。题目／画像／块失败整体回滚；指定帖子重读 caller 缓存前保留合法未提交修改。申请锁时禁止自动 flush，锁忙不先写 caller 脏对象。指定帖子入口未发现生产调用方，不能宣称在线修复已接通。
 
-worker 遇忙撤回本次 claim 增量，保留旧失败额度与新代次，记录 waiting_for，5 分钟冷却后再试；直接 refresh 上游异常即停，忙时标 retryable，但不自动排队／重试。事务锁不保护未参与的原文／抽取写入，不跨全部阶段或网络请求；全量清理／恢复执行保护仍未完成，不对真实库恢复。
+worker 遇忙撤回本次 claim 增量，保留旧失败额度与新代次，记录 waiting_for，5 分钟冷却后再试；直接 refresh 上游异常即停，忙时标 retryable，但不自动排队／重试。事务锁不保护未参与的原文／抽取写入，不跨全部阶段或网络请求；当时清理保护未完成；最新隔离通过见上节，仍不对真实库恢复。
 
 本次实际命令见 DEVLOG：一致性文件 13 项，连同 audit、embedding_consistency、maintenance、daemon、search、align、results、jobs_tools 共 **117 项通过、0 跳过，退出码 0**；4 条既有 ARRAY any 弃用告警。真实隔离 PostgreSQL、合成数据、假服务，含实际关键词／向量查询，无真实模型／平台或网页整体验收。Ruff／diff 结果见日志。前轮发现的真实自动 flush 缺陷与测试漏传查询参数分开记录，后者不计产品缺陷。
 
-本节点文件为 locking、align/build、interviews、search/index、maintenance 及一致性／维护测试，连同六份当前文档；提交状态用 git status/log 查。八个既有来源／前端改动继续原样保留，不混入本节点。下一步按 PURPOSE，先给清理保护的具体设计与反例，再实现和验收；不要重新修已经转绿的五项。
+本节点文件为 locking、align/build、interviews、search/index、maintenance 及一致性／维护测试，连同六份当前文档；提交状态用 git status/log 查。八个既有来源／前端改动继续原样保留，不混入本节点。该历史一致性节点已交付；最新清理保护见上节，后续按 PURPOSE 测延迟，不重做已转绿机制。
 
 ## 第一轮：来源核验可信性（已实现，未部署）
 

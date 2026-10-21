@@ -655,7 +655,7 @@ def knowledge_diagnose() -> None:
 
 
 @app.command("knowledge-enqueue")
-def knowledge_enqueue(allow_prune: bool = typer.Option(False, help="确认沿用全量对齐清理旧岗位的行为")) -> None:
+def knowledge_enqueue(allow_prune: bool = typer.Option(False, help="许可本次诊断的旧岗位清理；执行时复核，人工跟进／事件不可清理")) -> None:
     """诊断后显式排队历史知识积压；不执行。已有待办不重置，耗尽需独立 retry。"""
     from polaris.search.audit import enqueue_refresh
 

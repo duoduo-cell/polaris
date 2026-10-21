@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from polaris.align.pruning import PruneBlocked
 from polaris.db.models import Run
 from polaris.db.session import get_engine, session_scope
 from polaris.runs import git_commit
@@ -65,9 +66,11 @@ def request_refresh(reason: str, *, now: datetime | None = None, session: Sessio
             s.flush()
         else:
             run.params = {**run.params, "generation": run.params["generation"] + 1, "reason": reason[:100]}
+            # 许可只属于诊断时的那一代；新通知不能继承清理权限。
+            run.params = {k: v for k, v in run.params.items() if k != "prune_approval"}
             # 执行中收到新数据时，旧代的步骤不能把新代误记完成。冷却与额度保留。
             run.stats = {**run.stats, "stages": {}, "requested_at": now.isoformat()}
-            if run.status != "exhausted":
+            if run.status not in ("exhausted", "blocked"):
                 run.status = "pending"
         return run.id
 
@@ -85,10 +88,11 @@ def retry(*, now: datetime | None = None) -> dict[str, Any]:
         return {"queued": True, **_view(run)}
 
 
-def _execute(stage: str) -> dict[str, Any]:
+def _execute(stage: str, *, prune_approval: dict[str, str] | None = None,
+             prune_generation: tuple[int, int] | None = None) -> dict[str, Any]:
     if stage == "align":
         from polaris.align.build import run_align
-        return run_align()
+        return run_align(prune_approval=prune_approval, prune_generation=prune_generation) if prune_approval is not None else run_align()
     if stage == "chunks":
         from polaris.search.index import sync_chunks
         return sync_chunks()
@@ -194,6 +198,19 @@ def _record(run_id: int, generation: int, stage: str, result: dict[str, Any],
         return not error and not backlog
 
 
+def _block_pruning(run_id: int, stage: str, error: PruneBlocked, now: datetime) -> None:
+    """清理拒绝需要重新诊断，不消耗暂时故障额度，也不自动放宽许可。"""
+    with _state() as (_, run):
+        if run is None or run.id != run_id:
+            return
+        stats = dict(run.stats)
+        attempts = dict(stats["attempts"])
+        attempts[stage] = max(0, attempts.get(stage, 0) - 1)
+        run.status, run.finished_at = "blocked", now
+        run.stats = {**stats, "attempts": attempts, "blocked_reason": error.reason,
+                     "blocked_count": error.count, "blocked_at": now.isoformat()}
+
+
 def run_pending(*, now: datetime | None = None) -> dict[str, Any]:
     """至多一遍流水线／200 个向量块。失败有界，正常积压可分多遍推进。
 
@@ -207,23 +224,30 @@ def run_pending(*, now: datetime | None = None) -> dict[str, Any]:
             return {"ran": False, "reason": "busy"}
         try:
             with _state() as (_, run):
-                if run is None or run.status in ("ok", "exhausted"):
+                if run is None or run.status in ("ok", "exhausted", "blocked"):
                     return {"ran": False, "reason": run.status if run else "idle"}
                 if datetime.fromisoformat(run.stats["next_at"]) > started:
                     return {"ran": False, "reason": "cooldown"}
                 run_id, generation, stages = run.id, run.params["generation"], run.stats["stages"]
+                approval = run.params.get("prune_approval")
             for stage in STAGES:
                 if stages.get(stage, {}).get("state") == "ok":
                     continue
                 if not _claim(run_id, generation, stage, _now(now)):
                     break
                 try:
-                    result = _execute(stage)
+                    if stage == "align" and approval is not None:
+                        result = _execute(stage, prune_approval=approval, prune_generation=(run_id, generation))
+                    else:
+                        result = _execute(stage)
                     if not isinstance(result, dict):
                         raise TypeError(f"{stage} returned a non-dict result")
                     error = _error(stage, result)
                 except KnowledgeWriteBusy:
                     _defer_busy(run_id, stage, _now(now))
+                    break
+                except PruneBlocked as exc:
+                    _block_pruning(run_id, stage, exc, _now(now))
                     break
                 except Exception as exc:  # noqa: BLE001  中断不伪装成失败，留下已持久化的 running
                     error = f"{type(exc).__name__}: {exc}"[:200]

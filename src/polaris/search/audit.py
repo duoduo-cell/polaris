@@ -7,6 +7,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import defer
 
 from polaris.align.build import alignment_rows, load_views, official_snapshots
+from polaris.align.pruning import candidates, manifest, protected_ids
 from polaris.db.models import Company, InterviewQuestion, Job, Post, Posting, RawItem, Run, SearchChunk
 from polaris.db.session import session_scope
 from polaris.interviews import profile
@@ -57,11 +58,13 @@ def diagnose() -> dict[str, Any]:
         links = dict(s.execute(select(Posting.id, Posting.job_id)).all())
         mislinked = sum(links[pid] != (actual_jobs[row["key"]].id if row["key"] in actual_jobs else None)
                         or row["key"] not in actual_jobs for row, ids in planned for pid in ids)
-        # 与 run_align 的 NOT IN 完全一致：非空集合不匹配 NULL；空集合则会清理所有岗位。
-        stale_jobs = s.scalar(select(func.count()).select_from(Job).where(Job.key.not_in(expected_jobs)))
+        stale = candidates(s, expected_jobs)
+        stale_jobs = len(stale)
         alignment = {"missing_jobs": delta["missing"], "changed_jobs": delta["changed"],
                      "stale_jobs": stale_jobs, "mislinked_postings": mislinked}
-        unmanaged_jobs = sum(j.key is None for j in jobs) if expected_jobs else 0
+        unmanaged_jobs = sum(j.key is None for j in jobs)
+        pruning = {"candidates": manifest(s, stale), "protected_jobs": len(protected_ids(s, [j.id for j in stale])),
+                   "empty_alignment": bool(stale and not planned)}
 
         expected_chunks = {c.key: chunk_values(c) for c in build_chunks(s)}
         # 向量可能很大，诊断只加载检索字段，并在 SQL 统计不可用的向量。
@@ -76,12 +79,13 @@ def diagnose() -> dict[str, Any]:
         return {"snapshot_at": snapshot_at, "elapsed_ms": round((perf_counter() - started) * 1000, 2),
                 "task": task, "raw_pending": raw_pending, "alignment": alignment, "chunks": chunks,
                 "questions": questions, "embeddings": {"unavailable": unavailable}, "unmanaged_jobs": unmanaged_jobs,
+                "pruning": pruning,
                 "needs_refresh": bool(any(alignment.values()) or any(chunks.values()) or any(questions.values()) or unavailable),
                 "limitations": ["全量快照检查，单条 SQL 超时 30 秒，不保证整次耗时上限；快照后数据可能变化。",
                                 "复用当前对齐／切块／题目规则，不验证抽取准确性、提示词版本、来源真实性或实际检索质量。",
                                 "原文未抽取不由知识 worker 处理；不检查可选图谱、向量模型迁移或向量数值质量。",
-                                "排队沿用全量对齐清理：无分组时清理全部岗位；有分组时 NULL key 不清理，单列 unmanaged_jobs。",
-                                "stale_jobs 是当前快照计数，不是执行时删除清单；排队后数据变化与直接入口并发仍须处理。"]}
+                                "NULL key 始终不自动清理；含人工跟进／事件的旧岗位需另行处理，不能由清理许可覆盖。",
+                                "清理许可仅含候选 ID 和内容指纹；执行时重新核验并锁定，不是全库或跨阶段快照保证。"]}
 
 
 def enqueue_refresh(*, allow_prune: bool = False) -> dict[str, Any]:
@@ -91,11 +95,23 @@ def enqueue_refresh(*, allow_prune: bool = False) -> dict[str, Any]:
         state = run.status if run else "idle"
         if state == "exhausted":
             return {"queued": False, "reason": "exhausted", "diagnosis": diagnosis}
-        if run is not None and state != "ok":
+        if run is not None and state not in ("ok", "blocked"):
             return {"queued": False, "reason": "already_pending", "run_id": run.id, "diagnosis": diagnosis}
         if not diagnosis["needs_refresh"]:
             return {"queued": False, "reason": "no_detected_backlog", "diagnosis": diagnosis}
+        if diagnosis["pruning"]["empty_alignment"]:
+            return {"queued": False, "reason": "empty_alignment", "diagnosis": diagnosis}
+        if diagnosis["pruning"]["protected_jobs"]:
+            return {"queued": False, "reason": "protected_user_history", "diagnosis": diagnosis}
         if diagnosis["alignment"]["stale_jobs"] and not allow_prune:
             return {"queued": False, "reason": "prune_requires_acknowledgement", "diagnosis": diagnosis}
         run_id = maintenance.request_refresh("manual:historical-backlog", session=s)
+        target = s.get(Run, run_id)
+        target.params = {**target.params, "prune_approval": diagnosis["pruning"]["candidates"] if allow_prune else {}}
+        if target.status == "blocked":
+            target.status, target.finished_at = "pending", None
+            stats = {**target.stats, "next_at": datetime.now(UTC).isoformat()}
+            for key in ("blocked_reason", "blocked_count", "blocked_at"):
+                stats.pop(key, None)
+            target.stats = stats
         return {"queued": True, "run_id": run_id, "diagnosis": diagnosis}

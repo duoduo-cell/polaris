@@ -9,6 +9,23 @@
 
 ## 轮次
 
+### 10-21清理保护实现与整体开发手册更新（隔离通过，未部署）
+
+按已选工作单补齐 pruning／align／audit／maintenance／CLI：固定候选 ID 与业务版本及关联 Posting ID，执行前 FOR UPDATE 重查人工跟进／事件、版本和空输入，失败整体回滚。NULL key 永不自动清理；合法清理仍可完成并实际检索。blocked 保存原因，撤回本次 claim 计数，保留旧失败次数／新代待办，重新诊断才恢复，通知及通用 retry 不解锁。不增加依赖、表或迁移。
+
+历史修前 8 失败、1 通过；基础修后 9 通过。扩展后三文件曾 59 通过、1 失败，实际为并发测试只建笔记却要求事件，补齐合成事件后 60 通过，不计为产品缺陷。进一步审查发现 claim 后新通知仍可能使用 worker 已捕获许可，增加 Run 代次核对与 FOR SHARE；和通知 UPDATE 串行，真实双线程验证通知先到则拒绝、清理先核验则通知等待后保留新代待办。已提交跟进受保护；清理先持父行锁时晚到保存可明确外键失败，不声称两者总能成功。
+
+最终单进程命令（隔离 polaris_test，合成数据和假向量）：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m pytest tests/test_alignment_pruning.py tests/test_knowledge_consistency.py tests/test_knowledge_audit.py tests/test_embedding_consistency.py tests/test_knowledge_maintenance.py tests/test_daemon.py tests/test_search.py tests/test_align.py tests/test_results.py tests/test_jobs_tools.py -o addopts='' -q -ra --tb=short
+```
+
+退出码 0，**136 项通过、0 跳过**，4 条既有 ARRAY any 弃用告警；包含实际 PostgreSQL 锁等待、整体回滚、合法清理后 BM25／pgvector 查询。不是实站事故或质量／性能指标，没有真实模型、平台、网页整体验收或部署。同步 DEVELOPMENT 通俗步骤与实际工作单、TECH 契约、PURPOSE 当前小步、STATUS／HANDOFF。保留八个既有来源／前端修改，不混入节点，不操作采集／真实库／冻结副本。下一步按 PURPOSE 测整链可检索延迟，不能称第一轮完成。
+
+本节点七个源码／测试文件 Ruff 通过，`git diff --check` 通过；六份文档中的 12 个不同本地文件链接存在，UTF-8 及工作单标题核对通过。未核验全部历史锚点或外部网址。测试后的最后代码调整仅为拆开过长条件表达式，Ruff 已重查。
+
+
 ### 10-21整体开发文档：明确问题优先级并校准在途状态（仅文档）
 
 按作者要求继续完善 DEVELOPMENT，沿用七步工作法、16 类验收设计、接口核查、优化／增强门槛与个人贡献说明；新增按用户影响排序的决策表，不另建一份重复路线。既有八仓库、公开反馈及岗位研究作为证据入口，本次没有新增联网核验或竞品实测。

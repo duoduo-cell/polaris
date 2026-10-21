@@ -1,6 +1,6 @@
 """把所有 posting 对齐成岗位：同岗识别 → 字段裁决 → 写 jobs（按稳定编号增量更新），posting 指向它的岗位。
 
-可重复跑：同一批数据跑两次结果一样；新采到的 posting 会并进已有岗位或新建岗位；没人引用的旧岗位删掉。
+可重复跑；旧岗位仅在具有对象版本许可且没有人工跟进／事件时清理。
 """
 from collections import Counter
 from typing import Any
@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, defer
 
 from polaris.align.match import PostingView, cluster, job_key, view
+from polaris.align.pruning import PruneBlocked, authorize, candidates
 from polaris.align.resolve import RESOLVED_FIELDS, resolve
 from polaris.companies import load as load_companies
 from polaris.db.models import Company, Job, Posting, RawItem
@@ -99,13 +100,25 @@ def alignment_rows(views: list[PostingView], snapshots: dict[str, Any],
     return rows
 
 
-def run_align() -> dict[str, Any]:
+def run_align(*, prune_approval: dict[str, str] | None = None,
+              prune_generation: tuple[int, int] | None = None) -> dict[str, Any]:
     stats: Counter = Counter()
     with session_scope() as s:
         acquire_knowledge_write(s)
         views = load_views(s)
         rows = alignment_rows(views, official_snapshots(s), ensure_companies(s))
         keys_seen = {row["key"] for row, _ in rows}
+        stale_jobs = candidates(s, keys_seen, lock=True)
+        if not rows and stale_jobs:
+            raise PruneBlocked("empty_alignment", len(stale_jobs))
+        if stale_jobs and prune_generation is not None:
+            from polaris.db.models import Run
+
+            # 与新通知对 Run 的 UPDATE 串行；检查后的许可不会在提交前失效。
+            run = s.scalar(select(Run).where(Run.id == prune_generation[0]).with_for_update(read=True))
+            if run is None or run.params.get("generation") != prune_generation[1]:
+                raise PruneBlocked("generation_changed", len(stale_jobs))
+        authorize(s, stale_jobs, prune_approval)
         for row, posting_ids in rows:
             stmt = insert(Job).values(row)
             stmt = stmt.on_conflict_do_update(index_elements=["key"], set_={c: stmt.excluded[c] for c in row if c != "key"})
@@ -117,7 +130,8 @@ def run_align() -> dict[str, Any]:
             stats["conflicts"] += len(row["conflicts"])
             for c in row["conflicts"]:
                 stats[f"conflict:{c['field']}"] += 1
-        stale = s.execute(delete(Job).where(Job.key.not_in(keys_seen)).returning(Job.id)).scalars().all()
+        # 固定本事务已锁定且核验的对象；不再按动态 NOT IN 扩大实际删除集合。
+        stale = s.execute(delete(Job).where(Job.id.in_([j.id for j in stale_jobs])).returning(Job.id)).scalars().all()
     stats["postings"] = len(views)
     stats["stale_removed"] = len(stale)
     return dict(stats)

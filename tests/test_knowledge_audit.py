@@ -246,14 +246,12 @@ def test_null_key_job_prune_diagnosis_matches_actual_alignment(db, has_posting):
         s.flush()
         job_id = job.id
     out = audit.diagnose()
-    assert out["alignment"]["stale_jobs"] == (0 if has_posting else 1)
-    assert out["unmanaged_jobs"] == (1 if has_posting else 0)
-    if not has_posting:
-        assert audit.enqueue_refresh()["reason"] == "prune_requires_acknowledgement"
+    assert out["alignment"]["stale_jobs"] == 0
+    assert out["unmanaged_jobs"] == 1
     result = run_align()
-    assert result["stale_removed"] == (0 if has_posting else 1)
+    assert result["stale_removed"] == 0
     with session_scope() as s:
-        assert (s.get(Job, job_id) is not None) == has_posting
+        assert s.get(Job, job_id) is not None
 
 
 def test_stale_chunk_is_detected_and_removed_by_recovery(db, monkeypatch):
