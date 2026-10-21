@@ -39,7 +39,9 @@
 
 已知待收拢：直接 refresh/index/在线同步不共享 coordinator 执行锁；历史未排队积压不自动发现；对齐／切块仍全量；图谱错误可见但核心完成后不自动补图谱；主动推送不等待核心完成。不能把本轮子机制当整轮已验收。已有前端与来源核验改动继续保留，提交状态以 git status/log 为准。
 
-接续中的未提交诊断小步：新增 `src/polaris/search/audit.py`、`tests/test_knowledge_audit.py`，修改 `align/build.py`、`search/index.py`、`cli.py`，用于复用规则、只读诊断与显式排队。2026-10-21 本次复跑新测试为 9 通过、2 失败、0 跳过（隔离 polaris_test、假向量），未通过验收。先收拢 `_sync_chunks` 只按正文指纹跳过元数据更新、`embed_pending` 忽略空向量但同指纹两项；选取／条件写回／剩余统计须一致，保留既有晚到结果保护。再核对 NULL-key 岗位的诊断清理计数与原 SQL 不一致，以及并发／实际检索边界。勿把此诊断当全库健康保证或对真实库执行排队恢复；当前没有部署。八个既有来源／前端改动继续单独保留。本次只完善手册与状态记录，没有继续修改业务实现。
+接续中的未提交诊断小步：新增 `src/polaris/search/audit.py`、`tests/test_knowledge_audit.py`，修改 `align/build.py`、`search/index.py`、`search/chunking.py`、`cli.py`，复用规则、只读诊断与显式排队。最初 9 通过、2 失败；后续已修复 `_sync_chunks` 只按正文指纹跳过元数据更新、`embed_pending` 忽略空向量但同指纹两项。选取／条件写回／剩余统计统一条件，保留既有晚到结果保护；诊断清理计数复用实际 NOT IN 条件，含有／无分组的 NULL-key 语义。
+
+后续实际隔离测试：audit 17 项，与 embedding_consistency、knowledge_maintenance、daemon、search、align、results、jobs_tools 共 102 项通过、0 跳过，4 条既有 ARRAY any 弃用告警。使用 polaris_test、合成数据、假向量，含实际 BM25／pgvector 查询、元数据日期过滤、只读 repeatable read、另一事务并发提交、重复排队不清检查点、实际清理范围。本次文档收尾仅收集确认 102 项、核对源码和 Ruff，未重复运行整组；没有部署或真实平台／模型验收。勿把诊断当全库健康保证；`--allow-prune` 是允许全量清理的开关，不是执行时固定删除清单。直接刷新／全量快照与在线同步并发仍未解决，**不可对真实库执行排队恢复**。下一小步先讲清并验证这些并发和清理边界，再测整链实际可用延迟。八个既有来源／前端改动继续单独保留；本次只改文档，业务候选保留未提交。
 
 后续候选已收拢向量写回竞争：`embed_pending` 用请求正文指纹和当前待处理条件原子写回，按实际更新数计完成，避免旧请求覆盖新向量／同内容已完成向量。新增 `tests/test_embedding_consistency.py` 六项，含真实双线程竞争、混合批次和实际 pgvector 查询；与 maintenance/daemon/search/results/jobs_tools 共 72 项隔离通过、0 跳过，Ruff 通过。没有新依赖／迁移或真实模型调用；不保证并发服务调用去重，不解决全量切块旧快照覆盖，完整并发边界仍待收拢。
 

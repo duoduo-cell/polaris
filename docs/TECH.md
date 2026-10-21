@@ -35,6 +35,23 @@
 
 证据：隔离 `polaris_test`、合成数据、假模型／平台，覆盖子进程 `os._exit`、重启、局部批失败、200+5 分遍、generation 变化、耗尽和事务回滚；实际 pg_search 与 pgvector 查询分别验证可用。测试推进冷却时钟，不是真实等待或生产延迟；详细命令和未验证范围见 DEVLOG。
 
+### 历史积压诊断与显式排队（2026-10-21，未提交候选）
+
+实现为 `search/audit.py`，只读诊断与执行分开，不新增依赖／表。下表是现有候选契约，隔离通过不代表已允许对真实库恢复。
+
+| 契约 | 行为与边界 |
+|---|---|
+| `knowledge-diagnose` | 不调用模型、浏览器或写库；单个 READ ONLY、REPEATABLE READ 事务；每条 SQL 30 秒期限，非整次硬期限。返回 snapshot_at、elapsed_ms，不输出原文，不加载向量 |
+| 状态与数据 | task 只表示最新维护任务；raw_pending 分 job/post 数量及最早时间，不计为知识 worker 待办。needs_refresh 仅表示本次已检查的对齐、块、题目或向量存在缺口 |
+| 对齐／切块／题目 | 复用 alignment_rows、build_chunks、chunk_values 和纯 profile 规则。报告缺失／变化／过时及关联缺口；不调用会写入的 sync_questions。日期及等价时区规范比较 |
+| 元数据同步 | `_sync_chunks` 比较全部持久业务字段，元数据改变也更新，保留 embedding 和 embedded_hash；正文指纹不变无需重嵌入。日期映射为 UTC 零点，非采集时间 |
+| 待向量条件 | `embedding IS NULL OR embedded_hash IS DISTINCT FROM content_hash`；诊断、选取、原子条件写回和剩余统计共享；正文版本保护继续生效 |
+| `knowledge-enqueue` | 先诊断，再在维护状态锁内判断；耗尽不复位，已有非 ok 任务不清检查点或冷却，无已检出积压则不排。仅登记待办，不立即执行 |
+| 全量清理 | stale_jobs 按真实对齐的 NOT IN SQL 计数：无分组时全部岗位会被清理；有分组时 NULL key 不清理，另报 unmanaged_jobs。检出清理时默认拒绝排队，需显式 `--allow-prune` |
+| 尚无保证 | 诊断与排队／执行不同快照，清理计数不是固定删除清单；开关不提供执行时保护。直接入口并发、全量旧快照覆盖未解决，不对真实库运行恢复 |
+
+诊断全量扫描，不能证明抽取质量、提示词／模型版本兼容、来源真实性、向量数值质量、图谱健康或实际召回。快照后数据可变化；诊断无缺口不是整库健康证明。audit 17 项及相邻集合共 102 项隔离通过；测试细节与命令见 DEVLOG。
+
 ## 1. 总体架构
 
 ```
