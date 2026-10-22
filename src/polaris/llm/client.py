@@ -246,6 +246,9 @@ class LLM:
                  prompt_version: str | None = None, cache: bool | None = None,
                  check: Callable[[dict[str, Any]], tuple[bool, str | None, Any]] | None = None):
         """发一次请求：读缓存、限流时等待重试、记账。返回 (回答, 记录编号, 是否读了缓存, 校验结果)。"""
+        if endpoint == "chat" and self.settings.llm_enable_thinking is not None:
+            body = {**body, "extra_body": {"enable_thinking": self.settings.llm_enable_thinking,
+                                           **(body.get("extra_body") or {})}}
         is_embed = endpoint == "embeddings"
         if endpoint == "rerank":
             client, base = self.rerank_client, self.settings.rerank_base_url or ""

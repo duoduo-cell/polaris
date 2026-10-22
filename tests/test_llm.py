@@ -67,6 +67,38 @@ def make_llm(server: FakeServer, **overrides) -> tuple[LLM, MemoryRecorder, list
     return LLM(settings, recorder=rec, sleep=sleeps.append, http_client=client), rec, sleeps
 
 
+def test_optional_thinking_setting_reaches_request_and_record():
+    server = FakeServer().on(CHAT, completion("收到"))
+    llm, rec, _ = make_llm(server, llm_enable_thinking=False)
+    llm.chat([{"role": "user", "content": "hi"}], purpose="thinking_config")
+    assert server.bodies(CHAT)[0]["enable_thinking"] is False
+    assert rec.rows[0]["request"]["extra_body"]["enable_thinking"] is False
+
+
+def test_unconfigured_thinking_does_not_send_provider_specific_parameter():
+    server = FakeServer().on(CHAT, completion("收到"))
+    llm, _, _ = make_llm(server, llm_enable_thinking=None)
+    llm.chat([{"role": "user", "content": "hi"}], purpose="thinking_default")
+    assert "enable_thinking" not in server.bodies(CHAT)[0]
+
+
+def test_explicit_call_settings_override_thinking_default_without_losing_other_fields():
+    server = FakeServer().on(CHAT, completion("收到"))
+    llm, _, _ = make_llm(server, llm_enable_thinking=False)
+    llm.chat([{"role": "user", "content": "hi"}], purpose="thinking_override",
+             extra_body={"enable_thinking": True, "custom_parameter": "kept"})
+    assert server.bodies(CHAT)[0]["enable_thinking"] is True
+    assert server.bodies(CHAT)[0]["custom_parameter"] == "kept"
+
+
+def test_agent_model_preserves_provider_options_with_thinking_setting():
+    from polaris.agent.models import chat_model
+
+    settings = get_settings().model_copy(update={"llm_enable_thinking": False})
+    model = chat_model(settings=settings, extra_body={"custom_parameter": "kept"})
+    assert model.extra_body == {"enable_thinking": False, "custom_parameter": "kept"}
+
+
 def test_chat_records_tokens_latency_and_no_key():
     server = FakeServer().on(CHAT, completion("收到"))
     llm, rec, _ = make_llm(server)

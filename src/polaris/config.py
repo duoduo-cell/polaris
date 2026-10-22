@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     llm_cache: bool = False
     # 结构化输出：auto 先试 json_schema，不支持再换 json_object；已知不支持时直接写 json_object 省一次调用
     llm_json_mode: Literal["auto", "json_object"] = "auto"
+    llm_enable_thinking: bool | None = None  # 仅支持该参数的服务显式配置；未配置不发送
 
     # 向量服务可以和对话服务分开；不配就用对话服务
     embed_base_url: str | None = None
