@@ -196,6 +196,9 @@ def jobs_trend(args: JobsTrendArgs) -> dict:
 
 
 def jobs_search(args: JobsSearchArgs) -> dict:
+    from polaris.matching_scope import criteria
+
+    current = criteria(args.model_dump())
     # 先核实结构化范围，避免在已无候选时仍付费换关键词；不在数据库事务中等待检索服务。
     with session_scope() as s:
         stmt = select(Job).where(Job.is_synthetic.is_(False), Job.status == "active")
@@ -234,7 +237,7 @@ def jobs_search(args: JobsSearchArgs) -> dict:
     with session_scope() as s:
         from polaris.match import matches
 
-        example_fits = matches(s, [j.id for j in excluded_rows]) if excluded_rows else {}
+        example_fits = matches(s, [j.id for j in excluded_rows], criteria=current) if excluded_rows else {}
         example_sources = job_sources(s, [j.id for j in excluded_rows]) if excluded_rows else {}
         excluded_examples = [{"id": f"J-{j.id}", "title": j.title, "company": j.company or j.company_name,
                               "reported_date": j.posted_at.isoformat(), "date_kind": kinds[j.id],
@@ -246,7 +249,7 @@ def jobs_search(args: JobsSearchArgs) -> dict:
         progress = states(s, [j.id for j in rows[:args.limit]])
         from polaris.match import matches
 
-        fits = matches(s, [j.id for j in rows[:args.limit]])
+        fits = matches(s, [j.id for j in rows[:args.limit]], criteria=current)
         for j, item in zip(rows[:args.limit], items, strict=True):
             item["sources"] = sources[j.id][:3]
             item["source_count"] = len(sources[j.id])

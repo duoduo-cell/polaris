@@ -137,16 +137,26 @@ def job_match(job: Job, p: Profile, *, background: dict[str, str] | None = None)
                        "not_stated": [s for s in required if s not in mine], "known": bool(p.skills)}}
 
 
-def matches(s: Any, job_ids: list[int], p: Profile | None = None) -> dict[int, dict[str, Any]]:
+def matches(s: Any, job_ids: list[int], p: Profile | None = None, *,
+            criteria: dict[str, Any] | None = None) -> dict[int, dict[str, Any]]:
     """一批岗位各自的匹配；记忆里还没有条件时返回空。"""
     from sqlalchemy import select
 
     personalized = p is None
-    p = p or profile()
+    from polaris.matching_scope import criteria as clean_criteria
+    from polaris.matching_scope import scope_note, scoped_profile
+
+    scope = clean_criteria(criteria or {})
+    p = scoped_profile(p or profile(), scope)
     if p is None or not job_ids:
         return {}
     from polaris.memory.update import card
 
     background = {f.attribute: f.value for f in card(s, datetime.now(UTC).date())
                   if f.attribute in ("degree", "paper_experience")} if personalized else {}
-    return {j.id: job_match(j, p, background=background) for j in s.scalars(select(Job).where(Job.id.in_(job_ids)))}
+    results = {j.id: job_match(j, p, background=background) for j in s.scalars(select(Job).where(Job.id.in_(job_ids)))}
+    if scope:
+        for result in results.values():
+            result["criteria"] = scope.copy()
+            result["note"] = scope_note(scope) + result["note"]
+    return results

@@ -110,7 +110,20 @@ def titles(s: Session, references: list[str]) -> dict[str, str]:
 def presentation(s: Session, answer: str, calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
     allowed = set().union(*(refs_from_output(c.get("output", "")) for c in calls if c.get("ok")))
     selected = list(dict.fromkeys(r for r in REF_RE.findall(answer) if r in allowed))[:12]
-    return entities(s, selected)
+    cards = entities(s, selected)
+    # 正式卡片保留该轮已成功查询时的条件对照，不能重新按长期画像覆盖它。
+    snapshots = {}
+    for call in calls:
+        if not call.get("ok") or call.get("tool") not in ("jobs_search", "jobs_get"):
+            continue
+        try:
+            data = json.loads(call.get("output", ""))
+        except (TypeError, ValueError):
+            continue
+        for item in data.get("items", [data]) if isinstance(data, dict) else []:
+            if isinstance(item, dict) and item.get("id") in selected and isinstance(item.get("match"), dict):
+                snapshots[item["id"]] = item["match"]
+    return [{**card, "match": snapshots[card["id"]]} if card["id"] in snapshots else card for card in cards]
 
 
 def activity(call: dict[str, Any], data: Any = None) -> dict[str, Any]:

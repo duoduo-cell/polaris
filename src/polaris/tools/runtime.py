@@ -50,6 +50,7 @@ class ToolRuntime:
         self.results: dict[int, Any] = {}  # 完整结构化结果给界面；不受模型文本长度限制影响
         self.on_done: Any = None  # 每次调用结束后通知一下（网页显示"查到了多少"）；参数是调用记录和结构化结果
         self.user_request: str | None = None
+        self.job_criteria: dict[str, dict[str, Any]] = {}
 
     def invoke(self, spec: ToolSpec, raw_args: dict[str, Any]) -> str:
         start = time.perf_counter()
@@ -80,6 +81,14 @@ class ToolRuntime:
                                   "不足就解释排除原因。", False, "constraint_violation", start)
         if self.agent == "main":  # 和用户对话时的刹车；评测和 MCP 照旧
             same = next((c for c in reversed(self.calls) if c["tool"] == spec.name and c["args"] == normalized and c["ok"]), None)
+            if same is not None and spec.name == "jobs_get":
+                # 同一岗位刚被换城市/出勤条件重新查询过，不能复用旧范围的详情。
+                try:
+                    cached_scope = (json.loads(same["output"]).get("match") or {}).get("criteria") or {}
+                except (TypeError, ValueError, AttributeError):
+                    cached_scope = None
+                if cached_scope != self._job_criteria(normalized.get("job_id")):
+                    same = None
             if same is not None and not spec.live:  # 参数一模一样、这次回答里刚查过：直接给上次的结果
                 return same["output"]
             cap = PER_ANSWER_CAPS.get(spec.name)
@@ -110,6 +119,22 @@ class ToolRuntime:
 
         try:
             data = spec.func(args)
+            if spec.name == "jobs_search" and isinstance(data, dict):
+                from polaris.matching_scope import criteria
+
+                current = criteria(normalized)
+                for item in data.get("items", []):
+                    if isinstance(item, dict) and isinstance(item.get("id"), str):
+                        self.job_criteria[item["id"]] = current.copy()
+            elif spec.name == "jobs_get" and isinstance(data, dict):
+                current = self._job_criteria(data.get("id"))
+                if current:
+                    from polaris.match import matches
+
+                    with session_scope(self.engine) as s:
+                        fit = matches(s, [int(data["id"][2:])], criteria=current)
+                    if int(data["id"][2:]) in fit:
+                        data["match"] = fit[int(data["id"][2:])]
             if self.agent == "main" and isinstance(data, dict) and len(self.calls) + 1 >= SOFT_LIMIT:
                 data = {**data, "budget": SOFT_NOTE.format(n=len(self.calls) + 1)}
             output, ok, kind = render(data), True, None
@@ -122,6 +147,30 @@ class ToolRuntime:
         if self.cassette is not None:
             self.cassette.record_tool(spec.name, normalized, output, ok, kind)
         return self._done(spec, normalized, output, ok, kind, start, data=data)
+
+    def _job_criteria(self, reference: str | None) -> dict[str, Any]:
+        parsed = re.fullmatch(r"\s*(?:J-)?(\d+)\s*", reference or "", re.I)
+        if not parsed:
+            return {}
+        reference = f"J-{int(parsed.group(1))}"
+        if reference in self.job_criteria:
+            return self.job_criteria[reference]
+        if self.agent != "main" or not self.thread_id:
+            return {}
+        from sqlalchemy import select
+
+        from polaris.db.models import ChatMessage
+        from polaris.matching_scope import criteria
+
+        with session_scope(self.engine) as s:
+            previous = s.scalars(select(ChatMessage).where(ChatMessage.thread_id == self.thread_id,
+                                                          ChatMessage.role == "assistant")
+                                 .order_by(ChatMessage.id.desc()).limit(20))
+            for message in previous:
+                for item in (message.turn or {}).get("results", []):
+                    if item.get("id") == reference:
+                        return criteria((item.get("match") or {}).get("criteria") or {})
+        return {}
 
     def _done(self, spec: ToolSpec, args: dict[str, Any], output: str, ok: bool, kind: str | None,
               start: float, replayed: bool = False, data: Any = None) -> str:

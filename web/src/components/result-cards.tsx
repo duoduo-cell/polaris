@@ -161,6 +161,11 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
   }
   const name = [detail.company, detail.title].filter(Boolean).join(" · ");
   return <section className="space-y-3">
+    {match.criteria && <p className="text-xs text-muted">本次回答时按{[
+      match.criteria.city, match.criteria.direction,
+      ({ intern: "实习", campus: "校招", social: "社招" } as Record<string, string>)[match.criteria.job_type ?? ""],
+      match.criteria.max_days_per_week ? `每周最多${match.criteria.max_days_per_week}天` : null,
+    ].filter(Boolean).join("、")}对照；其他已记录条件继续使用，当前岗位要求仍需核实。</p>}
     <div className="flex items-center gap-3">
       <ScoreRing score={match.score} size={52} />
       <div>
@@ -185,7 +190,9 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
   </section>;
 }
 
-export function ResultPanel({ reference, close, onChanged }: { reference: string; close: () => void; onChanged?: (r: Result) => void }) {
+export function ResultPanel({ reference, close, onChanged, queryMatch }: {
+  reference: string; close: () => void; onChanged?: (r: Result) => void; queryMatch?: Match;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [detail, setDetail] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -193,10 +200,10 @@ export function ResultPanel({ reference, close, onChanged }: { reference: string
     const el = dialog.current;
     el?.showModal();
     let active = true;
-    api<Result>(`results/${reference}`).then((r) => { if (active) setDetail(r); })
+    api<Result>(`results/${reference}`).then((r) => { if (active) setDetail(queryMatch && r.kind === "job" ? { ...r, match: queryMatch } : r); })
       .catch((e) => { if (active) setError((e as Error).message); });
     return () => { active = false; el?.close(); };
-  }, [reference]);
+  }, [reference, queryMatch]);
   const facts = detail?.kind === "job" ? [
     [detail.salary_text, "薪资"], [detail.days_per_week ? `每周 ${detail.days_per_week} 天` : null, "每周几天"],
     [detail.duration_months ? `${detail.duration_months} 个月` : null, "实习多久"],
@@ -353,7 +360,9 @@ export function ResultCards({ results, text, fold = false }: { results: Result[]
         </li>)}
       </ul>
     </details>}
-    {opened && <ResultPanel key={opened} reference={opened} close={() => setOpened(null)} onChanged={(r) => setOverrides((old) => ({ ...old, [r.id]: r }))} />}
+    {opened && <ResultPanel key={opened} reference={opened} queryMatch={cards.find((r) => r.id === opened)?.match?.criteria
+      ? cards.find((r) => r.id === opened)?.match : undefined}
+      close={() => setOpened(null)} onChanged={(r) => setOverrides((old) => ({ ...old, [r.id]: r }))} />}
   </>;
 }
 
