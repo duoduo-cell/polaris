@@ -33,6 +33,7 @@ from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.types import Command
 
+from polaris.agent.final_answer import FinalAnswerReminder
 from polaris.agent.minimal import text_of
 from polaris.agent.models import chat_model
 from polaris.agent.tracing import PolarisTracer
@@ -43,7 +44,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v25"  # v25：原文快照、再次采集和来源日期分开解释；v24：临时查询边界。
+PROMPT_VERSION = "main-v26"  # v26：本轮有隐藏中间文字时，工具后提醒完整收尾；v25：日期口径。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -325,6 +326,7 @@ def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_mo
                                             keep=SUMMARY_KEEP, summary_prompt=SUMMARY_PROMPT),
                     ContextEditingMiddleware(edits=[ClearEarlierTurns(CLEAR_TRIGGER_TOKENS)]),
                     LastCallAnswers(),
+                    FinalAnswerReminder(),
                     HumanInTheLoopMiddleware(interrupt_on=approval_policy())])
 
 
