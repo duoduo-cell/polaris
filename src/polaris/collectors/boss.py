@@ -7,6 +7,7 @@ boss-cli 自己带随机延迟和限流退避；这里每轮再设调用上限�
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import tempfile
@@ -92,6 +93,20 @@ def sync_browser_credential(path: Path | None = None) -> bool:
     return True
 
 
+def _call_failure(code: str, message: str) -> BossCallFailed:
+    """CLI 把安全拦截压成 api_error，37 码又固定解释为过期；这里保留真实边界。"""
+    platform_code = re.search(r"\bcode\s*=\s*(\d+)\b", message)
+    number = platform_code.group(1) if platform_code else None
+    if number in {"121", "122"} or "请求被安全系统拦截" in message:
+        return BossCallFailed("verification_required", "平台要求安全验证，请在 Boss 专用窗口由本人完成；本轮停止")
+    if number == "37" or "__zp_stoken__ 已过期" in message:
+        return BossCallFailed("not_authenticated", "平台未接受当前环境令牌（CLI 按 37 码解释为过期，"
+                              "不能据此确定原因）；请在 Boss 专用窗口核实，必要时正常刷新并完成验证")
+    if number == "7":
+        return BossCallFailed("not_authenticated", "平台返回登录态失效（code=7），请在 Boss 专用窗口核实登录")
+    return BossCallFailed(code, message[:200])
+
+
 def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
     """调一个只读命令，返回 data；出错时抛 BossCallFailed（code 是 not_authenticated、rate_limited 等）。"""
     if not args or args[0] not in READ_ONLY_COMMANDS:
@@ -113,7 +128,7 @@ def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
         raise BossCallFailed("not_authenticated" if "未登录" in tail else "bad_output", tail) from None
     if not envelope.get("ok"):
         err = envelope.get("error") or {}
-        raise BossCallFailed(err.get("code", "api_error"), str(err.get("message", ""))[:200])
+        raise _call_failure(err.get("code", "api_error"), str(err.get("message", "")))
     return envelope.get("data") or {}
 
 
@@ -141,8 +156,13 @@ def auth_status(timeout: float = 60) -> dict[str, Any]:
     if not isinstance(data, dict):
         data = {}
     ok = data.get("search_authenticated", data.get("authenticated")) is True
-    return {"authenticated": ok, "synced": synced,
-            "reason": None if ok else (sync_error or data.get("reason") or "搜索认证未通过")}
+    reason = sync_error or str(data.get("reason") or "搜索认证未通过")
+    if not ok:
+        reason = str(_call_failure("not_authenticated", reason))
+        # 保持既有普通原因格式；特殊平台码才改为经过核实的说明。
+        if reason.startswith("not_authenticated: "):
+            reason = reason.removeprefix("not_authenticated: ")
+    return {"authenticated": ok, "synced": synced, "reason": None if ok else reason}
 
 
 def logged_in(timeout: float = 60) -> bool:
@@ -241,8 +261,8 @@ class BossCollector:
             if e.code == "rate_limited":
                 self.stats.rate_limited += 1
                 self.stats.stopped = "rate_limited"  # 被限流就停下这一轮，不硬冲
-            elif e.code == "not_authenticated":
-                self.stats.stopped = "not_authenticated"
+            elif e.code in {"not_authenticated", "verification_required"}:
+                self.stats.stopped = e.code
             return None
         except Exception as e:  # noqa: BLE001  单次失败不影响整轮
             self.stats.failures += 1

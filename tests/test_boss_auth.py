@@ -102,3 +102,53 @@ def test_daemon_uses_search_health_and_reports_reason(monkeypatch, ok):
     if not ok:
         assert any("CLI 超时" in log for log in logs)
         assert not any("没登录" in log for log in logs)
+
+
+@pytest.mark.parametrize("message,stop,explanation", [
+    ("search: 请求被安全系统拦截 (code=121)。此操作需要浏览器环境的安全验证", "verification_required", "本人完成"),
+    ("detail: 请求被安全系统拦截 (code=122)", "verification_required", "本人完成"),
+    ("环境异常 (__zp_stoken__ 已过期)。请重新登录: boss logout && boss login", "not_authenticated", "不能据此确定原因"),
+    ("search: 环境异常 (code=37)", "not_authenticated", "不能据此确定原因"),
+    ("search: 登录态失效 (code=7)", "not_authenticated", "核实登录"),
+])
+def test_cli_security_and_auth_errors_stop_before_other_queries(monkeypatch, message, stop, explanation):
+    from polaris.collectors.base import Query
+
+    calls = []
+    monkeypatch.setattr(boss, "sync_browser_credential", lambda: False)
+
+    def run(*args, **kwargs):
+        calls.append(args[0])
+        return SimpleNamespace(stdout=json.dumps({"ok": False, "error": {"code": "api_error", "message": message}}))
+
+    monkeypatch.setattr(boss.subprocess, "run", run)
+    collector = boss.BossCollector(known=set(), pause=(0, 0))
+    assert list(collector.collect(Query(keywords=["Agent 实习", "RAG 实习"], max_pages=3))) == []
+    assert len(calls) == collector.stats.calls == collector.stats.failures == 1
+    assert collector.stats.stopped == stop
+    assert explanation in collector.stats.errors[0]
+    assert "boss logout" not in collector.stats.errors[0]
+
+
+def test_unrelated_api_error_is_not_mislabeled_as_auth_failure(monkeypatch):
+    monkeypatch.setattr(boss, "sync_browser_credential", lambda: False)
+    monkeypatch.setattr(boss.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=json.dumps(
+        {"ok": False, "error": {"code": "api_error", "message": "upstream unavailable (code=500)"}})))
+    with pytest.raises(boss.BossCallFailed) as error:
+        boss.run_boss(["search", "Agent"])
+    assert error.value.code == "api_error"
+    assert "code=500" in str(error.value)
+
+
+@pytest.mark.parametrize("message,explanation", [
+    ("search: 环境异常 (__zp_stoken__ 已过期)。请重新登录: boss logout && boss login", "不能据此确定原因"),
+    ("search: 请求被安全系统拦截 (code=121)", "本人完成"),
+])
+def test_auth_health_does_not_prescribe_logout_for_platform_verification(monkeypatch, message, explanation):
+    monkeypatch.setattr(boss, "sync_browser_credential", lambda: False)
+    monkeypatch.setattr(boss.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=json.dumps(
+        {"search_authenticated": False, "reason": message})))
+    result = boss.auth_status()
+    assert not result["authenticated"]
+    assert explanation in result["reason"]
+    assert "boss logout" not in result["reason"]

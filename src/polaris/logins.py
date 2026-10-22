@@ -3,7 +3,7 @@
 判断只看 cookie 的名字，不读值。依据：Boss 的登录 cookie 是 wt2、zp_at（boss-cli 的 REQUIRED_COOKIES）；
 小红书是 web_session（MediaCrawler 用它判断登录）；脉脉的在你第一次登录后，对比登录前后多出来的 cookie 名确定。
 登录状态存在采集浏览器自己的资料夹里（data/browser/collect，不进仓库），关掉浏览器、重启电脑都还在，
-直到平台自己让它过期。浏览器是真的、页面脚本照常运行，平台的令牌会自己续上。
+直到平台自己让它过期。页面可能更新令牌，但不能保证自动续期或免除本人验证；cookie 存在也不等于接口认证通过。
 """
 import subprocess
 from typing import Any
