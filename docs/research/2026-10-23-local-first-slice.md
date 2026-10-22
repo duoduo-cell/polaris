@@ -39,3 +39,9 @@
 批次修正尚未加载到常驻采集，不宣称线上改进。真实新原文至可检索的完整耗时、临时条件与卡片一致性、完整找岗至备面试和进度保存仍需逐项验收。没有云端部署，没有新接口、表或依赖。
 
 本地提交：抽取批次 `e41d34b`；网页临时模型 `ff9cccb`。先以本轮具体失败继续：定位百炼文字／向量／重排连接不稳的来源，以有上限的请求验证，别把改模型当作网络修复；随后核对同一岗位时间语义与临时条件。常驻采集加载候选须重新核实当前运行状态及空档，本轮没有重启它。
+
+### TLS 诊断补充
+
+又做一次合成城市 JSON 抽取，关闭思考、0 重试、20 秒上限，失败链明确为 `APIConnectionError -> ConnectError -> SSL UNEXPECTED_EOF_WHILE_READING`。该请求发生在前述验收区间之后，不纳入 18 条记录。JSON 模式在官方支持范围，不能仅因记忆抽取失败就认定模型不支持 JSON（[百炼结构化输出](https://help.aliyun.com/en/model-studio/qwen-structured-output)）。
+
+无密钥 DNS/TLS 探针看到域名解析至 198.18.*，本机存在运行中的 Meta Tunnel 网卡，无环境代理变量／系统代理项；一次默认校验的 TLSv1.3 握手成功。这是透明代理路径线索，不证明它是全部连接失败的根因。[Mihomo 官方 DNS 示例](https://github.com/MetaCubeX/Meta-Docs/blob/main/docs/config/dns/index.md)说明此地址段用于 fake-IP；[百炼连接错误文档](https://help.aliyun.com/en/model-studio/error-code)把本地网络／代理列为检查项。尚未读取或修改网络客户端配置、关闭代理、修改证书校验、固定 IP 或改 hosts；已询问用户是否允许检查并准备仅该服务直连的具体方案。网络设置属于项目外的本机配置，待用户选择。

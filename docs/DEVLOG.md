@@ -5,6 +5,14 @@
 
 ## 当前工作入口
 
+### 2026-10-23 本机第一轮开发
+
+详见[实测报告](research/2026-10-23-local-first-slice.md)。新原文被历史 FIFO 挤出本轮的反例修前失败，修后 7 新测试与相邻集合共 56 通过：`pytest tests/test_extract_scheduling.py tests/test_knowledge_maintenance.py tests/test_daemon.py tests/test_knowledge_audit.py -q --junitxml=data/probe/extract-scheduling-after.xml`。批次修正本地提交 `e41d34b`，未加载常驻采集。
+
+用户授权网页改用可用百炼模型。qwen3.7-plus 小请求和工具调用通过，进程级启动器及可选思考参数提交 `ff9cccb`；`pytest tests/test_llm.py tests/test_config.py tests/test_extract_scheduling.py -q --junitxml=data/probe/model-and-extraction.xml` 为 28 通过，与前集重叠 7。定向 Ruff／diff 通过。`.env` 不改；仅启动 loopback 网页/API，不动采集浏览器和常驻进程。
+
+网页真实找岗约 321.54 秒、3 岗位卡、5 工具成功；记忆抽取 5 次连接失败，主模型／向量／重排亦有故障重试，非无故障通过。发现前端隐藏有回答的 Turn.error，并把空事件误说成无需记忆；复用现有字段补部分失败提示、空事件如实表述，TypeScript 和定向 ESLint 通过，同一真实任务页面复验无需新增模型调用。私有截图／JSON 在 data/probe，不进 Git。费用未知不能用 trace 聚合 0 当免费；回答和卡片时间语义差异待查。完整找岗至备面试／跟进和真实新原文全链时延仍未验收。
+
 目标和后续路线仅在 [PURPOSE.md](PURPOSE.md) 维护；现状见 [STATUS.md](STATUS.md)。以下按时间记录证据，历史条目的“下一步”不再作为当前指令。
 
 ## 轮次
