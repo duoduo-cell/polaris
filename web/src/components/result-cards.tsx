@@ -40,8 +40,11 @@ function SkillPills({ match, limit = 6 }: { match: Match; limit?: number }) {
 }
 
 function when(r: Result): string | null {
-  const day = r.posted_at ?? r.published ?? r.last_seen;
-  return day ? day.slice(0, 10) : null;
+  for (const [value, label] of [[r.posted_at, "岗位日期"], [r.published, "资料日期"], [r.last_seen, "最近采集"]] as const) {
+    const day = sourceDay(value);
+    if (day) return `${label} ${day}`;
+  }
+  return null;
 }
 
 function sourceDay(value: string | null | undefined): string | null {
@@ -61,7 +64,7 @@ function SourceList({ result }: { result: Result }) {
         </a> : <span className="text-muted text-[13px]">缺少原始链接</span>}
       </div>
       <p className="text-xs text-muted mt-1">{sourceDay(s.published_at) ? `${s.date_kind === "published" ? "来源发布于" : s.date_kind === "updated" ? "来源更新于" : "来源日期"} ${sourceDay(s.published_at)} · ` : ""}
-        {sourceDay(s.fetched_at) ? `采集于 ${sourceDay(s.fetched_at)}` : "采集时间未说明"}
+        {sourceDay(s.fetched_at) ? `这份原文采集于 ${sourceDay(s.fetched_at)}` : "原文采集时间未说明"}
         {s.access === "may_require_login" ? " · 平台可能要求登录" : ""} · 页面现在是否还在没有核验
       </p>
     </div>)}
@@ -248,10 +251,10 @@ export function ResultPanel({ reference, close, onChanged }: { reference: string
               {detail.advice.map((a, i) => <li key={i}>{a}</li>)}</ul></section>}
           </>}
           <section className="space-y-2"><h3 className="font-semibold">原始来源</h3><SourceList result={detail} /></section>
-          <p className="text-xs text-muted">{detail.posted_at ? `岗位发布于 ${detail.posted_at}` : detail.kind === "job" ? "岗位发布日期未说明" : ""}
+          <p className="text-xs text-muted">{detail.posted_at ? `岗位日期 ${sourceDay(detail.posted_at)}（日期口径见来源）` : detail.kind === "job" ? "发布日期和更新时间以各来源标注为准" : ""}
             {detail.published ? `帖子发布于 ${detail.published}；实际面试日期以原文为准` : ""}
             {detail.last_seen ? ` · 最近采集于 ${detail.last_seen}` : ""}
-            {detail.status === "gone" ? " · 最近采集时已下架" : ""}</p>
+            {detail.status === "gone" ? " · 库内标记下架，当前页面状态需核验" : ""}</p>
           {(detail.jd_text || detail.text) && <details className="text-sm"><summary className="cursor-pointer text-accent">查看采集原文</summary>
             <div className="whitespace-pre-wrap mt-3 text-muted leading-relaxed">{stripUntrusted(detail.jd_text || detail.text)}</div></details>}
         </>}
