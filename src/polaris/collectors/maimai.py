@@ -130,7 +130,8 @@ class MaimaiCollector:
         start = time.perf_counter()
         try:
             with self.page.expect_response(lambda r: "/search/check_access_limit" in r.url, timeout=30000) as lim:
-                self.page.goto(search_url(keyword), wait_until="domcontentloaded", timeout=45000)
+                # 不等整页及第三方脚本加载完才读响应；下一次导航会让旧响应体失效。
+                self.page.goto(search_url(keyword), wait_until="commit", timeout=45000)
             limit = lim.value.json()
             self.stats.search_count_24h = limit.get("search_count_24h")
             if limit.get("is_limited"):
@@ -146,6 +147,10 @@ class MaimaiCollector:
         except Exception as e:  # noqa: BLE001
             self.stats.failures += 1
             self.stats.errors.append(f"search {keyword}: {e}"[:200])
+            try:
+                self._blocked()  # 超时也检查登录跳转/验证码，不把它当普通空结果继续搜
+            except Exception:  # noqa: BLE001  连页面都不可读时保留原错误
+                pass
             return None
         finally:
             self.stats.seconds += time.perf_counter() - start

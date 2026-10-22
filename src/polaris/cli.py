@@ -271,7 +271,7 @@ def status(items: int = typer.Option(5, help="每个来源显示最近几条")) 
     """一眼看全：常驻采集在不在跑、两个采集窗口、各平台登录、今天的量、最近采到的内容。"""
     from polaris.browser import is_running
     from polaris.collectors import budget as b
-    from polaris.collectors.boss import logged_in as boss_logged_in
+    from polaris.collectors.boss import auth_status as boss_auth_status
     from polaris.daemon import single_instance
     from polaris.report import daily, latest
 
@@ -282,7 +282,8 @@ def status(items: int = typer.Option(5, help="每个来源显示最近几条")) 
     typer.echo(f"常驻采集：{'在跑' if running else '没在跑（运行 polaris daemon，或等开机自启）'}")
     for profile, name in (("collect", "小红书和脉脉的窗口"), ("boss", "Boss 的窗口")):
         typer.echo(f"{name}：{'开着' if is_running(profile) else '没开（运行 polaris browser open）'}")
-    logins = {"boss": boss_logged_in()}
+    boss_health = boss_auth_status()
+    logins = {"boss": boss_health["authenticated"]}
     if is_running("collect"):
         from polaris.browser import attached
         from polaris.logins import logged_in
@@ -291,6 +292,8 @@ def status(items: int = typer.Option(5, help="每个来源显示最近几条")) 
             for src in ("xhs", "maimai"):
                 logins[src] = logged_in(ctx, src)
     typer.echo("登录：" + "  ".join(f"{src} {'已登录' if ok else '没登录'}" for src, ok in logins.items()))
+    if not boss_health["authenticated"]:
+        typer.echo(f"Boss 搜索认证：{boss_health['reason']}")
     d = daily()
     typer.echo("")
     typer.echo("今天：")

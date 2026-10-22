@@ -2,6 +2,7 @@
 from types import SimpleNamespace
 
 import pytest
+from playwright.sync_api import Error as NavigationError
 from playwright.sync_api import TimeoutError as NavigationTimeout
 
 from polaris.collectors import sites
@@ -50,3 +51,27 @@ def test_navigation_does_not_retry_server_refusal(monkeypatch, status):
     with pytest.raises(RuntimeError, match=f"HTTP {status}"):
         sites.XhsCareersCollector._navigate(SimpleNamespace(goto=goto), "https://careers.test/job/42")
     assert len(calls) == 1
+
+
+def test_chromium_network_timeout_recovers(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sites.time, "sleep", lambda _: None)
+
+    def goto(url, **kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise NavigationError("Page.goto: net::ERR_TIMED_OUT")
+        return SimpleNamespace(status=200)
+
+    sites.navigate(SimpleNamespace(goto=goto), "https://careers.test/jobs")
+    assert len(calls) == 2 and calls[-1]["timeout"] == 45000
+
+
+def test_navigation_does_not_retry_certificate_error(monkeypatch):
+    monkeypatch.setattr(sites.time, "sleep", lambda _: pytest.fail("must stop"))
+
+    def goto(*args, **kwargs):
+        raise NavigationError("net::ERR_CERT_AUTHORITY_INVALID")
+
+    with pytest.raises(NavigationError):
+        sites.navigate(SimpleNamespace(goto=goto), "https://careers.test/jobs")

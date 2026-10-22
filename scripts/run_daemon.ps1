@@ -1,5 +1,7 @@
 ﻿# 常驻采集的启动脚本：等数据库起来，再启动 polaris daemon，输出写到 data\logs\daemon.log。
 # 开机自启由 scripts\install_autostart.ps1 注册（只在你同意后运行）。
+param([switch]$Bailian)
+
 $ErrorActionPreference = "Continue"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -14,4 +16,8 @@ for ($i = 0; $i -lt 60; $i++) {
 }
 
 # 日志由程序自己用 UTF-8 写（PowerShell 转写会把中文弄成乱码）；报错另存一份
-& "$root\.venv\Scripts\python.exe" -X utf8 -m polaris.cli daemon --log "$root\data\logs\daemon.log" 2>> "$root\data\logs\daemon.err.log" | Out-Null
+if ($Bailian) {
+    & "$root\.venv\Scripts\python.exe" -X utf8 "$root\scripts\run_daemon_bailian.py" 2>> "$root\data\logs\daemon.err.log" | Out-Null
+} else {
+    & "$root\.venv\Scripts\python.exe" -X utf8 -m polaris.cli daemon --log "$root\data\logs\daemon.log" 2>> "$root\data\logs\daemon.err.log" | Out-Null
+}

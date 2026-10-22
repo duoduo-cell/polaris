@@ -30,6 +30,7 @@ def collect_round(source: str, collector: Any, n_queries: int, params: dict[str,
             for kw in batch:
                 n_kw = new_kw = 0
                 searched_before = getattr(getattr(collector, "stats", None), "searched", None)
+                failures_before = getattr(getattr(collector, "stats", None), "failures", 0)
                 # 采到一条写一条：中途中断也不丢已经采到的
                 for item in collector.collect(Query(keywords=[kw], max_pages=params.get("max_pages", 1))):
                     n_kw += 1
@@ -45,7 +46,14 @@ def collect_round(source: str, collector: Any, n_queries: int, params: dict[str,
                     searched.append(kw)
                     echo(f"  「{kw}」采到 {n_kw} 条，新写入 {new_kw} 条")
                 else:
-                    echo(f"  「{kw}」本轮预算用完，没搜，下次优先")
+                    failures_after = getattr(getattr(collector, "stats", None), "failures", 0)
+                    stopped = getattr(getattr(collector, "stats", None), "stopped", None)
+                    if stopped:
+                        echo(f"  「{kw}」采集停止：{stopped}")
+                    elif failures_after > failures_before:
+                        echo(f"  「{kw}」搜索失败，下轮保留待重试")
+                    else:
+                        echo(f"  「{kw}」本轮预算用完，没搜，下次优先")
         finally:
             record()
         extra = vars(collector.stats) if hasattr(collector, "stats") else {}

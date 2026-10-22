@@ -9,10 +9,12 @@ import os
 import random
 import shutil
 import subprocess
+import tempfile
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 from sqlalchemy import select
@@ -43,13 +45,60 @@ def boss_bin() -> str:
     return os.environ.get("BOSS_BIN") or shutil.which("boss") or "boss"
 
 
+def _browser_cookies() -> dict[str, str]:
+    """只读专用浏览器的 cookie，不附加页面、刷新或运行页面脚本。"""
+    from playwright.sync_api import sync_playwright
+
+    from polaris.browser import cdp_url, is_running
+
+    if not is_running("boss"):
+        return {}
+    with sync_playwright() as p:
+        browser = p.chromium.connect_over_cdp(cdp_url("boss"), timeout=5000)
+        try:
+            session = browser.new_browser_cdp_session()
+            cookies = session.send("Storage.getCookies").get("cookies", [])
+            return {c["name"]: c["value"] for c in cookies
+                    if c.get("domain", "").lstrip(".") == "zhipin.com"
+                    or c.get("domain", "").endswith(".zhipin.com")}
+        finally:
+            browser.close()  # 仅断开 CDP，保留登录窗口
+
+
+def sync_browser_credential(path: Path | None = None) -> bool:
+    """修正 boss-cli 7 天缓存：仅同步完整且变化的本人浏览器凭证，原子替换。"""
+    path = path or Path.home() / ".config" / "boss-cli" / "credential.json"
+    cookies = _browser_cookies()
+    if not all(cookies.get(k) for k in ("wt2", "zp_at", "wbg", "__zp_stoken__")):
+        return False
+    try:
+        old = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        old = {}
+    if old.get("cookies") == cookies:
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp = tempfile.mkstemp(prefix=".credential-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"cookies": cookies, "saved_at": time.time()}, f)
+        os.replace(temp, path)
+    finally:
+        Path(temp).unlink(missing_ok=True)
+    return True
+
+
 def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
     """调一个只读命令，返回 data；出错时抛 BossCallFailed（code 是 not_authenticated、rate_limited 等）。"""
     if not args or args[0] not in READ_ONLY_COMMANDS:
         raise BlockedCommand(f"{args[:1]} 不是只读命令，北极星不调用它")
     from polaris.browser import cdp_url
 
-    # BOSS_CDP_URL：boss-cli 登录过期时，向 Boss 专用的 Edge 窗口要一次新的 cookie（只读 cookie，不碰页面），你不用重新扫码
+    try:
+        sync_browser_credential()
+    except Exception:  # noqa: BLE001  窗口暂不可读时允许现有凭证正常报错，不能输出 cookie
+        pass
+    # 同步在上面显式完成；不能依赖 boss-cli 的 7 天缓存自动失效。
     env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "BOSS_CDP_URL": cdp_url("boss")}
     p = subprocess.run([boss_bin(), *args, "--json"], capture_output=True, text=True, encoding="utf-8",
                        errors="replace", env=env, timeout=timeout)
@@ -64,22 +113,36 @@ def run_boss(args: list[str], timeout: float = 120) -> dict[str, Any]:
     return envelope.get("data") or {}
 
 
-def logged_in(timeout: float = 60) -> bool:
-    """boss-cli 能不能用：本地存的登录还有效，或者能从 Boss 专用的 Edge 窗口拿到新的。
+def auth_status(timeout: float = 60) -> dict[str, Any]:
+    """同步专用窗口现有凭证，并保留 CLI 的实际搜索认证结果。
 
     status 的输出没有其他命令那层 {ok, data}，直接是 {"authenticated": ..., "search_authenticated": ...}（10-11 实测）。
     """
     from polaris.browser import cdp_url
 
+    synced = False
+    sync_error = None
+    try:
+        synced = sync_browser_credential()
+    except Exception as e:  # noqa: BLE001
+        sync_error = f"浏览器凭证同步失败（{type(e).__name__}）"
     env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "BOSS_CDP_URL": cdp_url("boss")}
     try:
         p = subprocess.run([boss_bin(), "status", "--json"], capture_output=True, text=True, encoding="utf-8",
                            errors="replace", env=env, timeout=timeout)
         data = json.loads(p.stdout)
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
-        return False
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
+        return {"authenticated": False, "reason": f"CLI 状态检查失败（{type(e).__name__}）"}
     data = data.get("data", data) if isinstance(data, dict) else {}
-    return bool(data.get("search_authenticated") or data.get("authenticated"))
+    if not isinstance(data, dict):
+        data = {}
+    ok = data.get("search_authenticated", data.get("authenticated")) is True
+    return {"authenticated": ok, "synced": synced,
+            "reason": None if ok else (sync_error or data.get("reason") or "搜索认证未通过")}
+
+
+def logged_in(timeout: float = 60) -> bool:
+    return auth_status(timeout)["authenticated"]
 
 
 def slim_card(job: dict[str, Any]) -> dict[str, Any]:

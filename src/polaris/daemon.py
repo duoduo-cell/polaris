@@ -221,22 +221,24 @@ def tick(echo: Callable[[str], None] = print, notified: set[str] | None = None) 
         for source, cap, used, why in due:
             via = budget.policy()[source].get("via", "browser")
             if source == "boss":
-                from polaris.collectors.boss import logged_in as boss_logged_in
+                from polaris.collectors.boss import auth_status
 
                 open_browser(["https://www.zhipin.com/"], profile="boss")
-                ok = boss_logged_in()
+                health = auth_status()
+                ok = health["authenticated"]
             else:
                 ok = via != "browser" or logged_in(context, source)
             if not ok:
-                # Boss 的令牌二三十分钟就过期，只有页面重新加载时 Boss 自己才会生成新的；我们不替你刷新它的页面
-                # （那就是在绕它的反自动化检测），所以这里只提醒：你在 Boss 窗口里点一下，就能接着采。每两小时最多提醒一次。
+                # 已同步专用窗口现有凭证；仍失败则保留实际原因，不自动刷新或绕过验证。
+                # 每两小时最多提醒一次，不把网络/CLI 错误一律说成用户没登录。
                 key = f"{today}:{source}:login:{datetime.now(BEIJING).hour // 2}"
                 if key not in notified:
-                    msg = ("Boss 的令牌过期了：在 Boss 窗口里按一下 F5 或随便点一个页面，就能接着采" if source == "boss"
+                    msg = (("Boss 搜索认证失败：" + str(health.get("reason") or "请在专用窗口核实登录"))[:180] if source == "boss"
                            else f"{source} 没登录，在它的采集窗口里扫一次码就好（运行 polaris browser open）")
                     notify("北极星：需要你点一下", msg)
                     notified.add(key)
-                echo(f"[{source}] 没登录，跳过")
+                reason = str(health.get("reason") or "搜索认证未通过") if source == "boss" else "登录预检未通过"
+                echo(f"[{source}] 跳过：{reason}"[:300])
                 continue
             echo(f"[{source}] {datetime.now(BEIJING):%H:%M} 今天上限 {cap}（{why}），已用 {used}")
             r = run_round(source, context, cap, used, echo)

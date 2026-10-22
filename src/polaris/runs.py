@@ -45,6 +45,8 @@ def run_scope(kind: str, params: dict[str, Any] | None = None,
         stats["error"] = f"{type(e).__name__}: {e}"
         raise
     finally:
+        if kind == "collect" and stats.get("items") == 0 and stats.get("failures", 0) > 0:
+            status = "failed"  # 全部失败不能因为采集器捕获了异常就显示成功
         with session_scope(engine) as session:
             run = session.get(Run, run_id)
             run.status, run.stats, run.finished_at = status, stats, datetime.now(UTC)

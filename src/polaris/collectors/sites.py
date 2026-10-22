@@ -21,6 +21,26 @@ BYTEDANCE_DAILY_INTERN = "7194661644654577981"  # 招聘项目：日常实习
 XHS_JOBS = "https://job.xiaohongshu.com"
 
 
+def navigate(page, url: str) -> None:
+    """仅对瞬态导航故障有限重试，验证/HTTP 错误不重试。"""
+    from playwright.sync_api import Error as NavigationError
+    from playwright.sync_api import TimeoutError as NavigationTimeout
+
+    transient = ("net::ERR_TIMED_OUT", "net::ERR_CONNECTION_RESET", "net::ERR_NETWORK_CHANGED",
+                 "net::ERR_CONNECTION_CLOSED")
+    for attempt in range(3):
+        try:
+            response = page.goto(url, wait_until="commit", timeout=45000)
+        except NavigationError as e:
+            if attempt == 2 or (not isinstance(e, NavigationTimeout) and not any(w in str(e) for w in transient)):
+                raise
+            time.sleep(2.0 ** (attempt + 1))
+            continue
+        if response is not None and response.status >= 400:
+            raise RuntimeError(f"招聘官网返回 HTTP {response.status}，停止本轮")
+        return
+
+
 @contextmanager
 def browser(headless: bool = True):
     from playwright.sync_api import sync_playwright
@@ -64,8 +84,8 @@ class ByteDanceCollector:
             for keyword in query.keywords:
                 for n in range(1, query.max_pages + 1):
                     with page.expect_response(lambda r: "/api/v1/search/job/posts" in r.url and r.request.method == "POST"
-                                              and r.status == 200, timeout=40000) as info:
-                        page.goto(self.list_url(keyword, n), wait_until="commit")  # 只等接口返回，不等埋点加载完
+                                              and r.status == 200, timeout=150000) as info:
+                        navigate(page, self.list_url(keyword, n))
                     data = info.value.json().get("data") or {}
                     jobs = data.get("job_post_list") or []
                     for job in jobs:
@@ -96,20 +116,7 @@ class XhsCareersCollector:
 
     @staticmethod
     def _navigate(page, url: str) -> None:
-        from playwright.sync_api import TimeoutError as NavigationTimeout
-
-        # 页面响应后，下面仍逐项等岗位链接或任职资格；不让无关资源的加载挡住正文。
-        for attempt in range(3):
-            try:
-                response = page.goto(url, wait_until="commit", timeout=45000)
-            except NavigationTimeout:
-                if attempt == 2:
-                    raise
-                time.sleep(2.0 ** (attempt + 1))
-                continue
-            if response is not None and response.status >= 400:
-                raise RuntimeError(f"小红书招聘官网返回 HTTP {response.status}，停止本轮")
-            return
+        navigate(page, url)
 
     def _links(self, page, keyword: str, max_pages: int) -> list[tuple[str, str]]:
         self._navigate(page, f"{XHS_JOBS}/campus/position?{urlencode({'keyword': keyword, 'direction': 'rd'})}")
