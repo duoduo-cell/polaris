@@ -69,10 +69,11 @@ class JobsSearchArgs(Page):
 
 
 def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
+    seen_day = j.last_seen_at.astimezone(timezone(timedelta(hours=8))).date().isoformat() if j.last_seen_at else None
     out = {"id": f"J-{j.id}", "company": j.company or j.company_name, "title": j.title, "city": j.city,
            "type": JOB_TYPES.get(j.job_type or "", j.job_type), "job_type": j.job_type, "unit": j.unit,
            "display_title": " · ".join(x for x in (j.company or j.company_name, j.title) if x),
-           "last_seen": j.last_seen_at.date().isoformat() if j.last_seen_at else None}
+           "last_seen": seen_day}
     for k in ("days_per_week", "duration_months", "salary_text", "can_convert", "deadline", "posted_at"):
         v = getattr(j, k)
         if v is not None:
@@ -82,7 +83,7 @@ def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
     if j.conflicts:
         out["conflicting_fields"] = sorted({c["field"] for c in j.conflicts})  # 各处说法不一致的字段，详情用 jobs_get
     if detailed:
-        out.update({"unit": j.unit, "directions": j.directions, "last_seen": j.last_seen_at.date().isoformat()})
+        out.update({"unit": j.unit, "directions": j.directions})
     return out
 
 
