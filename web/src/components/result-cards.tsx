@@ -10,9 +10,8 @@ import { Badge, Button, ErrorNote, Markdown, ScoreRing } from "@/components/mark
 import { useChatSession } from "@/components/chat-session";
 import { api, stripUntrusted } from "@/lib/client";
 import { hideRefs } from "@/lib/refs";
-import { type Followup, type Match, type Question, type Result, KINDS, STATUSES } from "@/lib/results";
+import { type Followup, type Match, type Question, type Result, KINDS, STATUSES, matchSummary } from "@/lib/results";
 
-const LEVELS = { good: "很合适", ok: "基本合适", weak: "差得多" } as const;
 const MARK_TONES = ["bg-accent-soft text-accent", "bg-ok-soft text-ok", "bg-warn-soft text-warn", "bg-bad-soft text-bad", "bg-soft text-muted"];
 
 function CompanyMark({ name }: { name?: string | null }) {
@@ -160,6 +159,7 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
     </section>;
   }
   const name = [detail.company, detail.title].filter(Boolean).join(" · ");
+  const summary = matchSummary(match);
   return <section className="space-y-3">
     {match.criteria && <p className="text-xs text-muted">本次回答时按{[
       match.criteria.city, match.criteria.direction,
@@ -169,8 +169,8 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
     <div className="flex items-center gap-3">
       <ScoreRing score={match.score} size={52} />
       <div>
-        <p className="font-semibold">{LEVELS[match.level]}</p>
-        <p className="text-xs text-muted">按你在对话里说过的条件逐条比，岗位没写的不算错</p>
+        <p className="font-semibold">{summary.label}</p>
+        <p className="text-xs text-muted">{summary.description}</p>
       </div>
     </div>
     <ul className="grid sm:grid-cols-2 gap-1.5">
@@ -272,6 +272,7 @@ export function ResultPanel({ reference, close, onChanged, queryMatch }: {
 
 function JobCard({ r }: { r: Result }) {
   const match = r.match;
+  const summary = match ? matchSummary(match) : null;
   const known = match?.checks.filter((c) => c.ok !== null) ?? [];
   const unknown = (match?.checks.length ?? 0) - known.length;
   const meta = [r.type, r.days_per_week ? `每周 ${r.days_per_week} 天` : null, r.duration_months ? `${r.duration_months} 个月` : null,
@@ -287,8 +288,9 @@ function JobCard({ r }: { r: Result }) {
     </div>
     {match ? <>
       <div className="flex flex-wrap gap-1.5">
+        {summary && <CheckPill ok={summary.ok}>{summary.label}</CheckPill>}
         {known.map((c) => <CheckPill key={c.key} ok={c.ok}>{c.detail}</CheckPill>)}
-        {unknown > 0 && <CheckPill ok={null}>{unknown} 项岗位没写</CheckPill>}
+        {unknown > 0 && <CheckPill ok={null}>{unknown} 项条件待确认</CheckPill>}
       </div>
       <SkillPills match={match} />
     </> : meta.length > 0 && <p className="text-xs text-muted">{meta.join(" · ")}</p>}

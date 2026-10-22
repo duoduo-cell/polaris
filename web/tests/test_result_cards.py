@@ -160,14 +160,74 @@ class ResultCardsRegression(unittest.TestCase):
         self.page.reload()
         card = self.page.get_by_test_id("result-J-1")
         expect(card.get_by_text("要每周 5 天，你能去 4 天", exact=True)).to_be_visible()
-        expect(card.get_by_text("1 项岗位没写", exact=True)).to_be_visible()
+        expect(card.get_by_text("1 项条件待确认", exact=True)).to_be_visible()
+        expect(card.get_by_text("已知硬条件不符", exact=True)).to_be_visible()
         expect(card.get_by_text("待确认 CUDA/算子", exact=True)).to_be_visible()
         card.get_by_role("button", name="查看详情").click()
         dialog = self.page.get_by_role("dialog", name="结果详情")
-        expect(dialog.get_by_text("很合适", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("已知硬条件不符", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("很合适", exact=True)).to_have_count(0)
         dialog.get_by_role("button", name="问北极星怎么自测").click()
         expect(self.page.get_by_role("textbox")).to_have_value(
             "合成公司 · 岗位1 这个岗位要求 CUDA/算子，我的掌握情况还没确认。请给我自测题和答题要点，帮我判断需要补什么。")
+
+    def test_explicit_incompatibility_overrides_high_score(self):
+        self.rows[0]["match"] = {"score": 95, "level": "good", "eligibility": "incompatible", "checks": [
+            {"key": "degree", "label": "学历", "ok": False, "detail": "岗位要求硕士，你目前本科在读"}],
+            "skills": {"required": [], "have": [], "missing": [], "known": True}}
+        self.page.reload()
+        card = self.page.get_by_test_id("result-J-1")
+        expect(card.get_by_text("已知硬条件不符", exact=True)).to_be_visible()
+        card.get_by_role("button", name="查看详情").click()
+        dialog = self.page.get_by_role("dialog")
+        expect(dialog.get_by_text("已知硬条件不符", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("匹配分不能抵消", exact=False)).to_be_visible()
+        expect(dialog.get_by_role("link", name="打开来源")).to_have_attribute("href", self.rows[0]["sources"][0]["url"])
+        self.assertFalse(any(method == "POST" for method, _, _ in self.requests))
+
+    def test_low_score_unknown_background_stays_pending_not_incompatible(self):
+        self.rows[0]["match"] = {"score": 40, "level": "weak", "eligibility": "uncertain", "checks": [
+            {"key": "degree", "label": "学历", "ok": None, "detail": "岗位要求硕士；你的学历未记录"}],
+            "skills": {"required": [], "have": [], "missing": [], "known": False}}
+        self.page.reload()
+        card = self.page.get_by_test_id("result-J-1")
+        expect(card.get_by_text("信息待确认", exact=True)).to_be_visible()
+        expect(card.get_by_text("1 项条件待确认", exact=True)).to_be_visible()
+        expect(card.get_by_text("岗位没写", exact=False)).to_have_count(0)
+        card.get_by_role("button", name="查看详情").click()
+        dialog = self.page.get_by_role("dialog")
+        expect(dialog.get_by_text("信息待确认", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("差得多", exact=True)).to_have_count(0)
+        expect(dialog.get_by_text("已知硬条件不符", exact=True)).to_have_count(0)
+
+    def test_high_score_uncertain_eligibility_does_not_claim_qualified(self):
+        self.rows[0]["match"] = {"score": 90, "level": "good", "eligibility": "uncertain", "checks": [
+            {"key": "role", "label": "方向", "ok": True, "detail": "Agent开发"}],
+            "skills": {"required": ["Python"], "have": ["Python"], "missing": [], "known": True}}
+        self.page.reload()
+        card = self.page.get_by_test_id("result-J-1")
+        expect(card.get_by_text("信息待确认", exact=True)).to_be_visible()
+        card.get_by_role("button", name="查看详情").click()
+        expect(self.page.get_by_role("dialog").get_by_text("信息待确认", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("dialog").get_by_text("录用概率", exact=False)).to_be_visible()
+
+    def test_known_direction_conflict_is_not_just_missing_information(self):
+        self.rows[0]["match"] = {"score": 40, "level": "weak", "eligibility": "uncertain", "checks": [
+            {"key": "role", "label": "方向", "ok": False, "detail": "是产品岗，你想做研发"}],
+            "skills": {"required": [], "have": [], "missing": [], "known": False}}
+        self.page.reload()
+        card = self.page.get_by_test_id("result-J-1")
+        expect(card.get_by_text("方向不匹配", exact=True)).to_be_visible()
+        card.get_by_role("button", name="查看详情").click()
+        expect(self.page.get_by_role("dialog").get_by_text("方向不匹配", exact=True)).to_be_visible()
+
+    def test_legacy_empty_checks_do_not_claim_conditions_met(self):
+        self.rows[0]["match"] = {"score": 75, "level": "ok", "checks": [],
+            "skills": {"required": ["Python"], "have": ["Python"], "missing": [], "known": True}}
+        self.page.reload()
+        card = self.page.get_by_test_id("result-J-1")
+        expect(card.get_by_text("信息待确认", exact=True)).to_be_visible()
+        expect(card.get_by_text("已知条件对得上", exact=True)).to_have_count(0)
 
 
     def test_chat_folds_question_references_into_a_list(self):

@@ -17,8 +17,26 @@ export type Check = { key: string; label: string; ok: boolean | null; detail: st
 export type Match = {
   criteria?: { city?: string; direction?: string; job_type?: string; max_days_per_week?: number };
   score: number; level: "good" | "ok" | "weak"; checks: Check[];
+  eligibility?: "incompatible" | "uncertain";
+  note?: string;
   skills: { required: string[]; have: string[]; missing: string[]; not_stated?: string[]; known: boolean };
 };
+
+const HARD_CHECKS = new Set(["avoid", "city", "type", "days", "months", "degree", "paper"]);
+
+export function matchSummary(match: Match): { label: string; description: string; ok: boolean | null } {
+  if (match.eligibility === "incompatible" || match.checks.some((c) => HARD_CHECKS.has(c.key) && c.ok === false)) {
+    return { label: "已知硬条件不符", description: "存在明确条件冲突，匹配分不能抵消；可以查看原始要求核实。", ok: false };
+  }
+  if (match.checks.some((c) => c.key === "role" && c.ok === false)) {
+    return { label: "方向不匹配", description: "当前方向与已记录的求职方向不符；匹配分仅供参考。", ok: false };
+  }
+  if (match.eligibility === "uncertain" || match.checks.length === 0 || match.checks.some((c) => c.ok === null) || !match.skills.known
+      || (match.skills.not_stated ?? match.skills.missing).length > 0) {
+    return { label: "信息待确认", description: "未记录或未核实不等于不符合；分数仅对照已知条件，不是录用概率。", ok: null };
+  }
+  return { label: "已知条件对得上", description: "已知条件一致，仍需核实岗位现状与完整任职要求；分数不是录用概率。", ok: true };
+}
 export type Result = {
   id: string; kind: "job" | "interview" | "question" | "referral" | "recruitment" | "study" | "post" | "raw";
   display_title: string; title?: string; company?: string | null; unit?: string | null; city?: string | null;
