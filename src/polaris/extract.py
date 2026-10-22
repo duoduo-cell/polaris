@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 
 from polaris.companies import match
 from polaris.db.models import Post, Posting, RawItem
@@ -134,6 +134,33 @@ def pending(kind: str, limit: int, source: str | None = None) -> list[RawItem]:
         return list(s.execute(stmt).scalars())
 
 
+def _batch_for_run(kind: str, limit: int, source: str | None, run_id: int | None) -> list[RawItem]:
+    """优先本轮原文，同时给历史待抽留名额；不改变总额度或手工 FIFO 入口。
+
+    daemon 原有额度为本轮新增数 + 10；最多保留10个历史名额，小批次至少保留1个
+    （额度仅1时优先本轮）。未用的名额互相补足，失败条目仍留在原有待抽集合。
+    """
+    if run_id is None:
+        return pending(kind, limit, source)
+    if limit <= 0:
+        return []
+    target = Posting if kind == "job" else Post
+    with session_scope() as s:
+        stmt = select(RawItem).where(RawItem.kind == kind, RawItem.id.not_in(select(target.raw_item_id)))
+        if source:
+            stmt = stmt.where(RawItem.source == source)
+        reserve = min(10, max(1, limit // 3)) if limit > 1 else 0
+        current = stmt.where(RawItem.run_id == run_id).order_by(RawItem.id)
+        fresh = list(s.scalars(current.limit(limit - reserve)))
+        if not fresh:
+            return list(s.scalars(stmt.order_by(RawItem.id).limit(limit)))
+        older = list(s.scalars(stmt.where(or_(RawItem.run_id != run_id, RawItem.run_id.is_(None)))
+                               .order_by(RawItem.id).limit(limit - len(fresh))))
+        remaining = limit - len(fresh) - len(older)
+        extra = list(s.scalars(current.where(RawItem.id.not_in([item.id for item in fresh])).limit(remaining))) if remaining else []
+        return [*fresh, *older, *extra]
+
+
 def fit_columns(model: type, row: dict[str, Any]) -> dict[str, Any]:
     """模型偶尔会给某个短字段写一大段（如毕业年份写成一句话），按列宽截断，免得整条存不进去（10-11 踩过）。"""
     out = dict(row)
@@ -148,7 +175,7 @@ def fit_columns(model: type, row: dict[str, Any]) -> dict[str, Any]:
 def run_extract(kind: str, limit: int, run_id: int | None, concurrency: int, source: str | None = None,
                 llm: LLM | None = None) -> dict[str, int]:
     llm = llm or LLM()
-    items = pending(kind, limit, source)
+    items = _batch_for_run(kind, limit, source, run_id)
     fn = extract_job if kind == "job" else extract_post
     model = Posting if kind == "job" else Post
     results = parallel_map(lambda it: fn(llm, it, run_id), items, concurrency)
