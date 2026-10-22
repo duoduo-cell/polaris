@@ -1,0 +1,601 @@
+{
+  "date": "2026-10-22",
+  "scope": "补充10-21/10-22旧调研：11个公开源码仓库（9个开源、2个受限源码）及16个商业/闭源或未确认开放源码的产品；组件另列。不代表全网穷尽。",
+  "baseline": "Polaris e6f8e6b + 保留原工作区改动",
+  "method": "公开官方页面、GitHub连接器固定commit、关键源码选段、1个纯函数4条合成探针；未跑竞品完整服务，未登录闭源竞品，未验证厂商效果数字。",
+  "selection": [
+    "直接覆盖求职连续任务",
+    "中文求职与领域数据",
+    "长期运行、恢复、送达",
+    "来源变化与现实部署边界"
+  ],
+  "queries": [
+    {
+      "provider": "GitHub connector",
+      "query": "job search agent",
+      "candidates": [
+        "surapuramakhil-org/Job_search_agent",
+        "career-ops-hq/career-ops",
+        "sreekarrs/JobSearch-Agent",
+        "byrencheema/job-search-agent",
+        "ackyer/job-search-agent-template",
+        "vaibhavarora14/job-application-agent",
+        "elliottdehn/open-jobs",
+        "matthewprice/JobFinderOS"
+      ]
+    },
+    {
+      "provider": "GitHub connector",
+      "query": "self hosted job tracker",
+      "candidates": [
+        "DaKheera47/job-ops",
+        "laraowl/laraowl",
+        "vesaias/JobNavigator",
+        "Stepuuu/portfolio-daily-tracker",
+        "Mohammed-Mojaly/laralyze",
+        "applypack/applypack"
+      ]
+    },
+    {
+      "provider": "GitHub connector",
+      "query": "求职 Agent",
+      "candidates": [
+        "shengjidaguai-china/BossHunter",
+        "ranxi2001/zero2Agent",
+        "offercontext/offerPilot",
+        "liyupi/yu-ai-agent",
+        "DanielPan12/JobHuntBot",
+        "lishuangqiang/backend-agent-resume-scout"
+      ]
+    },
+    {
+      "provider": "web",
+      "topics": [
+        "AI career copilot job tracker",
+        "Chinese AI resume matching and mock interview",
+        "LinkedIn applicant insights",
+        "Dots cloud local computers",
+        "Manus and Claude scheduled execution",
+        "Distill local/cloud and Visualping important changes",
+        "Greenhouse Lever Ashby official jobs APIs",
+        "browser-use and Skyvern authentication profiles",
+        "LangGraph persistence and idempotent replay"
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "repository": "career-ops-hq/career-ops",
+      "url": "https://github.com/career-ops-hq/career-ops",
+      "commit": "dff9703a092e2872245aef09b096edcee054ac69",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T04:55:17Z",
+      "archived": false,
+      "license_reported_by_github": "MIT",
+      "license_observation": "MIT",
+      "readme_url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/README.md",
+      "selected_files": [
+        {
+          "path": "modes/reply-watch.md",
+          "url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/modes/reply-watch.md",
+          "blob_sha": "435d1ba138308f32b457db4d7e3febc474ff02bd",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "reply-matcher.mjs",
+          "url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/reply-matcher.mjs",
+          "blob_sha": "6edec1546d4753d5fed52250f64894c739349ca9",
+          "inspection": "selected_sections_static_review"
+        }
+      ]
+    },
+    {
+      "repository": "DaKheera47/job-ops",
+      "url": "https://github.com/DaKheera47/job-ops",
+      "commit": "4a5e52b76a729aa2f57e4e9171216cf9621140a0",
+      "default_branch": "main",
+      "pushed_at": "2026-10-19T15:53:44Z",
+      "archived": false,
+      "license_reported_by_github": "NOASSERTION",
+      "license_observation": "LICENSE正文为AGPL-3.0加Commons Clause商业限制，按source-available研究",
+      "readme_url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/README.md",
+      "selected_files": [
+        {
+          "path": "LICENSE",
+          "url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/LICENSE",
+          "blob_sha": "7894050b65e9906668d987c3eb77750a044d18f5",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "orchestrator/src/server/utils/scheduler.ts",
+          "url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/orchestrator/src/server/utils/scheduler.ts",
+          "blob_sha": "fb1c941e2bda78e5a13df0e67bd39d0acbc4b3d2",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "orchestrator/src/server/services/post-application/ingestion/gmail-sync.ts",
+          "url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/orchestrator/src/server/services/post-application/ingestion/gmail-sync.ts",
+          "blob_sha": "9fad10f90a3131832746c15f3cbc9f401deb94dd",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "orchestrator/src/server/services/post-application/ingestion/email-router.ts",
+          "url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/orchestrator/src/server/services/post-application/ingestion/email-router.ts",
+          "blob_sha": "10410aa4e7bf5aa0778efb2cc1bac44ffc15b507",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "orchestrator/src/server/services/scorer.ts",
+          "url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/orchestrator/src/server/services/scorer.ts",
+          "blob_sha": "d014ca4549c3186788ba0b00c9eb5d8b3cf3b9ff",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "orchestrator/src/server/pipeline/steps/watchlist-jobs.ts",
+          "url": "https://github.com/DaKheera47/job-ops/blob/4a5e52b76a729aa2f57e4e9171216cf9621140a0/orchestrator/src/server/pipeline/steps/watchlist-jobs.ts",
+          "blob_sha": "46f787c42334483b790a1a54224c0987a426ee4b",
+          "inspection": "selected_sections_static_review"
+        }
+      ]
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "url": "https://github.com/shengjidaguai-china/BossHunter",
+      "commit": "50bbbbe7e15932fa33b5f6b2969fae77ffa197e4",
+      "default_branch": "main",
+      "pushed_at": "2026-10-13T23:51:11Z",
+      "archived": false,
+      "license_reported_by_github": "NOASSERTION",
+      "license_observation": "README明确PolyForm Noncommercial 1.0.0，按source-available研究",
+      "readme_url": "https://github.com/shengjidaguai-china/BossHunter/blob/50bbbbe7e15932fa33b5f6b2969fae77ffa197e4/README.md",
+      "selected_files": [
+        {
+          "path": "tests/test_collection_runs.py",
+          "url": "https://github.com/shengjidaguai-china/BossHunter/blob/50bbbbe7e15932fa33b5f6b2969fae77ffa197e4/tests/test_collection_runs.py",
+          "blob_sha": null,
+          "inspection": "test_source_read_not_run"
+        }
+      ]
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "url": "https://github.com/siyuansdsd/OfferGraph",
+      "commit": "f1ee6dbe609a0b808832855e22cef4386ed2fdc4",
+      "default_branch": "main",
+      "pushed_at": "2026-06-23T13:54:23Z",
+      "archived": false,
+      "license_reported_by_github": "Apache-2.0",
+      "license_observation": "Apache-2.0",
+      "readme_url": "https://github.com/siyuansdsd/OfferGraph/blob/f1ee6dbe609a0b808832855e22cef4386ed2fdc4/README.md",
+      "selected_files": []
+    },
+    {
+      "repository": "speedyapply/JobSpy",
+      "url": "https://github.com/speedyapply/JobSpy",
+      "commit": "8dd83cdd194b6e27f6487eb09b2b2a10117d9a1c",
+      "default_branch": "main",
+      "pushed_at": "2026-10-20T00:15:43Z",
+      "archived": false,
+      "license_reported_by_github": "MIT",
+      "license_observation": "MIT",
+      "readme_url": "https://github.com/speedyapply/JobSpy/blob/8dd83cdd194b6e27f6487eb09b2b2a10117d9a1c/README.md",
+      "selected_files": []
+    },
+    {
+      "repository": "dgtlmoon/changedetection.io",
+      "url": "https://github.com/dgtlmoon/changedetection.io",
+      "commit": "be09f73c3af1bbc698d19a532ef6d3c9987e6370",
+      "default_branch": "master",
+      "pushed_at": "2026-10-19T10:32:32Z",
+      "archived": false,
+      "license_reported_by_github": "Apache-2.0",
+      "license_observation": "Apache-2.0",
+      "readme_url": "https://github.com/dgtlmoon/changedetection.io/blob/be09f73c3af1bbc698d19a532ef6d3c9987e6370/README.md",
+      "selected_files": [
+        {
+          "path": "changedetectionio/notification_service.py",
+          "url": "https://github.com/dgtlmoon/changedetection.io/blob/be09f73c3af1bbc698d19a532ef6d3c9987e6370/changedetectionio/notification_service.py",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        }
+      ]
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "url": "https://github.com/langchain-ai/deepagents",
+      "commit": "b4ac8829692785a221150658401ae558f4bff3f3",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T09:14:24Z",
+      "archived": false,
+      "license_reported_by_github": "MIT",
+      "license_observation": "MIT",
+      "readme_url": "https://github.com/langchain-ai/deepagents/blob/b4ac8829692785a221150658401ae558f4bff3f3/README.md",
+      "selected_files": [
+        {
+          "path": "libs/deepagents/deepagents/middleware/summarization.py",
+          "url": "https://github.com/langchain-ai/deepagents/blob/b4ac8829692785a221150658401ae558f4bff3f3/libs/deepagents/deepagents/middleware/summarization.py",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        }
+      ]
+    },
+    {
+      "repository": "NousResearch/hermes-agent",
+      "url": "https://github.com/NousResearch/hermes-agent",
+      "commit": "8237c7f8ec179c88857f24a174509d985af704b7",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T12:26:14Z",
+      "archived": false,
+      "license_reported_by_github": "MIT",
+      "license_observation": "MIT",
+      "readme_url": "https://github.com/NousResearch/hermes-agent/blob/8237c7f8ec179c88857f24a174509d985af704b7/README.md",
+      "selected_files": [
+        {
+          "path": "cron/scheduler.py",
+          "url": "https://github.com/NousResearch/hermes-agent/blob/8237c7f8ec179c88857f24a174509d985af704b7/cron/scheduler.py",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "cron/jobs.py",
+          "url": "https://github.com/NousResearch/hermes-agent/blob/8237c7f8ec179c88857f24a174509d985af704b7/cron/jobs.py",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "cron/delivery_queue.py",
+          "url": "https://github.com/NousResearch/hermes-agent/blob/8237c7f8ec179c88857f24a174509d985af704b7/cron/delivery_queue.py",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "cron/executions.py",
+          "url": "https://github.com/NousResearch/hermes-agent/blob/8237c7f8ec179c88857f24a174509d985af704b7/cron/executions.py",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        }
+      ]
+    },
+    {
+      "repository": "openclaw/openclaw",
+      "url": "https://github.com/openclaw/openclaw",
+      "commit": "47e115ebf762298e12166e9b12b6a061bd4d2626",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T12:41:34Z",
+      "archived": false,
+      "license_reported_by_github": "MIT",
+      "license_observation": "MIT",
+      "readme_url": "https://github.com/openclaw/openclaw/blob/47e115ebf762298e12166e9b12b6a061bd4d2626/README.md",
+      "selected_files": [
+        {
+          "path": "docs/automation/cron-jobs.md",
+          "url": "https://github.com/openclaw/openclaw/blob/47e115ebf762298e12166e9b12b6a061bd4d2626/docs/automation/cron-jobs.md",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "docs/automation/cron-jobs/delivery.md",
+          "url": "https://github.com/openclaw/openclaw/blob/47e115ebf762298e12166e9b12b6a061bd4d2626/docs/automation/cron-jobs/delivery.md",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "src/cron/delivery.ts",
+          "url": "https://github.com/openclaw/openclaw/blob/47e115ebf762298e12166e9b12b6a061bd4d2626/src/cron/delivery.ts",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "src/cron/delivery-attempt-fence.ts",
+          "url": "https://github.com/openclaw/openclaw/blob/47e115ebf762298e12166e9b12b6a061bd4d2626/src/cron/delivery-attempt-fence.ts",
+          "blob_sha": null,
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "src/cron/service.restart-delivery.test.ts",
+          "url": "https://github.com/openclaw/openclaw/blob/47e115ebf762298e12166e9b12b6a061bd4d2626/src/cron/service.restart-delivery.test.ts",
+          "blob_sha": null,
+          "inspection": "test_source_read_not_run"
+        }
+      ]
+    },
+    {
+      "repository": "offercontext/offerPilot",
+      "url": "https://github.com/offercontext/offerPilot",
+      "commit": "0452e47edd6c6a825e032c4c25719bb7a2c7bf26",
+      "default_branch": "master",
+      "pushed_at": "2026-10-22T09:10:00Z",
+      "archived": false,
+      "license_reported_by_github": "AGPL-3.0",
+      "license_observation": "AGPL-3.0",
+      "readme_url": "https://github.com/offercontext/offerPilot/blob/0452e47edd6c6a825e032c4c25719bb7a2c7bf26/README.md",
+      "selected_files": [
+        {
+          "path": "docs/architecture/decisions/0004-evidence-deterministic-filter-and-provenance.md",
+          "url": "https://github.com/offercontext/offerPilot/blob/0452e47edd6c6a825e032c4c25719bb7a2c7bf26/docs/architecture/decisions/0004-evidence-deterministic-filter-and-provenance.md",
+          "blob_sha": "68013c9ae39bc369d7cf3854b97db97018c067d5",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "src/offerpilot/knowledge/evidence_policy.py",
+          "url": "https://github.com/offercontext/offerPilot/blob/0452e47edd6c6a825e032c4c25719bb7a2c7bf26/src/offerpilot/knowledge/evidence_policy.py",
+          "blob_sha": "266c7ba1ef1b35f00f02746dd1ade2a49e5177dc",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "src/offerpilot/job_mail/review.py",
+          "url": "https://github.com/offercontext/offerPilot/blob/0452e47edd6c6a825e032c4c25719bb7a2c7bf26/src/offerpilot/job_mail/review.py",
+          "blob_sha": "21aa63ee5242ee6a4c5f4360e15b2b7dde4f41d2",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "src/offerpilot/ai/tool_runtime/pipeline.py",
+          "url": "https://github.com/offercontext/offerPilot/blob/0452e47edd6c6a825e032c4c25719bb7a2c7bf26/src/offerpilot/ai/tool_runtime/pipeline.py",
+          "blob_sha": "f07b6242f154095c6a88a9468ece2491ad93293a",
+          "inspection": "selected_sections_static_review"
+        }
+      ]
+    },
+    {
+      "repository": "reactive-resume/reactive-resume",
+      "url": "https://github.com/reactive-resume/reactive-resume",
+      "commit": "2559c42c7a9e9d8d42bc92143b8671d0419ea642",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T09:04:55Z",
+      "archived": false,
+      "license_reported_by_github": "MIT",
+      "license_observation": "MIT",
+      "readme_url": "https://github.com/reactive-resume/reactive-resume/blob/2559c42c7a9e9d8d42bc92143b8671d0419ea642/README.md",
+      "selected_files": [
+        {
+          "path": "packages/api/src/features/career/scheduling.ts",
+          "url": "https://github.com/reactive-resume/reactive-resume/blob/2559c42c7a9e9d8d42bc92143b8671d0419ea642/packages/api/src/features/career/scheduling.ts",
+          "blob_sha": "3a4d5d4e52a3f6eb10de655c0de0716af6768d84",
+          "inspection": "selected_sections_static_review"
+        },
+        {
+          "path": "packages/api/src/features/career/matching.ts",
+          "url": "https://github.com/reactive-resume/reactive-resume/blob/2559c42c7a9e9d8d42bc92143b8671d0419ea642/packages/api/src/features/career/matching.ts",
+          "blob_sha": "64f3c28e56d52dabeeccbfc59bec92632a78eff2",
+          "inspection": "isolated_pure_function_probe"
+        }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "name": "Jobright",
+      "url": "https://jobright.ai/ai-agent",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "岗位匹配、简历适配、申请自动化及计划建议；厂商宣称，未登录实测"
+    },
+    {
+      "name": "Teal",
+      "url": "https://www.tealhq.com/tool/resume-job-description-match",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "简历/JD匹配、关键词、任务跟踪；未验证效果"
+    },
+    {
+      "name": "Huntr",
+      "url": "https://huntr.co/",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "岗位、联系人、面试跟踪和材料定制；未验证效果"
+    },
+    {
+      "name": "Simplify",
+      "url": "https://help.simplify.jobs/articles/2166608-using-your-job-matches",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "日更推荐、匹配原因、反馈、申请后入Tracker；未验证效果"
+    },
+    {
+      "name": "Jobscan",
+      "url": "https://www.jobscan.co/",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "ATS/关键词匹配和面试练习；分数不推断为录用概率"
+    },
+    {
+      "name": "WonderCV",
+      "url": "https://www.wondercv.com/?locale=zh-CN",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "中文简历生成、JD适配与诊断；训练数据和效果数字未独立核验"
+    },
+    {
+      "name": "牛客AI模拟面试",
+      "url": "https://www.nowcoder.com/interview/ai/index",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "按题型练习与模拟面试入口；未验证面经采样和效果"
+    },
+    {
+      "name": "LinkedIn Premium",
+      "url": "https://www.linkedin.com/help/linkedin/answer/a563146/premium-insights-about-job-applicants-and-hiring-companies?lang=en",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "申请者技能学历经验比较；官方注明外站数据可能只是点击申请，非雇主认可排名"
+    },
+    {
+      "name": "智联求职AI",
+      "url": "https://ai.zhaopin.com/",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "筛选、JD适配、投递计划、代聊、跟踪；页面含内测预约，未验证账号可用范围"
+    },
+    {
+      "name": "offerin公开工作台",
+      "url": "https://www.modyzhang.com/",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "访客演示展示经历事实卡、岗位雷达、准备和复盘；源码/运营规模/后端质量未知，不与offerin.cn混同"
+    },
+    {
+      "name": "Dots",
+      "url": "https://learn.chatgpt.com/docs/dots",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "持续协作及云端电脑；产品文档依据，未做账号实测"
+    },
+    {
+      "name": "Muse",
+      "url": "https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "专用VM、跨应用、长期目标；产品文档依据，未做账号实测"
+    },
+    {
+      "name": "Manus",
+      "url": "https://www.manus.im/features/automations",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "定时和触发自动化、运行历史、连接器；未做账号实测"
+    },
+    {
+      "name": "Claude Cowork",
+      "url": "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "当前文档注明远程定时，部分旧任务仍本机执行；不能沿用旧产品印象"
+    },
+    {
+      "name": "Distill",
+      "url": "https://distill.io/docs/web-monitor/cloud-local-monitors/",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "明确区分本机与云端检查；借鉴来源执行位置展示"
+    },
+    {
+      "name": "Visualping",
+      "url": "https://help.visualping.io/en/articles/4440705",
+      "evidence": "public_first_party_page_not_account_test",
+      "observation": "页面变化、AI重要性筛选及报告；不自动等于求职态势分析"
+    }
+  ],
+  "additional_sources": [
+    {
+      "title": "Dots连接与执行边界",
+      "url": "https://learn.chatgpt.com/docs/dots/computers-and-apps",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Simplify Copilot",
+      "url": "https://help.simplify.jobs/en/help/articles/1749022-installing-and-setting-up-copilot",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Simplify Autopilot",
+      "url": "https://help.simplify.jobs/help/articles/1787280-applying-to-a-job-with-autopilot",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Manus连接器",
+      "url": "https://open.manus.im/docs/v2/connectors",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Manus定时更新",
+      "url": "https://manus.im/blog/manus-schedules",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Visualping报告",
+      "url": "https://help.visualping.io/en/articles/10899969",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Greenhouse Job Board API",
+      "url": "https://docs.greenhouse.io/job-board",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Ashby Public Job Postings API",
+      "url": "https://developers.ashbyhq.com/docs/public-job-posting-api",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Lever Postings API",
+      "url": "https://github.com/lever/postings-api",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "LangGraph Persistence",
+      "url": "https://docs.langchain.com/oss/python/langgraph/persistence",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "LangGraph Graph API",
+      "url": "https://langchain-ai.github.io/langgraph/concepts/low_level/",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Browser Use Cloud持久资料夹",
+      "url": "https://github.com/browser-use/browser-use/blob/main/CLOUD.md",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    },
+    {
+      "title": "Skyvern浏览器执行",
+      "url": "https://github.com/Skyvern-AI/skyvern/blob/main/docs/developers/browser-automations/overview.mdx",
+      "evidence": "official_document_or_repository_document",
+      "note": "仅作为组件/部署参考；未安装或接入"
+    }
+  ],
+  "excluded_or_limited": [
+    {
+      "name": "OfferIN/OfferGo实时面试辅助",
+      "reason": "与本阶段面试准备和持续跟进主线不同；同名产品域名不能混用，只做外围检索"
+    },
+    {
+      "name": "搜索中的小型JobSearch-Agent模板",
+      "reason": "用直接连续求职工作流和可检查状态机制筛选，不因仓库名含Agent就深审"
+    },
+    {
+      "name": "第三方测评、厂商面试率与薪资/成功率宣传",
+      "reason": "不能验证方法和分母，不作效果证据"
+    }
+  ],
+  "limitations": [
+    "闭源实现未公开部分保持未知",
+    "未获得真实竞争者全体或录用标签",
+    "源码测试文件仅阅读，未冒充运行通过",
+    "动态文档会变化，核心仓库以固定commit为准",
+    "未采购云资源、未改模型配置或生产采集"
+  ],
+  "local_anchors": [
+    {
+      "path": "src/polaris/agent/tasks.py",
+      "sha256": "f3344baec3166a729a8fec880ccd16e93a0544a13f98af1c4dd37caf6864adf6",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    },
+    {
+      "path": "src/polaris/proactive/daily.py",
+      "sha256": "7eaa1df2b4b8fa1820c0d8be18271590f63d68f8e5d395d8a04a210b540be936",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    },
+    {
+      "path": "src/polaris/logins.py",
+      "sha256": "ba03827005e22737944179fa348d783509dc01aeecca4dcf4a86649c7448bde0",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    },
+    {
+      "path": "src/polaris/tools/peers.py",
+      "sha256": "bf323cd0e83de81d1ed821d64f296d4ec1ea453b434eff343aeac0deaf399922",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    },
+    {
+      "path": "src/polaris/match.py",
+      "sha256": "21150f8d8fe6da1698b766ffa61a7349f07c259abefd81213c89e060a5840541",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    },
+    {
+      "path": "src/polaris/search/maintenance.py",
+      "sha256": "2f19ce48faf715499ebf97f3f0da972e8265a8ef5117620b4a7fb9dee6f9b0ad",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    },
+    {
+      "path": "src/polaris/tools/runtime.py",
+      "sha256": "c88c7c19c7408bd094ad8cb56d6b96f2309179f42d3b5da00bda61e4d55ef148",
+      "scope": "本机事实定位锚点，不表示该文件本轮全量审计"
+    }
+  ]
+}

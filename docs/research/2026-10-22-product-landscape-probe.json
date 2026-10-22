@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-22",
+  "repository": "reactive-resume/reactive-resume",
+  "commit": "2559c42c7a9e9d8d42bc92143b8671d0419ea642",
+  "file": "packages/api/src/features/career/matching.ts",
+  "source_sha256": "f79b250a1d498d1bf1233c8b8b4015bf4e6333c87ef37c57e334c17b7496b4d4",
+  "method": "原文件经本机TypeScript编译，在无require/process的vm上下文调用纯函数；未安装/启动竞品",
+  "scope": "仅matchOpportunity词法辅助函数，不代表竞品全产品、其他模型路径或任务成功率",
+  "cases": [
+    {
+      "id": "english_control",
+      "text": "RAG engineer in Shanghai. Hybrid office. Salary USD 100k.",
+      "phrases": [
+        "RAG",
+        "Shanghai"
+      ],
+      "purpose": "显式英语信息正常对照",
+      "result": {
+        "matches": [
+          "RAG",
+          "Shanghai"
+        ],
+        "unknowns": []
+      }
+    },
+    {
+      "id": "unrelated_number",
+      "text": "Agent engineer serving 10,000 users, remote.",
+      "phrases": [
+        "Agent"
+      ],
+      "purpose": "用户数量不是薪资",
+      "result": {
+        "matches": [
+          "Agent"
+        ],
+        "unknowns": []
+      }
+    },
+    {
+      "id": "negated_skill",
+      "text": "Remote engineer. Python is not required.",
+      "phrases": [
+        "Python"
+      ],
+      "purpose": "词出现不代表资格要求成立",
+      "result": {
+        "matches": [
+          "Python"
+        ],
+        "unknowns": [
+          "salary"
+        ]
+      }
+    },
+    {
+      "id": "chinese_domain",
+      "text": "检索增强生成研发实习，上海，线下，每天300元",
+      "phrases": [
+        "RAG",
+        "上海"
+      ],
+      "purpose": "中文同义词、工作方式与日薪表示",
+      "result": {
+        "matches": [
+          "上海"
+        ],
+        "unknowns": [
+          "salary",
+          "office"
+        ]
+      }
+    }
+  ]
+}
