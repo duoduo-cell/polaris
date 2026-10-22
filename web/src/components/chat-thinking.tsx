@@ -100,7 +100,7 @@ function memorySummary(events: MemoryEvent[] | null): string {
   if (!events) return "整理你这句话里的信息";
   const kept = events.filter((e) => KEPT.has(e.op)).length;
   const asked = events.filter((e) => ASKED.has(e.op)).length;
-  if (!kept && !asked) return "这句话里没有要记的";
+  if (!kept && !asked) return "未返回新增或待确认的记忆记录";
   return [kept ? `记住了 ${kept} 条` : "", asked ? `${asked} 条要问你` : ""].filter(Boolean).join("，");
 }
 

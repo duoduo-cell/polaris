@@ -128,6 +128,12 @@ export default function Chat() {
                     <div className="group space-y-3">
                       {m.turn && <ThinkingDone turn={m.turn} />}
                       {m.turn && <MemoryNotes events={m.turn.memory_events} />}
+                      {m.turn?.error && (
+                        <div role="status" className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-warn">
+                          <p>本轮有步骤未完成，已生成的回答和结果已保留。</p>
+                          <details className="mt-1 text-xs"><summary className="cursor-pointer">查看原因</summary>{m.turn.error}</details>
+                        </div>
+                      )}
                       {m.content && <ResultCards text={m.content} results={m.turn?.results ?? []} fold />}
                       {m.content && (
                         <div className="flex items-center gap-0.5 text-muted">
