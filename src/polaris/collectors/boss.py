@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,7 +69,10 @@ def _browser_cookies() -> dict[str, str]:
 def sync_browser_credential(path: Path | None = None) -> bool:
     """修正 boss-cli 7 天缓存：仅同步完整且变化的本人浏览器凭证，原子替换。"""
     path = path or Path.home() / ".config" / "boss-cli" / "credential.json"
-    cookies = _browser_cookies()
+    # daemon 已在 collect 的同步 Playwright 上下文里，不能在同线程嵌套启动驱动。
+    # 专用线程只读 Boss 浏览器级 cookie，不操作任一页面。
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        cookies = pool.submit(_browser_cookies).result()
     if not all(cookies.get(k) for k in ("wt2", "zp_at", "wbg", "__zp_stoken__")):
         return False
     try:

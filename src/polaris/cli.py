@@ -300,7 +300,7 @@ def status(items: int = typer.Option(5, help="每个来源显示最近几条")) 
     for src in b.policy():
         cap, why = b.today_cap(src)
         raw = {"xhs": "xhs", "boss": "boss", "maimai": "maimai"}[src]
-        typer.echo(f"  {src}：上限 {cap}，已用 {b.used_today(src)} 次，新采到 {d['new'].get(raw, 0)} 条，"
+        typer.echo(f"  {src}：上限 {cap}，预算计入 {b.used_today(src)} 次（含中断预留），新采到 {d['new'].get(raw, 0)} 条，"
                    f"库里共 {d['total'].get(raw, 0)} 条（{why}）")
     typer.echo("  被拦或提前停下：" + ("；".join(d["stops"]) if d["stops"] else "没有"))
     for src in ("xhs", "maimai", "boss"):

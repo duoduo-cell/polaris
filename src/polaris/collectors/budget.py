@@ -34,16 +34,22 @@ def _runs(source: str, start: datetime, end: datetime) -> list[tuple[dict, dict,
     return [(p or {}, st or {}, t) for p, st, t in rows if (p or {}).get("source") == source]
 
 
+def charged_calls(stats: dict[str, Any]) -> int:
+    """中断时调用数未知，使用明确记录的整轮预留；不伪造实际调用数。"""
+    return max(stats.get("calls", 0) or 0, stats.get("reserved_calls", 0) or 0)
+
+
 def day_summary(source: str, day: datetime) -> dict[str, Any]:
     start, end = day_range(day)
     runs = _runs(source, start, end)
-    calls = sum(st.get("calls", 0) or 0 for _, st, _ in runs)
+    calls = sum(charged_calls(st) for _, st, _ in runs)
+    interrupted = any(st.get("reserved_calls", 0) for _, st, _ in runs)
     failures = sum(st.get("failures", 0) or 0 for _, st, _ in runs)
     stops = [(st["stopped"], t) for _, st, t in runs if st.get("stopped")]
     hard = [(s, t) for s, t in stops if any(w in str(s) for w in HARD_WORDS) and not any(w in str(s) for w in LOGIN_WORDS)]
     stops = [(s, t) for s, t in stops if not any(w in str(s) for w in LOGIN_WORDS)]
     caps = [p["cap"] for p, _, _ in runs if p.get("cap")]
-    return {"calls": calls, "failures": failures, "hard": hard, "soft": bool(stops and not hard) or
+    return {"calls": calls, "failures": failures, "hard": hard, "soft": interrupted or bool(stops and not hard) or
             (calls >= 20 and failures / calls > 0.2), "cap": caps[-1] if caps else None}
 
 
@@ -90,5 +96,5 @@ def hour_left(source: str, now: datetime | None = None) -> int:
     if not per_hour:
         return 10**6
     now = now or datetime.now(BEIJING)
-    used = sum(st.get("calls", 0) or 0 for _, st, _ in _runs(source, now - timedelta(hours=1), now + timedelta(minutes=1)))
+    used = sum(charged_calls(st) for _, st, _ in _runs(source, now - timedelta(hours=1), now + timedelta(minutes=1)))
     return max(0, per_hour - used)

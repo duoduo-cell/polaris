@@ -29,6 +29,19 @@ def test_missing_browser_login_does_not_erase_saved_credentials(tmp_path, monkey
     assert path.read_bytes() == before
 
 
+def test_cookie_reader_uses_its_own_thread_for_nested_playwright(tmp_path, monkeypatch):
+    import threading
+
+    owner = threading.get_ident()
+
+    def read():
+        assert threading.get_ident() != owner
+        return {k: "new-" + k for k in ("wt2", "zp_at", "wbg", "__zp_stoken__")}
+
+    monkeypatch.setattr(boss, "_browser_cookies", read)
+    assert boss.sync_browser_credential(tmp_path / "credential.json")
+
+
 @pytest.mark.parametrize("status,expected", [
     ({"search_authenticated": False, "authenticated": True, "reason": "搜索令牌过期"}, False),
     ({"search_authenticated": True, "authenticated": True}, True),
