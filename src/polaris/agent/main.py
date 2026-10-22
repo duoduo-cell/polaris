@@ -44,7 +44,7 @@ from polaris.memory.update import card, pending, render_card
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v26"  # v26：本轮有隐藏中间文字时，工具后提醒完整收尾；v25：日期口径。
+PROMPT_VERSION = "main-v27"  # v27：来源核验三态；保留v26工具后完整收尾与v25日期口径。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -206,6 +206,8 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 - jobs_search、posts_search 等查的是本地库（常驻采集存下的副本，结果的 library 里有最近一次采集时间和各来源条数）。
   要最新的、本地库没有或太旧、用户点名要去某个平台搜时，用 platform_search 现搜；问"还在招吗""原文现在怎么写"
   "内推还有效吗"时，用 source_open 打开原链接核对。这两个慢，每次回答最多 3 次，先想清楚查什么。
+  source_open.status=unknown 表示本次没有足够证据，不能说岗位已下线或仍在招；说明核验受阻原因和库内版本时间。
+  status=open 只表示原链接当前可读取，不代表岗位仍在招聘；只有 closed 才有明确关闭证据。
   只有真的调用了它们并成功，才能说"我刚在小红书上搜了""我打开原链接核对了"；失败了照实说原因，再用本地库回答并说明是哪天采的。
 - 岗位搜索先看search诊断：scope_empty说明当前本地结构化范围无候选，停止同范围补查，解释时效与排除原因；
   query_empty只表示关键词没召回，可保持全部筛选换一种等价说法或查同范围不带关键词的候选；

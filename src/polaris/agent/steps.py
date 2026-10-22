@@ -89,9 +89,12 @@ def outcome(tool: str, data: Any, ok: bool, output: str = "") -> str:
     if tool == "jobs_trend":
         return f"新出现 {data.get('new', 0)} 个、下架 {data.get('gone', 0)} 个（每日快照 {data.get('snapshot_days', 0)} 天）"
     if tool == "source_open":
-        if data.get("online") is False:
-            return "页面已经没了（下线或删除）"
-        return "和库里存的有变化" if data.get("changed") else "还在，和库里存的一致"
+        if data.get("status") == "unknown":
+            return "原链接暂时无法核验"
+        if data.get("status") == "closed" or data.get("online") is False:
+            return "页面有明确关闭证据"
+        state = "和库里存的有变化" if data.get("changed") else "和库里存的一致"
+        return f"原链接可读取，页面状态不代表仍在招聘；{state}"
     if tool == "platform_search":
         n = data.get("returned") or 0
         more = len(data.get("also_listed") or [])

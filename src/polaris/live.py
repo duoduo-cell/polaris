@@ -9,6 +9,7 @@
 """
 import difflib
 import random
+import re
 import time
 from datetime import UTC, datetime
 from itertools import islice
@@ -25,8 +26,7 @@ from polaris.sources import label, source_dict
 
 LOGIN_SOURCES = ("xhs", "maimai", "boss")
 PAUSE = {"xhs": (4.0, 8.0), "maimai": (3.0, 6.0), "boss": (2.0, 4.0)}  # 现查只开几页，停顿比常驻采集短，但仍随机
-GONE_WORDS = ("职位已下线", "职位已关闭", "职位不存在", "该职位已", "已停止招聘", "页面不存在", "笔记不见了", "内容已被删除",
-              "当前内容无法展示")
+GONE_WORDS = ("职位已下线", "职位已关闭", "职位不存在", "已停止招聘", "页面不存在", "笔记不见了", "内容已被删除")
 BLOCK_WORDS = ("验证码", "安全验证", "访问频繁", "操作频繁", "请完成验证", "账号异常")
 
 
@@ -210,18 +210,19 @@ def _target(ref: str) -> RawItem:
         return raw
 
 
-def _fetch_public_page(url: str, source: str) -> str:
+def _fetch_public_page(url: str, source: str) -> tuple[str, int | None]:
     from polaris.collectors.sites import browser
 
     with browser() as b:
         page = b.new_page()
-        page.goto(url, wait_until="domcontentloaded", timeout=45000)
+        response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
         try:  # 正文晚于标题渲染
             page.wait_for_function("() => /职位描述|岗位职责|工作职责|职位要求|任职|下线|不存在/.test(document.body.innerText)",
                                    timeout=20000)
         except Exception:  # noqa: BLE001
             pass
         text = page.inner_text("body")
+        status = response.status if response is not None else None
     for head in ("职位描述", "岗位职责", "工作职责"):
         if head in text:
             text = text[max(0, text.find(head) - 300):]
@@ -229,24 +230,48 @@ def _fetch_public_page(url: str, source: str) -> str:
     for tail in ("\n投递\n", "相关职位", "社区精选", "联系我们"):  # 正文之后是相关职位、页脚和客服弹窗
         if tail in text:
             text = text[:text.find(tail)]
-    return text.strip()[:6000]
+    return text.strip()[:6000], status
 
 
-def _refetch(raw: RawItem) -> tuple[str | None, int]:
-    """重新取一次。返回（新正文，用了几次调用）；正文 None 表示页面已经没了。"""
+def _refetch(raw: RawItem) -> tuple[dict[str, Any], int]:
+    """重新取一次，明确区分可见、明确关闭和没有足够证据。"""
     src = raw.source
     if src == "tencent:careers":
         from polaris.collectors.tencent import TencentCollector, to_text
 
         try:
             post = TencentCollector(with_detail=False).detail(raw.external_id or "")
-        except RuntimeError:
-            return None, 1
-        return (to_text({**(raw.raw_json or {}), **post}) if post else None), 1
+        except Exception as e:  # noqa: BLE001  网络、HTTP 与接口错误不能等同于岗位关闭
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            business_gone = re.search(r"\bCode=(404|410)\b", str(e))
+            if status in (404, 410) or business_gone:
+                code = status or int(business_gone.group(1))
+                return {"status": "closed", "reason": "source_gone", "evidence": f"来源返回 Code={code}"}, 1
+            if status == 429 or re.search(r"\bCode=429\b", str(e)):
+                return {"status": "unknown", "reason": "rate_limited"}, 1
+            return {"status": "unknown", "reason": "source_error"}, 1
+        return ({"status": "open", "text": to_text({**(raw.raw_json or {}), **post})} if post
+                else {"status": "unknown", "reason": "empty_response"}), 1
     if src in ("bytedance:campus", "xhs:careers"):
-        text = _fetch_public_page(raw.url or "", src)
-        gone = any(w in text for w in GONE_WORDS) or len(text) < 80
-        return (None if gone else text), 1
+        try:
+            fetched = _fetch_public_page(raw.url or "", src)
+        except Exception as e:  # noqa: BLE001  浏览器异常只说明这次没有核验成功
+            return {"status": "unknown", "reason": "fetch_error", "detail": type(e).__name__}, 1
+        text, http_status = fetched if isinstance(fetched, tuple) else (fetched, None)
+        if http_status in (404, 410):
+            return {"status": "closed", "reason": "http_gone", "evidence": f"HTTP {http_status}"}, 1
+        if http_status == 429:
+            return {"status": "unknown", "reason": "rate_limited"}, 1
+        if http_status is not None and http_status >= 400:
+            return {"status": "unknown", "reason": "http_error", "evidence": f"HTTP {http_status}"}, 1
+        if any(w in text for w in BLOCK_WORDS):
+            return {"status": "unknown", "reason": "access_blocked"}, 1
+        closed = next((w for w in GONE_WORDS if w in text), None)
+        if closed:
+            return {"status": "closed", "reason": "explicit_closed_text", "evidence": closed}, 1
+        if len(text.strip()) < 80:
+            return {"status": "unknown", "reason": "insufficient_content"}, 1
+        return {"status": "open", "text": text}, 1
     if src == "xhs":
         from polaris.collectors.xhs import slim_comments, to_text
         from polaris.collectors.xhs_browser import BrowserCaller
@@ -258,27 +283,37 @@ def _refetch(raw: RawItem) -> tuple[str | None, int]:
             _check_login(context, "xhs")
             caller = BrowserCaller(context)
             try:
-                detail = caller.detail({"feed_id": raw.external_id, "xsec_token": token})
+                try:
+                    detail = caller.detail({"feed_id": raw.external_id, "xsec_token": token})
+                except Exception as e:  # noqa: BLE001  笔记详情暂时不可读不表示已删除
+                    return {"status": "unknown", "reason": "fetch_error", "detail": type(e).__name__}, 1
             finally:
                 caller.close()
         note = ((detail or {}).get("data") or {}).get("note") or {}
         if not note:
-            return None, 1
+            return {"status": "unknown", "reason": "empty_response"}, 1
         comments = slim_comments((((detail.get("data") or {}).get("comments")) or {}).get("list") or [], limit=20)
-        return to_text(note, comments), 1
+        return {"status": "open", "text": to_text(note, comments)}, 1
     if src == "maimai":
         with _context("maimai") as context:
             _check_login(context, "maimai")
             page = context.new_page()
             try:
-                page.goto(raw.url or "", wait_until="domcontentloaded", timeout=45000)
-                time.sleep(random.uniform(*PAUSE["maimai"]))
-                text = page.inner_text("body")[:6000]
+                try:
+                    page.goto(raw.url or "", wait_until="domcontentloaded", timeout=45000)
+                    time.sleep(random.uniform(*PAUSE["maimai"]))
+                    text = page.inner_text("body")[:6000]
+                except Exception as e:  # noqa: BLE001  页面读取失败不作为删除证据
+                    return {"status": "unknown", "reason": "fetch_error", "detail": type(e).__name__}, 1
             finally:
                 page.close()
         if any(w in text[:2000] for w in BLOCK_WORDS):
-            raise LiveUnavailable("脉脉出现了验证或限流，先停下；常驻采集也会按规矩冷却")
-        return (None if any(w in text for w in GONE_WORDS) else text), 1
+            return {"status": "unknown", "reason": "access_blocked"}, 1
+        closed = next((w for w in GONE_WORDS if w in text), None)
+        if closed:
+            return {"status": "closed", "reason": "explicit_closed_text", "evidence": closed}, 1
+        return ({"status": "open", "text": text} if len(text.strip()) >= 80
+                else {"status": "unknown", "reason": "insufficient_content"}), 1
     if src == "boss":
         raise LiveUnavailable("Boss 的岗位暂时不能单独打开原链接（需要当时的安全令牌）；可以用 platform_search 在 Boss 上现搜")
     raise LiveUnavailable(f"{label(src)}的来源不支持重新打开")
@@ -308,24 +343,35 @@ def open_source(ref: str) -> dict[str, Any]:
     _budget_ok(src)
     try:
         with platform_lock(src, timeout=40):
-            text, calls = _refetch(raw)
+            fetched, calls = _refetch(raw)
     except PlatformBusy as e:
         raise LiveUnavailable(f"{e}，等它这一轮结束再查") from e
     if src in LOGIN_SOURCES:
-        _record(src, None, calls, None, int(text is not None))
+        _record(src, None, calls, None, int(fetched["status"] == "open"))
     now = datetime.now(UTC)
     out: dict[str, Any] = {"ref": ref, "source": label(src), "url": raw.url, "checked_at": now.isoformat(timespec="seconds"),
-                           "stored_at": raw.fetched_at.isoformat(timespec="seconds") if raw.fetched_at else None}
-    if text is None:
-        out.update(online=False, note="原链接打开了，但页面显示已下线、被删或不存在")
+                           "stored_at": raw.fetched_at.isoformat(timespec="seconds") if raw.fetched_at else None,
+                           "status": fetched["status"], "reason": fetched.get("reason"),
+                           "evidence": fetched.get("evidence")}
+    if fetched["status"] == "closed":
+        out.update(online=False, note="找到明确的页面关闭证据")
         return out
+    if fetched["status"] == "unknown":
+        reasons = {"rate_limited": "来源暂时限流", "access_blocked": "来源要求验证或拦截了访问",
+                   "insufficient_content": "页面内容尚未加载或不足以判断", "empty_response": "来源返回了空结果",
+                   "source_error": "来源接口暂时出错", "fetch_error": "打开来源时发生网络或浏览器错误",
+                   "http_error": "来源返回了错误状态"}
+        out.update(online=None, note=reasons.get(fetched.get("reason"), "本次没有足够证据判断页面状态"))
+        return out
+    text = fetched["text"]
     old_lines, new_lines = _substance(raw.raw_text or ""), _substance(text)
     diff = [d for d in difflib.unified_diff(list(old_lines), list(new_lines), lineterm="", n=0)
             if d[:1] in "+-" and not d.startswith(("+++", "---"))]
     # 只比有内容的句子：网页上的导航、按钮、页脚和接口存下来的格式不一样，不算改动（10-12 实测字节官网误报）
     changed = set(old_lines) != set(new_lines) and bool(diff)
     shown = {**old_lines, **new_lines}
-    out.update(online=True, changed=changed, changes=[(d[0] + shown.get(d[1:], d[1:]))[:150] for d in diff[:24]],
+    out.update(online=True, note="原链接可读取；这不证明岗位仍在招聘", changed=changed,
+               changes=[(d[0] + shown.get(d[1:], d[1:]))[:150] for d in diff[:24]],
                text=untrusted(text[:3000]))
     if changed:  # 新版本写回原始层，下一轮对齐会更新岗位或帖子
         item = RawItemIn(source=src, tier=raw.tier, kind=raw.kind, url=raw.url, external_id=raw.external_id,

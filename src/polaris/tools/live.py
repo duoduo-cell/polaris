@@ -44,7 +44,9 @@ def platform_search(args: PlatformSearchArgs) -> dict:
 
 TOOLS = [
     ToolSpec(name="source_open", args_schema=SourceOpenArgs, func=source_open, live=True,
-             description="打开一个岗位或帖子的原链接，读现在的页面，和库里存的版本比：还在不在、改了什么、帖子有没有新评论。"
+             description="打开一个岗位或帖子的原链接，读现在的页面，和库里存的版本比：页面可读取、明确关闭或暂时无法核验；页面可读取不代表岗位仍在招聘。"
+                         "网络错误、验证拦截、限流、空结果或加载内容不足都属于无法核验；HTTP 200 本身也不保证仍在招。"
+                         "页面有变化时会显示差异；帖子可能有新评论。"
                          "用户问'还在招吗''原文现在怎么写''内推还有效吗'时用。慢（十几秒到一分钟），每次回答最多现查 3 次。",
              example='{"ref": "J-12"}'),
     ToolSpec(name="platform_search", args_schema=PlatformSearchArgs, func=platform_search, live=True,

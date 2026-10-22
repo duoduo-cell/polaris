@@ -19,12 +19,19 @@ from polaris.tools.runtime import ToolRuntime
 ME = {"Authorization": "Bearer test-owner-token"}
 NOW = datetime(2026, 10, 12, 3, tzinfo=UTC)
 OLD = "Agent 研发工程师\n公司：腾讯（CSIG）\n地点：北京\n岗位职责：\n负责企业级 Agent 平台的后端研发和稳定性建设"
+VALID_PUBLIC = OLD + "\n该岗位负责核心服务设计、实现与稳定性建设；需要熟悉 Python、数据库及分布式系统，有 Agent 项目经验优先。"
 
 
 def tencent_raw() -> int:
     item = RawItemIn(source="tencent:careers", tier="A", kind="job", url="https://careers.tencent.com/jobdesc.html?postId=1",
                      external_id="1", raw_text=OLD, raw_json={"RecruitPostName": "Agent 研发工程师", "BGName": "CSIG",
                                                              "LocationName": "北京"}, fetched_at=NOW)
+    return ingest_raw_items([item]).ids[0]
+
+
+def public_raw(source: str = "xhs:careers") -> int:
+    item = RawItemIn(source=source, tier="A", kind="job", url="https://example.invalid/job/1", external_id="1",
+                     raw_text=OLD, raw_json={}, fetched_at=NOW)
     return ingest_raw_items([item]).ids[0]
 
 
@@ -60,7 +67,90 @@ def test_open_source_says_when_the_page_is_gone(db, monkeypatch):
 
     monkeypatch.setattr(tencent.TencentCollector, "detail", gone)
     out = live.open_source(f"R-{rid}")
-    assert out["online"] is False and "下线" in out["note"]
+    assert out["online"] is False and out["status"] == "closed" and "关闭证据" in out["note"]
+
+
+@pytest.mark.parametrize(("error", "expected", "reason"), [
+    (RuntimeError("腾讯接口返回 Code=429"), "unknown", "rate_limited"),
+    (RuntimeError("腾讯接口返回 Code=503"), "unknown", "source_error"),
+    (RuntimeError("腾讯接口返回 Code=410"), "closed", "source_gone"),
+])
+def test_tencent_api_errors_are_not_confused_with_closed_jobs(db, monkeypatch, error, expected, reason):
+    rid = tencent_raw()
+
+    def fail(self, pid):
+        raise error
+
+    monkeypatch.setattr(tencent.TencentCollector, "detail", fail)
+    out = live.open_source(f"R-{rid}")
+
+    assert out["status"] == expected and out["reason"] == reason
+    assert out["online"] is (False if expected == "closed" else None)
+
+
+def test_empty_tencent_response_is_unknown(db, monkeypatch):
+    rid = tencent_raw()
+    monkeypatch.setattr(tencent.TencentCollector, "detail", lambda self, pid: {})
+
+    out = live.open_source(f"R-{rid}")
+
+    assert out["status"] == "unknown" and out["reason"] == "empty_response" and out["online"] is None
+
+
+def test_source_open_tool_contract_names_all_three_states():
+    description = REGISTRY["source_open"].description
+
+    assert "页面可读取、明确关闭或暂时无法核验" in description
+    assert "HTTP 200 本身也不保证仍在招" in description
+
+
+def test_open_source_trace_does_not_claim_job_is_still_recruiting():
+    from polaris.agent.steps import outcome
+
+    opened = outcome("source_open", {"status": "open", "online": True, "changed": False}, True)
+
+    assert "可读取" in opened and "不代表仍在招聘" in opened and "还在" not in opened
+
+
+@pytest.mark.parametrize(("text", "status", "expected", "reason"), [
+    ("正在加载，请稍候", 200, "unknown", "insufficient_content"),
+    (OLD + "\n该职位已更新，详情如下。岗位职责包括负责核心服务设计、实现与稳定性建设，"
+     "任职要求包括熟悉 Python 和分布式系统。", 200, "open", None),
+    ("安全验证，请完成验证", 200, "unknown", "access_blocked"),
+    ("该职位已下线", 200, "closed", "explicit_closed_text"),
+    ("", 404, "closed", "http_gone"),
+    ("", 410, "closed", "http_gone"),
+    ("", 429, "unknown", "rate_limited"),
+    ("", 503, "unknown", "http_error"),
+    (VALID_PUBLIC, 200, "open", None),
+])
+def test_public_source_statuses_require_positive_evidence(db, monkeypatch, text, status, expected, reason):
+    rid = public_raw()
+    monkeypatch.setattr(live, "_fetch_public_page", lambda url, source: (text, status))
+
+    out = live.open_source(f"R-{rid}")
+
+    assert out["status"] == expected
+    assert out["reason"] == reason
+    assert out["online"] is (True if expected == "open" else False if expected == "closed" else None)
+
+
+def test_public_source_fetch_exception_stays_unknown(db, monkeypatch):
+    rid = public_raw()
+
+    def timeout(url, source):
+        raise TimeoutError("fixture timeout")
+
+    monkeypatch.setattr(live, "_fetch_public_page", timeout)
+    out = live.open_source(f"R-{rid}")
+    assert out["status"] == "unknown" and out["reason"] == "fetch_error" and out["online"] is None
+
+
+def test_unknown_source_status_is_not_reported_as_closed_in_trace():
+    from polaris.agent.steps import outcome
+
+    assert outcome("source_open", {"status": "unknown", "online": None}, True) == "原链接暂时无法核验"
+    assert outcome("source_open", {"status": "closed", "online": False}, True) == "页面有明确关闭证据"
 
 
 def test_login_platforms_respect_budget_lock_and_browser(db, monkeypatch):
