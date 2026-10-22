@@ -546,10 +546,12 @@ def trace_of(tracer: PolarisTracer, runtime: ToolRuntime) -> dict[str, Any]:
     def total(key: str) -> int:
         return sum(m.get(key) or 0 for m in models)
 
+    costs = [m.get("cost_usd") for m in models]
+    main_cost = round(sum(costs), 5) if all(cost is not None for cost in costs) else None
     return {"model_calls": models, "tools": tools, "totals": {
         "model_calls": len(models), "model_ms": total("ms"), "input_tokens": total("input_tokens"),
         "cached_tokens": total("cached_tokens"), "output_tokens": total("output_tokens"),
-        "reasoning_tokens": total("reasoning_tokens"), "cost_usd": round(sum(m.get("cost_usd") or 0 for m in models), 5),
+        "reasoning_tokens": total("reasoning_tokens"), "cost_usd": main_cost,
         "tool_calls": len(tools), "tool_ms": sum(t["ms"] for t in tools), "tool_errors": sum(not t["ok"] for t in tools)}}
 
 

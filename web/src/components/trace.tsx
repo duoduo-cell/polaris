@@ -13,7 +13,7 @@ export type ToolTrace = { tool: string; at_ms: number; ms: number; ok: boolean; 
 export type Trace = {
   model_calls: ModelCall[]; tools: ToolTrace[];
   totals: { model_calls: number; model_ms: number; input_tokens: number; cached_tokens: number; output_tokens: number;
-            reasoning_tokens: number; cost_usd: number; tool_calls: number; tool_ms: number; tool_errors: number };
+            reasoning_tokens: number; cost_usd: number | null; tool_calls: number; tool_ms: number; tool_errors: number };
 };
 
 const KIND = { tools: "模型 · 决定查什么", answer: "模型 · 写回答", summary: "模型 · 压缩上下文", error: "模型 · 出错" } as const;
@@ -36,6 +36,9 @@ export function TraceTimeline({ trace, seconds }: { trace: Trace; seconds: numbe
   ].sort((a, b) => a.at - b.at);
   const end = Math.max(seconds * 1000, ...rows.map((r) => r.at + r.ms), 1);
   const t = trace.totals;
+  // 老记录可能把未知定价汇总为0，逐次数据不完整时仍不能当作免费。
+  const mainCost = trace.model_calls.length === t.model_calls && trace.model_calls.every((m) => m.cost_usd != null)
+    ? t.cost_usd : null;
   const cached = t.input_tokens ? Math.round((t.cached_tokens / t.input_tokens) * 100) : 0;
   return (
     <div className="space-y-2" data-testid="trace">
@@ -55,7 +58,9 @@ export function TraceTimeline({ trace, seconds }: { trace: Trace; seconds: numbe
       <p className="text-[11.5px] text-muted">
         模型 {t.model_calls} 次、{(t.model_ms / 1000).toFixed(1)} 秒 · 输入 {k(t.input_tokens)} token（缓存命中 {cached}%）· 输出 {k(t.output_tokens)}
         {t.reasoning_tokens ? `（其中思考 ${k(t.reasoning_tokens)}）` : ""} · 工具 {t.tool_calls} 次、{(t.tool_ms / 1000).toFixed(1)} 秒
-        {t.tool_errors ? `，失败 ${t.tool_errors} 次` : ""}{t.cost_usd ? ` · 约 $${t.cost_usd.toFixed(4)}` : ""}
+        {t.tool_errors ? `，失败 ${t.tool_errors} 次` : ""}
+        {mainCost == null ? " · 主模型费用未完整计量" : ` · 主模型估算 $${mainCost.toFixed(4)}`}
+        {"（未含记忆与检索费用）"}
       </p>
     </div>
   );
