@@ -5,6 +5,12 @@
 
 ## 当前工作入口
 
+### 2026-10-23 自主目标与时间含义修正
+
+用户授权自行设目标、持续修正，明确不再重复提问。当前本机验收目标已建立为 active，完成标准和边界回写 PURPOSE/AGENTS。`95ad1bc` 区分原文 fetched_at 与最近重复采集 last_seen，给卡片日期加含义、主提示升 main-v25；没有改原始日期或重建派生数据。36 项 agent/results/jobs 工具回归通过，4 条既有 ARRAY 警告；TypeScript／定向 ESLint／Ruff 通过，真实页面日期口径已复验。只重启本轮自有 API，先确认无活跃任务与 PID 归属，健康检查通过。
+
+第二条真实网页准备任务约 33.38 秒、1 次工具成功、5 次同期模型调用无错误、无记忆变更；实体与资料性质基本保持，但漏答同一消息的时间更正要求，作为新失败保留。网络用户已授权检查并准备仅百炼直连，实际客户端 AtlasCore 从 stdin 读有效配置，磁盘 bootstrap 与观察路径不符、控制端口不通，限定方案未应用。详见[自主迭代记录](research/2026-10-23-autonomous-local-loop.md)，私有证据仅在 data/probe。继续按真实失败推进，不以一次请求成功宣称网络修复。
+
 ### 2026-10-23 本机第一轮开发
 
 详见[实测报告](research/2026-10-23-local-first-slice.md)。新原文被历史 FIFO 挤出本轮的反例修前失败，修后 7 新测试与相邻集合共 56 通过：`pytest tests/test_extract_scheduling.py tests/test_knowledge_maintenance.py tests/test_daemon.py tests/test_knowledge_audit.py -q --junitxml=data/probe/extract-scheduling-after.xml`。批次修正本地提交 `e41d34b`，未加载常驻采集。
