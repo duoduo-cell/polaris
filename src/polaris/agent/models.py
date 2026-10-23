@@ -15,9 +15,8 @@ from polaris.replay import Cassette
 def chat_model(role: Role = "chat", settings: Settings | None = None, **kwargs: Any) -> ChatOpenAI:
     """重试交给 LangChain 的 ModelRetryMiddleware 做（每次重试都会经过回调被记账），所以这里关掉 SDK 自带的重试。"""
     s = settings or get_settings()
-    if s.llm_enable_thinking is not None:
-        kwargs = {**kwargs, "extra_body": {"enable_thinking": s.llm_enable_thinking,
-                                         **(kwargs.get("extra_body") or {})}}
+    if options := s.thinking_options(role, kwargs.get("extra_body")):
+        kwargs = {**kwargs, "extra_body": options}
     return ChatOpenAI(model=s.model_for(role), base_url=s.chat_base, api_key=s.llm_api_key.get_secret_value(),
                       timeout=s.llm_timeout, max_retries=0, **kwargs)
 

@@ -99,6 +99,41 @@ def test_agent_model_preserves_provider_options_with_thinking_setting():
     assert model.extra_body == {"enable_thinking": False, "custom_parameter": "kept"}
 
 
+def test_chat_thinking_budget_does_not_change_structured_extraction():
+    server = FakeServer().on(CHAT, completion("收到"), completion('{"name":"test","count":1}'))
+    llm, rec, _ = make_llm(server, llm_enable_thinking=False,
+                         llm_chat_enable_thinking=True, llm_chat_thinking_budget=1024)
+    llm.chat([{"role": "user", "content": "hi"}], purpose="chat_budget",
+             extra_body={"custom_parameter": "kept"})
+    extracted = llm.extract("test", Item, purpose="extract_without_chat_budget", max_fix=0)
+    assert extracted.ok
+    chat_body, extract_body = server.bodies(CHAT)
+    assert chat_body["enable_thinking"] is True and chat_body["thinking_budget"] == 1024
+    assert chat_body["custom_parameter"] == "kept"
+    assert extract_body["enable_thinking"] is False and "thinking_budget" not in extract_body
+    assert rec.rows[0]["request"]["extra_body"]["thinking_budget"] == 1024
+
+
+@pytest.mark.parametrize("role", ["chat", "extract", "judge", "brief"])
+def test_agent_thinking_override_is_limited_to_chat_role(role):
+    from polaris.agent.models import chat_model
+
+    settings = get_settings().model_copy(update={"llm_enable_thinking": False,
+        "llm_chat_enable_thinking": True, "llm_chat_thinking_budget": 1024})
+    model = chat_model(role, settings=settings)
+    assert model.extra_body["enable_thinking"] is (role == "chat")
+    assert model.extra_body.get("thinking_budget") == (1024 if role == "chat" else None)
+
+
+def test_explicit_thinking_disable_does_not_leak_default_chat_budget():
+    from polaris.agent.models import chat_model
+
+    settings = get_settings().model_copy(update={"llm_enable_thinking": False,
+        "llm_chat_enable_thinking": True, "llm_chat_thinking_budget": 1024})
+    model = chat_model(settings=settings, extra_body={"enable_thinking": False, "custom_parameter": "kept"})
+    assert model.extra_body == {"enable_thinking": False, "custom_parameter": "kept"}
+
+
 def test_chat_records_tokens_latency_and_no_key():
     server = FakeServer().on(CHAT, completion("收到"))
     llm, rec, _ = make_llm(server)

@@ -137,6 +137,8 @@ class LLM:
              tools: list[dict[str, Any]] | None = None, tool_choice: Any = None, run_id: int | None = None,
              prompt_version: str | None = None, cache: bool | None = None, **params: Any) -> ChatResult:
         body: dict[str, Any] = {"model": self.settings.model_for(role), "messages": messages, **params}
+        if options := self.settings.thinking_options(role, body.get("extra_body")):
+            body["extra_body"] = options
         if tools:
             body["tools"] = tools
         if tool_choice is not None:

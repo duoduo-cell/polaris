@@ -1,10 +1,10 @@
 """配置：全部从环境变量和项目根目录的 .env 读，key 用 SecretStr，不会出现在日志和 repr 里。"""
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # 结构化输出：auto 先试 json_schema，不支持再换 json_object；已知不支持时直接写 json_object 省一次调用
     llm_json_mode: Literal["auto", "json_object"] = "auto"
     llm_enable_thinking: bool | None = None  # 仅支持该参数的服务显式配置；未配置不发送
+    llm_chat_enable_thinking: bool | None = None  # 仅主对话覆盖，不影响抽取/审查/简报
+    llm_chat_thinking_budget: int | None = Field(default=None, ge=1, le=32768)
 
     # 向量服务可以和对话服务分开；不配就用对话服务
     embed_base_url: str | None = None
@@ -62,6 +64,19 @@ class Settings(BaseSettings):
 
     def model_for(self, role: Role) -> str:
         return getattr(self, f"llm_model_{role}") or self.llm_model
+
+    def thinking_options(self, role: Role, explicit: dict[str, Any] | None = None) -> dict[str, Any]:
+        explicit = explicit or {}
+        enabled = self.llm_enable_thinking
+        if role == "chat" and self.llm_chat_enable_thinking is not None:
+            enabled = self.llm_chat_enable_thinking
+        options = {"enable_thinking": enabled} if enabled is not None else {}
+        if role == "chat" and enabled and self.llm_chat_thinking_budget is not None:
+            options["thinking_budget"] = self.llm_chat_thinking_budget
+        options.update(explicit)
+        if options.get("enable_thinking") is False and "thinking_budget" not in explicit:
+            options.pop("thinking_budget", None)
+        return options
 
     @property
     def chat_base(self) -> str:
