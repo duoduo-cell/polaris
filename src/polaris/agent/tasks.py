@@ -213,9 +213,10 @@ class TaskService:
                 thread_id, kind, payload = task.thread_id, task.kind, task.payload
             event = lambda e: self._event(task_id, e)  # noqa: E731
             stop = self._stopper(task_id)
-            turn = (chat(payload["message"], thread_id, on_event=event, record=False, should_stop=stop) if kind == "chat" else
+            turn = (chat(payload["message"], thread_id, on_event=event, record=False, should_stop=stop,
+                         delivery_task_id=task_id) if kind == "chat" else
                     resume(thread_id, payload["approve"], payload.get("reason", ""), on_event=event, record=False,
-                           should_stop=stop))
+                           should_stop=stop, delivery_task_id=task_id))
             result = turn.to_dict()
             if kind == "chat":
                 result["question"] = payload["message"]

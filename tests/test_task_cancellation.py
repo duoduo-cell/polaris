@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import JSON, BigInteger, Integer, MetaData, create_engine, event, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 from polaris.agent import main, tasks, transcript
 from polaris.agent.main import Turn
@@ -15,7 +16,7 @@ from polaris.db.session import session_scope
 
 @pytest.fixture
 def queue(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     metadata = MetaData()
     # 只建三个聊天表的临时投影，不执行生产迁移；SQLite无JSONB／BIGSERIAL／PG默认值。
     for model in (ChatThread, ChatTask, ChatMessage):

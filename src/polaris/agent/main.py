@@ -36,6 +36,7 @@ from langgraph.types import Command
 from polaris.agent.final_answer import FinalAnswerReminder
 from polaris.agent.minimal import text_of
 from polaris.agent.models import chat_model
+from polaris.agent.task_delivery import TaskDelivery, tag
 from polaris.agent.tracing import PolarisTracer
 from polaris.config import get_settings
 from polaris.data_scope import demo_tool_allowed
@@ -46,7 +47,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v36"  # v36：最终会话写入／读回失败保留保存未确认；v35演示范围声明保留。
+PROMPT_VERSION = "main-v37"  # v37：任务归属与未交付内容在下一轮模型上下文中的隔离。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -322,10 +323,12 @@ def approval_policy() -> dict[str, Any]:
             for name in TOOLS if not REGISTRY[name].read_only}
 
 
-def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_model: BaseChatModel | None = None):
+def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_model: BaseChatModel | None = None,
+          *, delivery_task_id: str | None = None, thread_id: str | None = None):
     return create_agent(
         model=model, tools=tools, system_prompt=system_prompt, checkpointer=checkpointer(),
-        middleware=[ModelRetryMiddleware(max_retries=3, retry_on=_retryable),
+        middleware=[TaskDelivery(delivery_task_id, thread_id),
+                    ModelRetryMiddleware(max_retries=3, retry_on=_retryable),
                     ModelCallLimitMiddleware(run_limit=MAX_MODEL_CALLS, exit_behavior="end"),
                     SummarizationMiddleware(model=summary_model or model, trigger=("tokens", SUMMARY_TRIGGER_TOKENS),
                                             keep=SUMMARY_KEEP, summary_prompt=SUMMARY_PROMPT),
@@ -438,6 +441,7 @@ def _close_dangling(agent: Any, config: dict[str, Any]) -> None:
 def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], model: BaseChatModel | None,
          run_id: int | None, purpose: str, on_event: Event | None = None,
          should_stop: Callable[[], bool] | None = None,
+         delivery_task_id: str | None = None,
          ) -> tuple[dict[str, Any] | None, ToolRuntime, PolarisTracer, str | None, int]:
     runtime = ToolRuntime(run_id=run_id, thread_id=thread_id, agent="main")
     if isinstance(payload, dict):
@@ -462,7 +466,8 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
                                                        "summary": outcome(row["tool"], data, row["ok"], row["output"])})
         callbacks.append(LiveHandler(on_event, stop))
         model = model or chat_model("chat", streaming=True, stream_usage=True)
-    agent = build(model or chat_model("chat"), tools, _system_prompt(now, questions))
+    agent = build(model or chat_model("chat"), tools, _system_prompt(now, questions),
+                  delivery_task_id=delivery_task_id, thread_id=thread_id)
     start = time.perf_counter()
     # 步数上限只是保险：真正限制循环的是模型调用上限（到了会正常收尾）。每一轮"模型 → 工具"在图里要走好几步
     # （摘要、审批中间件各有自己的节点），10-11 网页实测按 2 倍算会先撞上步数上限报错，所以放宽到 8 倍
@@ -488,7 +493,7 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
             last = state["messages"][-1]
             messages = ([last.model_copy(update={"content": "报告收尾已结束，实际交付见下一条答复。"})]
                         if last.type == "tool" and last.name == "career_report" else [])
-            messages.append(AIMessage(content=final.answer, id=last.id if last.type == "ai" else None))
+            messages.append(tag(AIMessage(content=final.answer, id=last.id if last.type == "ai" else None), delivery_task_id))
             try:
                 agent.update_state(config, {"messages": messages}, as_node="model")
                 state = dict(agent.get_state(config).values)
@@ -508,7 +513,7 @@ MEMORY_WAIT_SECONDS = 90
 def chat(message: str, thread_id: str, *, now: datetime | None = None, model: BaseChatModel | None = None,
          remember_fn: Callable[..., dict[str, Any]] | None = None, run_id: int | None = None,
          on_event: Event | None = None, memory_first: bool = False, record: bool = True,
-         should_stop: Callable[[], bool] | None = None) -> Turn:
+         should_stop: Callable[[], bool] | None = None, delivery_task_id: str | None = None) -> Turn:
     """你说一句话：记忆抽取和回答同时进行（10-11 实测记忆抽取要 5 到 34 秒，先做完再回答会让每句话都多等这么久）。
     回答时这句话本身就在对话里，agent 看得到；记忆要问你的（矛盾、推断）等回答完再接在后面。
     memory_first=True 时按原来的顺序：先改完记忆再回答（测试里需要确定的顺序时用）。"""
@@ -534,7 +539,7 @@ def chat(message: str, thread_id: str, *, now: datetime | None = None, model: Ba
         worker.join()
     asks = box["mem"]["questions"] if memory_first else []
     state, runtime, tracer, err, ms = _run({"messages": [{"role": "user", "content": message}]}, thread_id, now,
-                                           asks, model, run_id, "chat", on_event, should_stop)
+                                           asks, model, run_id, "chat", on_event, should_stop, delivery_task_id)
     worker.join(timeout=MEMORY_WAIT_SECONDS)
     mem = box.get("mem", {"events": [], "questions": [], "error": "记忆抽取超时，这句话没记"})
     turn = _turn(thread_id, state, runtime, tracer, err, ms, mem)
@@ -556,12 +561,13 @@ def chat(message: str, thread_id: str, *, now: datetime | None = None, model: Ba
 
 def resume(thread_id: str, approve: bool, reason: str = "", *, now: datetime | None = None,
            model: BaseChatModel | None = None, run_id: int | None = None, on_event: Event | None = None,
-           record: bool = True, should_stop: Callable[[], bool] | None = None) -> Turn:
+           record: bool = True, should_stop: Callable[[], bool] | None = None,
+           delivery_task_id: str | None = None) -> Turn:
     """你对等批准的动作做了决定：批准就执行，拒绝就告诉 agent 你不同意（它会换个做法或直接回答）。"""
     ready()
     decision: dict[str, Any] = {"type": "approve"} if approve else {"type": "reject", "message": reason or "用户没有批准"}
     state, runtime, tracer, err, ms = _run(Command(resume={"decisions": [decision]}), thread_id, now or datetime.now(UTC),
-                                           [], model, run_id, "chat:resume", on_event, should_stop)
+                                           [], model, run_id, "chat:resume", on_event, should_stop, delivery_task_id)
     turn = _turn(thread_id, state, runtime, tracer, err, ms, {"events": [], "questions": []})
     if record:
         from uuid import uuid4

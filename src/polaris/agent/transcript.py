@@ -41,7 +41,9 @@ def ensure_thread(s: Session, thread_id: str) -> ChatThread:
         for m in checkpoint.checkpoint["channel_values"].get("messages", []):
             role = {"human": "user", "ai": "assistant"}.get(m.type)
             content = text_of(m.content)
-            if not role or not content or m.additional_kwargs.get("lc_source") == "summarization":
+            if (not role or not content or m.additional_kwargs.get("lc_source") == "summarization"
+                    or m.additional_kwargs.get("polaris_internal")
+                    or (role == "assistant" and m.additional_kwargs.get("polaris_task_id"))):
                 continue
             if getattr(m, "tool_calls", None):
                 continue
