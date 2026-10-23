@@ -1,5 +1,12 @@
 ﻿# 注册开机自启：你登录 Windows 后自动在后台运行常驻采集（scripts\run_daemon.ps1）。
 # 只注册在你自己的账号下、不用管理员权限。取消：Unregister-ScheduledTask -TaskName "Polaris 常驻采集" -Confirm:$false
+param([switch]$EnableAutostart)
+
+# 2026-10-23 用户关闭自启动，必须有新的明确授权才能恢复。
+if (-not $EnableAutostart) {
+    throw "北极星自启动默认关闭。只有用户明确要求恢复后，才可传 -EnableAutostart；本次未修改启动项。"
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root\scripts\run_daemon.ps1`""
