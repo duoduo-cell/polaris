@@ -45,7 +45,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v31"  # v31：尾部区分结构化范围、关键词召回与本页展示；保留v30工具后收尾和北京日期。
+PROMPT_VERSION = "main-v32"  # v32：题目附原帖标题与轮次范围；明确未列出的岗位只保留引用，保留v31计数口径。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
