@@ -40,9 +40,16 @@ def _search_count_note(messages: list[Any]) -> str:
         next_offset = page.get("next_offset")
         paging = ("还有下一页。" if type(next_offset) is int and next_offset >= 0 else
                   "没有下一页。" if "next_offset" in page and next_offset is None else "下一页信息未知。")
-        note = (f"本轮最近一次成功的岗位搜索：候选{count}，当前仅展示{len(items)}，"
+        scope = page.get("scope_candidate_count")
+        search = data.get("search")
+        queried = isinstance(search, dict) and search.get("query_executed") is True
+        scoped = type(scope) is int and 0 <= scope <= 100_000_000
+        counts = f"结构化范围候选{scope}；关键词召回{count}" if scoped and queried else f"候选{count}"
+        note = (f"本轮最近一次成功的岗位搜索：{counts}，当前仅展示{len(items)}，"
                 + paging
                 + "展示数不是符合条件的总数；候选数也不证明个人资格全部符合。")
+        if queried:
+            note += "未召回不等于不符合；是否还有下一页仅指召回子集，不能据此声称结构化范围只有这些岗位。"
         days = data.get("days_filter")
         unknown = days.get("jd_without_days") if isinstance(days, dict) else None
         if type(unknown) is int and 0 <= unknown <= 100_000_000:
