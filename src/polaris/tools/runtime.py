@@ -18,7 +18,7 @@ from sqlalchemy import Engine
 from polaris.db.models import ToolCall
 from polaris.db.session import session_scope
 from polaris.replay import Cassette, CassetteMiss
-from polaris.tools.base import ToolError, ToolSpec, render, validation_error
+from polaris.tools.base import FinalResponse, ToolError, ToolSpec, render, validation_error
 
 FaultKind = Literal["rate_limit", "timeout"]
 FAULT_MESSAGES: dict[str, str] = {
@@ -28,7 +28,8 @@ FAULT_MESSAGES: dict[str, str] = {
 INTERNAL_ERROR = "出错了：工具内部错误（{name}）。\n怎么改：这不是参数的问题，可以再试一次，或者换一个工具。"
 # 和用户对话时一次回答里每种工具最多调几次（10-12 探针：提示词说了"最多换一次说法"，模型还是把帖子搜了 41 次；
 # 回答评测 E2：查一个不存在的"每周 2 天"岗位，岗位和帖子各搜满 8 次，于是搜索再收到 6 次）
-PER_ANSWER_CAPS = {"jobs_search": 6, "posts_search": 6, "questions_search": 5, "kg_stats": 8, "jobs_get": 10, "posts_get": 10}
+PER_ANSWER_CAPS = {"jobs_search": 6, "posts_search": 6, "questions_search": 5, "kg_stats": 8,
+                   "jobs_get": 10, "posts_get": 10, "career_report": 1}
 # 软刹车：这次回答查到第几次起，在结果里提醒模型收尾（不打断、不报错）。10-12 回答评测：对比类问题查了 24 次、180 秒，
 # 后面十几次是边看边扩大范围（用户没问的城市、换参数重查统计）
 SOFT_LIMIT = 10
@@ -51,6 +52,7 @@ class ToolRuntime:
         self.on_done: Any = None  # 每次调用结束后通知一下（网页显示"查到了多少"）；参数是调用记录和结构化结果
         self.user_request: str | None = None
         self.job_criteria: dict[str, dict[str, Any]] = {}
+        self.final_response: FinalResponse | None = None
 
     def invoke(self, spec: ToolSpec, raw_args: dict[str, Any]) -> str:
         start = time.perf_counter()
@@ -137,7 +139,12 @@ class ToolRuntime:
                         data["match"] = fit[int(data["id"][2:])]
             if self.agent == "main" and isinstance(data, dict) and len(self.calls) + 1 >= SOFT_LIMIT:
                 data = {**data, "budget": SOFT_NOTE.format(n=len(self.calls) + 1)}
-            output, ok, kind = render(data), True, None
+            if spec.return_direct and isinstance(data, FinalResponse):
+                self.final_response = data
+                output, ok, kind = data.answer, data.error is None, "report_incomplete" if data.error else None
+                data = {"status": data.status}
+            else:
+                output, ok, kind = render(data), True, None
         except ToolError as e:
             data = None
             output, ok, kind = e.render(), False, "tool_error"
@@ -198,7 +205,7 @@ class ToolRuntime:
 
         schema = spec.args_schema.model_json_schema()
         return StructuredTool.from_function(func=run, name=spec.name, description=spec.description,
-                                            args_schema=schema, infer_schema=False)
+                                            args_schema=schema, infer_schema=False, return_direct=spec.return_direct)
 
     def langchain_tools(self, specs: list[ToolSpec]) -> list[StructuredTool]:
         return [self.as_langchain_tool(s) for s in specs]

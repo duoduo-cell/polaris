@@ -1,6 +1,7 @@
 """纯合成证据：拒绝伪造引用／范围串用，关键事实不由模型补写。"""
 import copy
 import json
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -14,6 +15,7 @@ from polaris.agent.career_report import (
     preparation_prompt,
     render_report,
     validate_plan,
+    validate_selection,
 )
 
 
@@ -236,3 +238,220 @@ def test_personal_requirement_review_is_kept_in_report_without_invented_qualific
     assert "学历解释：个人已记录情况=本科在读" in answer
     assert "论文解释：个人已记录情况=无论文" in answer
     assert "论文非必要" in answer and "时长未记录" in answer
+
+
+def selection_of(raw):
+    return CareerEvidenceSelection.model_validate({k: raw[k] for k in CareerEvidenceSelection.model_fields})
+
+
+class Extractor:
+    def __init__(self, values, *, after=None, failure=None):
+        self.values, self.after, self.failure, self.calls = iter(values), after, failure, []
+
+    def extract(self, prompt, schema, **kwargs):
+        self.calls.append((prompt, schema, kwargs))
+        if self.after:
+            self.after()
+        if self.failure:
+            raise RuntimeError(self.failure)
+        value = next(self.values)
+        return SimpleNamespace(ok=value is not None, value=value, error="sk-must-not-leak", call_ids=[len(self.calls)])
+
+
+def notes_of(raw):
+    return PreparationNotes.model_validate({k: raw[k] for k in PreparationNotes.model_fields})
+
+
+def test_workflow_is_bounded_and_preserves_two_independent_outlines(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, raw = sample
+    model = Extractor([selection_of(raw), notes_of(raw)])
+    result = produce_report("合成完整任务", calls, llm=model)
+    assert result.status == "ready" and result.error is None
+    assert result.llm_call_ids == [1, 2] and len(model.calls) == 2
+    assert "结构化范围候选 18 条" in result.answer and "故障注入" in result.answer
+    assert all(c[2]["max_fix"] == 0 and c[2]["cache"] is False for c in model.calls)
+    # 建议生成没有接收主请求、原帖轮次、个人信息或其余JD。
+    assert "合成完整任务" not in model.calls[-1][0] and "上海" not in model.calls[-1][0]
+
+
+def test_bad_selection_stops_before_model_and_never_adopts_earlier_draft(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, raw = sample
+    model = Extractor([])
+    selection = selection_of(raw).model_copy(update={"question_id": "Q-999"})
+    result = produce_report("合成任务", calls, llm=model, selection=selection)
+    assert result.status == "insufficient_evidence" and result.error
+    assert model.calls == [] and "完整报告未完成" in result.answer
+    assert "Q-999" not in result.answer and "[J-1]" in result.answer
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_schema_or_service_failure_is_explicit_and_not_retried(sample, failure):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, _ = sample
+    model = Extractor([None], failure="sk-private-key-in-exception" if failure else None)
+    result = produce_report("合成任务", calls, llm=model)
+    assert result.status == ("model_error" if failure else "insufficient_evidence")
+    assert result.error and len(model.calls) == 1
+    assert "sk-" not in result.error + result.answer
+
+
+def test_stop_before_and_during_selection_prevents_following_calls(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, raw = sample
+    model = Extractor([])
+    result = produce_report("合成任务", calls, llm=model, should_stop=lambda: True)
+    assert result.status == "stopped" and result.answer == "" and model.calls == []
+    stopped = []
+    model = Extractor([selection_of(raw)], after=lambda: stopped.append(True))
+    result = produce_report("合成任务", calls, llm=model, should_stop=lambda: bool(stopped))
+    assert result.status == "stopped" and result.answer == "" and len(model.calls) == 1
+
+
+def test_stop_during_preparation_does_not_deliver_generated_answer(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, raw = sample
+    stopped = []
+    model = Extractor([notes_of(raw)], after=lambda: stopped.append(True))
+    result = produce_report("合成任务", calls, llm=model, selection=selection_of(raw), should_stop=lambda: bool(stopped))
+    assert result.status == "stopped" and result.answer == "" and result.llm_call_ids == [1]
+
+
+def test_empty_search_with_selection_requires_no_model(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, plan = empty_case(sample, "scope_empty")
+    model = Extractor([])
+    result = produce_report("合成空结果", calls, llm=model, selection=plan)
+    assert result.status == "ready" and model.calls == [] and result.llm_call_ids == []
+    assert "结构化范围候选 0 条" in result.answer
+
+
+def test_stable_id_resolution_uses_actual_completion_order_and_refuses_scope_switch(sample):
+    from polaris.agent.report_workflow import ReportRequest, produce_report, resolve_selection
+
+    calls, raw = sample
+    request = ReportRequest(job_ids=raw["job_ids"], question_id=raw["question_id"], jd_basis=raw["jd_basis"])
+    reversed_calls = [calls[2], calls[0], calls[1]]
+    selection = resolve_selection(request, reversed_calls)
+    assert (selection.search_call_index, selection.detail_call_index, selection.question_call_index) == (1, 2, 0)
+    validate_selection(selection, reversed_calls)
+    other = copy.deepcopy(calls[0])
+    other["args"]["city"] = "北京"
+    reversed_calls.append(other)
+    result = produce_report("合成任务", reversed_calls, selection=resolve_selection(request, reversed_calls), llm=Extractor([]))
+    assert result.status == "insufficient_evidence" and "条件" in result.error
+
+
+def test_direct_final_response_is_not_cut_at_search_result_limit():
+    from pydantic import BaseModel
+
+    from polaris.tools.base import FinalResponse, ToolSpec
+    from polaris.tools.runtime import ToolRuntime
+
+    class Args(BaseModel):
+        pass
+
+    text = "合成报告" * 2000
+    spec = ToolSpec("synthetic_report", "合成收尾", Args, lambda a: FinalResponse(text, "ready"), return_direct=True)
+    runtime = ToolRuntime(record_db=False)
+    assert runtime.as_langchain_tool(spec).return_direct is True
+    assert runtime.invoke(spec, {}) == text
+    assert runtime.final_response.answer == text
+
+
+def test_default_report_client_is_bounded_and_records_actual_usage(sample, monkeypatch):
+    from polaris.agent import report_workflow as module
+    from polaris.llm.recorder import MemoryRecorder
+
+    calls, raw = sample
+    captured = {}
+
+    class Client:
+        def __init__(self, settings, recorder):
+            captured["settings"] = settings
+            self.recorder = recorder
+
+        def extract(self, prompt, schema, **kwargs):
+            cid = self.recorder.record({"model": "synthetic", "latency_ms": 20, "prompt_tokens": 10,
+                                        "completion_tokens": 5, "cost_usd": None})
+            return SimpleNamespace(ok=True, value=notes_of(raw), call_ids=[cid])
+
+    monkeypatch.setattr(module, "LLM", Client)
+    result = module.produce_report("合成任务", calls, selection=selection_of(raw), recorder=MemoryRecorder())
+    assert result.status == "ready" and result.llm_call_ids == [1]
+    assert result.model_trace[0]["input_tokens"] == 10 and result.model_trace[0]["cost_usd"] is None
+    assert captured["settings"].llm_max_retries == 0 and captured["settings"].llm_timeout == 45
+    assert captured["settings"].llm_json_mode == "json_object"
+
+
+def test_direct_report_is_saved_as_final_ai_message_and_prep_usage_is_in_turn(db, sample, monkeypatch):
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+    from langchain_core.messages import AIMessage
+
+    from polaris.agent import report_workflow as module
+    from polaris.agent.main import chat, checkpointer
+    from polaris.agent.transcript import visible_messages
+    from polaris.db.models import InterviewQuestion, Job, Post, RawItem
+    from polaris.db.session import session_scope
+    from polaris.tools import REGISTRY
+
+    calls, raw = sample
+    now = datetime.now(UTC)
+    with session_scope() as s:
+        for jid in (1, 2):
+            s.add(Job(id=jid, key=f"final-report-{jid}", title="合成Agent实习", company="合成公司", city="上海",
+                      cities=["上海"], job_type="intern", days_per_week=4, duration_months=6, requirements=["本科及以上在读"],
+                      first_seen_at=now, last_seen_at=now))
+        s.add(RawItem(id=1, source="manual", kind="post", raw_text="合成一面\n如何评测Agent效果？", raw_json={},
+                      fetched_at=now, content_hash="report-integration"))
+        s.flush()
+        s.add(Post(id=4, raw_item_id=1, post_type="面经", summary="合成一面"))
+        s.flush()
+        s.add(InterviewQuestion(id=3, post_id=4, key="report-question", company="合成公司", question="如何评测Agent效果？",
+                                category="Agent", material="firsthand", attribution="explicit", evidence="如何评测Agent效果？"))
+    for c in calls:
+        monkeypatch.setattr(REGISTRY[c["tool"]], "func", lambda args, out=c["output"]: copy.deepcopy(out))
+
+    class Client:
+        def __init__(self, settings, recorder):
+            self.recorder = recorder
+
+        def extract(self, prompt, schema, **kwargs):
+            cid = self.recorder.record({"purpose": "career_report:preparation", "model": "synthetic-prep", "endpoint": "chat",
+                                        "provider": "synthetic", "request": {}, "latency_ms": 20,
+                                        "prompt_tokens": 10, "completion_tokens": 5})
+            return SimpleNamespace(ok=True, value=notes_of(raw), call_ids=[cid])
+
+    monkeypatch.setattr(module, "LLM", Client)
+    class Model(GenericFakeChatModel):
+        def bind_tools(self, tools, **kwargs):
+            return self
+
+    scripted = [AIMessage(content="", tool_calls=[{"id": str(i), "name": c["tool"], "args": c["args"]}]) for i, c in enumerate(calls)]
+    scripted.append(AIMessage(content="", tool_calls=[{"id": "final", "name": "career_report", "args": {
+        "job_ids": raw["job_ids"], "question_id": raw["question_id"], "jd_basis": raw["jd_basis"]}}]))
+    tid = f"report-{uuid4()}"
+    turn = chat("合成完整求职报告", tid, model=Model(messages=iter(scripted)),
+                remember_fn=lambda *a, **kw: {"events": [], "questions": []})
+    assert turn.error is None
+    assert "结构化范围候选 18 条" in turn.answer and "故障注入" in turn.answer
+    assert turn.tool_calls[-1]["tool"] == "career_report"
+    assert turn.trace["totals"]["model_calls"] == len(scripted) + 1
+    assert len(turn.llm_call_ids) == len(scripted) + 1
+    assert turn.trace["model_calls"][-1]["model"] == "synthetic-prep"
+    saved = checkpointer().get_tuple({"configurable": {"thread_id": tid}}).checkpoint["channel_values"]["messages"]
+    assert saved[-1].type == "ai" and saved[-1].content == turn.answer
+    assert saved[-2].type == "tool" and "实际交付见下一条" in saved[-2].content
+    with session_scope() as s:
+        readback = visible_messages(s, tid)[-1]
+        assert readback["content"] == turn.answer and readback["turn"]["llm_call_ids"] == turn.llm_call_ids

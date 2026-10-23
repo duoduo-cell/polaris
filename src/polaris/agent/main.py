@@ -29,7 +29,7 @@ from langchain.agents.middleware import (
 from langchain.agents.middleware._retry import default_retry_on
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.types import Command
 
@@ -45,7 +45,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v32"  # v32：题目附原帖标题与轮次范围；明确未列出的岗位只保留引用，保留v31计数口径。
+PROMPT_VERSION = "main-v33"  # v33：完整求职报告可用有界证据收尾工具；门槛说明保留个人事实与原句。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -300,6 +300,7 @@ class Turn:
         out = {"thread_id": self.thread_id, "answer": self.answer, "memory_events": self.memory_events,
                "memory_questions": self.memory_questions, "approvals": self.approvals,
                "tool_calls": [{"tool": c["tool"], "args": c["args"], "ok": c["ok"]} for c in self.tool_calls],
+               "llm_call_ids": self.llm_call_ids,
                "latency_ms": self.latency_ms, "error": self.error, "results": self.results, "activities": self.activities}
         if self.context:
             out["context"] = self.context
@@ -438,9 +439,11 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
         if user_messages:
             last_user = user_messages[-1]
             runtime.user_request = text_of(last_user.get("content") if isinstance(last_user, dict) else last_user.content)
-    tools = runtime.langchain_tools([REGISTRY[n] for n in TOOLS])
     tracer = PolarisTracer(purpose=purpose, run_id=run_id, prompt_version=PROMPT_VERSION, recorder=DbRecorder())
     stop = should_stop or (lambda: False)
+    from polaris.agent.report_workflow import report_tool
+
+    tools = runtime.langchain_tools([REGISTRY[n] for n in TOOLS] + [report_tool(runtime, stop, tracer.t0)])
     callbacks: list[Any] = [tracer]
     if on_event is not None:
         from polaris.agent.steps import outcome
@@ -467,6 +470,23 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
                 _close_dangling(agent, {"configurable": {"thread_id": thread_id}})
             except Exception:  # noqa: BLE001
                 pass
+    final = runtime.final_response
+    if final is not None:
+        tracer.call_ids.extend(final.llm_call_ids)
+        tracer.trace.extend(final.model_trace)
+        err = final.error or err
+        if state and not stop():
+            # ToolMessage仍需回答前面的调用；用短确认保留配对，再保存真正给用户的AI答复。
+            last = state["messages"][-1]
+            messages = ([last.model_copy(update={"content": "报告收尾已结束，实际交付见下一条答复。"})]
+                        if last.type == "tool" and last.name == "career_report" else [])
+            messages.append(AIMessage(content=final.answer, id=last.id if last.type == "ai" else None))
+            agent.update_state(config, {"messages": messages}, as_node="model")
+            state = dict(agent.get_state(config).values)
+    elif runtime.calls and runtime.calls[-1]["tool"] == "career_report" and not runtime.calls[-1]["ok"]:
+        err = runtime.calls[-1]["output"]
+    if stop():
+        state, err = None, STOPPED
     return state, runtime, tracer, err, int((time.perf_counter() - start) * 1000)
 
 

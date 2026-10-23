@@ -18,6 +18,16 @@ MAX_OUTPUT_CHARS = 6000
 TRUNCATED_HINT = "（结果太长，后面的已截断。请用更具体的查询词，或把 limit 调小再用 offset 翻页。）"
 
 
+@dataclass
+class FinalResponse:
+    """内部只读收尾结果；直接交付的正文不按普通检索结果截断。"""
+    answer: str
+    status: str
+    error: str | None = None
+    llm_call_ids: list[int | None] = field(default_factory=list)
+    model_trace: list[dict[str, Any]] = field(default_factory=list)
+
+
 class ToolError(Exception):
     """工具能预料到的错误。render() 的内容会原样交给模型，所以要写成它能照着改的建议。"""
 
@@ -49,6 +59,7 @@ class ToolSpec:
     example: str | None = None  # 一个正确的参数示例，参数出错时给模型看
     tags: tuple[str, ...] = field(default_factory=tuple)
     live: bool = False  # 现查：会去网站或用你登录的浏览器，只给主 agent，不进 MCP，每次回答限次数
+    return_direct: bool = False
 
     @property
     def namespace(self) -> str:
