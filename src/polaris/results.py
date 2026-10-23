@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from polaris.db.models import InterviewQuestion, Job, Post, RawItem, ToolCall
+from polaris.db.models import ChatMessage, InterviewQuestion, Job, Post, RawItem, ToolCall
 from polaris.followups import get as followup
 from polaris.interviews import MATERIAL_LABELS
 from polaris.tools.jobs import _job_row, _post_row, job_sources
@@ -14,6 +14,22 @@ from polaris.tools.knowledge import question_row
 
 REF_RE = re.compile(r"(?<![A-Za-z0-9])([JPQR]-\d+)(?!\d)")
 POST_KINDS = {"面经": "interview", "内推": "referral", "招聘": "recruitment", "经验": "study"}
+
+
+def unverified_citations(s: Session, answer: str, calls: list[dict[str, Any]], thread_id: str) -> set[str]:
+    """检查明确括注的实体引用；不是自然语言事实正确性的完整审查。"""
+    prose = re.sub(r"```[\s\S]*?```|`[^`\n]*`", "", answer)
+    cited = set(re.findall(r"[\[【（(]\s*([JPQR]-\d+)\s*[\]】）)]", prose))
+    if not cited:
+        return set()
+    supported = set().union(*(refs_from_output(c.get("output", "")) for c in calls if c.get("ok")))
+    if missing := cited - supported:
+        # 已有正式结果可在同一对话继续引用，不要求重复工具调用来取同一份证据。
+        prior = s.scalars(select(ChatMessage).where(ChatMessage.thread_id == thread_id, ChatMessage.role == "assistant")
+                          .order_by(ChatMessage.id.desc()).limit(20)).all()
+        supported.update(r.get("id") for message in prior for r in (message.turn or {}).get("results", [])
+                         if isinstance(r, dict) and r.get("id") in missing)
+    return cited - supported
 
 
 # 工具输出里放编号的字段：整个字段就是一个编号才算（kg_stats 的例子、jobs_trend 的新岗位、来源的原始记录、source_open 的对象）。

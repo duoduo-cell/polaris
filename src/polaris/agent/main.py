@@ -568,9 +568,12 @@ def _turn(thread_id: str, state: dict[str, Any] | None, runtime: ToolRuntime, tr
         elif answer.startswith("Model call failed after"):  # 重试中间件用尽重试后把报错当成了回复（10-12 中转断连时实测）
             answer, err = "", err or "模型服务暂时连不上（重试几次都失败了）。你的原话已经保存，过一会儿重新发送就行。"
     from polaris.agent.steps import describe, outcome
-    from polaris.results import activity, presentation
+    from polaris.results import activity, presentation, unverified_citations
     with session_scope() as s:
         results = presentation(s, answer, runtime.calls) if answer else []
+        if answer and unverified_citations(s, answer, runtime.calls, thread_id):
+            warning = "回答有引用未在本轮检索或近期对话资料中取证，相关内容尚未核验，不能据此确认岗位或面经原题。"
+            err = f"{err}；{warning}" if err else warning
     steps = []
     for i, c in enumerate(runtime.calls):
         data = runtime.results.get(i)
