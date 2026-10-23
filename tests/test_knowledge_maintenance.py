@@ -12,7 +12,10 @@ from typer.testing import CliRunner
 
 from polaris.db.models import Post, Posting, Run, SearchChunk
 from polaris.db.session import session_scope
+from polaris.extract import pending as pending_extractions
+from polaris.extract import run_extract
 from polaris.ingest import RawItemIn, ingest_raw_items
+from polaris.schemas import JobFacts
 from polaris.search import index
 from polaris.search import maintenance as m
 from polaris.search.locking import acquire_knowledge_write
@@ -303,12 +306,21 @@ def test_repeated_interruption_of_optional_graph_does_not_exhaust_core(db, monke
     assert out["status"] == "ok" and out["stats"]["graph_error"]
 
 
-def seed_synthetic_job():
-    raw_id = ingest_raw_items([RawItemIn(source="manual", is_synthetic=True,
-                                       raw_text="合成恢复样本 Recoveryneedle Agent 实习 上海")]).ids[0]
-    with session_scope() as s:
-        s.add(Posting(raw_item_id=raw_id, company_name="合成公司", title="Recoveryneedle Agent 实习",
-                      city="上海", job_type="intern", jd_text="Recoveryneedle 可靠工具调用与任务编排"))
+class FakeJobExtraction:
+    def __init__(self, *, fail=False):
+        self.fail = fail
+
+    def extract(self, prompt, schema, **kwargs):
+        assert schema is JobFacts
+        assert "Recoveryneedle" in prompt
+        if self.fail:
+            return SimpleNamespace(ok=False, value=None, call_ids=[], error="controlled extraction failure")
+        return SimpleNamespace(
+            ok=True,
+            value=JobFacts(company="合成公司", title="Recoveryneedle Agent 实习", directions=["Agent"],
+                           city="上海", job_type="intern", requirements=["可靠工具调用与任务编排"]),
+            call_ids=[None],
+        )
 
 
 class FakeEmbedding:
@@ -327,10 +339,21 @@ class FakeEmbedding:
 
 def test_real_index_and_retrieval_recover_without_new_raw_items(db, monkeypatch, record_property):
     started = perf_counter()
-    seed_synthetic_job()
+    ingested = ingest_raw_items([RawItemIn(source="manual", kind="job", is_synthetic=True,
+                                           raw_text="合成恢复样本 Recoveryneedle Agent 实习 上海；可靠工具调用与任务编排")])
+    assert ingested.inserted == 1
+    raw_committed = perf_counter()
+    monkeypatch.setattr(m, "_now", lambda now=None: now or NOW)
+    failed_extract = run_extract("job", 1, None, 1, source="manual", llm=FakeJobExtraction(fail=True))
+    assert failed_extract == {"pending": 1, "extracted": 0, "failed": 1, "big_company": 0}
+    assert [item.id for item in pending_extractions("job", 1, "manual")] == ingested.ids
+    assert m.status()["status"] == "idle"  # 抽取失败不能伪报出知识待办或任务完成。
+    extracted = run_extract("job", 1, None, 1, source="manual", llm=FakeJobExtraction())
+    assert extracted == {"pending": 1, "extracted": 1, "failed": 0, "big_company": 0}
+    extraction_committed = perf_counter()
+    assert m.status()["status"] == "pending"  # run_extract 同事务登记知识刷新待办。
     fake = FakeEmbedding()
     monkeypatch.setattr(index, "LLM", lambda: fake)
-    m.request_refresh("synthetic integration", now=NOW)
     first = m.run_pending(now=NOW)
     assert first["status"] == "pending" and first["stats"]["failed_stage"] == "embed"
     q = SearchQuery("Recoveryneedle", scope="jobs", include_synthetic=True)
@@ -339,14 +362,14 @@ def test_real_index_and_retrieval_recover_without_new_raw_items(db, monkeypatch,
         ids_before = list(s.scalars(select(SearchChunk.id).order_by(SearchChunk.id)))
         assert ids_before and keyword(s, q, q.text)
         assert vector(s, q, vec) == []
-    keyword_ms = (perf_counter() - started) * 1000
+    keyword_available = perf_counter()
     fake.fail = False
     out = m.run_pending(now=NOW + m.RETRY_DELAY)
     assert out["status"] == "ok"
     with session_scope() as s:
         assert keyword(s, q, q.text) and vector(s, q, vec)
         assert list(s.scalars(select(SearchChunk.id).order_by(SearchChunk.id))) == ids_before
-    vector_ms = (perf_counter() - started) * 1000
+    vector_available = perf_counter()
     # 再请求一次，同一条原文和块不重复写，也不再调用向量服务。
     batch_count = len(fake.batch_sizes)
     m.request_refresh("idempotency check", now=NOW + timedelta(hours=1))
@@ -354,9 +377,16 @@ def test_real_index_and_retrieval_recover_without_new_raw_items(db, monkeypatch,
     with session_scope() as s:
         assert list(s.scalars(select(SearchChunk.id).order_by(SearchChunk.id))) == ids_before
     assert len(fake.batch_sizes) == batch_count
-    record_property("keyword_observed_ms", round(keyword_ms, 2))
-    record_property("vector_observed_ms", round(vector_ms, 2))
-    print(f"synthetic retrieval: keyword={keyword_ms:.2f}ms vector={vector_ms:.2f}ms; cooldown clock advanced 300s")
+    timings = {
+        "ingest_commit_ms": (raw_committed - started) * 1000,
+        "extraction_commit_ms": (extraction_committed - raw_committed) * 1000,
+        "keyword_available_after_ingest_ms": (keyword_available - raw_committed) * 1000,
+        "vector_available_after_ingest_ms": (vector_available - raw_committed) * 1000,
+    }
+    for name, value in timings.items():
+        record_property(name, round(value, 2))
+    print("synthetic full chain wall: " + ", ".join(f"{k}={v:.2f}ms" for k, v in timings.items())
+          + f"; controlled retry cooldown advanced={m.RETRY_DELAY.total_seconds():.0f}s")
 
 
 def test_real_embedding_pass_is_bounded_and_reports_remaining(db):

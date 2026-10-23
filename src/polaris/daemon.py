@@ -84,11 +84,13 @@ def run_round(source: str, context: Any, cap: int, used: int, echo: Callable[[st
                 obj.close()
     kind, raw_source = POST_SOURCES[source]
     data_changed = bool(r["new_ids"])
-    try:  # 按现有 pending 顺序限量补处理，不保证新项优先
+    try:  # 当前批次优先，留名额限量补处理历史积压。
         out = run_extract(kind, len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, raw_source)
         data_changed = data_changed or out["extracted"] > 0
+        echo(f"  [{source}] 抽取 {out['extracted']} 条，失败 {out.get('failed', 0)} 条")
         added = discover_queries(r["new_ids"], r["run_id"]) if source == "xhs" and r["new_ids"] else []
-        echo(f"  [{source}] 抽取 {out['extracted']} 条" + (f"；新查询词：{'、'.join(added)}" if added else ""))
+        if added:
+            echo(f"  [{source}] 新查询词：{'、'.join(added)}")
         from polaris.peers import run as extract_peers
 
         peers = extract_peers(len(r["new_ids"]) + 20, source=raw_source)  # 帖子里"人和结果"（背景、offer、几面）
@@ -189,7 +191,7 @@ def official_daily(echo: Callable[[str], None] = print) -> None:
             n = len(q.existing(source))
             r = collect_round(source, make(), n, {"mode": "official-daily", "max_pages": 3}, echo=echo)
             out = run_extract("job", len(r["new_ids"]) + 10, r["run_id"], get_settings().llm_concurrency, OFFICIAL_RAW[source])
-            echo(f"  [官网 {source}] 新写入 {len(r['new_ids'])} 条，抽取 {out['extracted']} 条")
+            echo(f"  [官网 {source}] 新写入 {len(r['new_ids'])} 条，抽取 {out['extracted']} 条，失败 {out.get('failed', 0)} 条")
         except Exception as e:  # noqa: BLE001  一个官网出错不影响别的
             echo(f"  [官网 {source}] 出错：{e}"[:200])
     try:
