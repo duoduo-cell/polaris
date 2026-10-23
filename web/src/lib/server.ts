@@ -32,7 +32,17 @@ const configuredApi = process.env.POLARIS_API ?? fromRootEnv("POLARIS_API");
 if (demoMode() && !configuredApi) {
   throw new Error("合成演示必须指定独立的POLARIS_API，拒绝回退到个人API");
 }
-export const API_BASE = configuredApi ?? "http://127.0.0.1:8000";
+function demoOrigin(value: string): string {
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)
+      || url.username || url.password || url.pathname !== "/" || url.search || url.hash) throw new Error();
+    return url.origin;
+  } catch {
+    throw new Error("本机演示API必须是无账号、路径、查询或片段的本机HTTP(S)地址");
+  }
+}
+export const API_BASE = demoMode() ? demoOrigin(configuredApi!) : configuredApi ?? "http://127.0.0.1:8000";
 
 export function ownerToken(): string | undefined {
   return process.env.OWNER_TOKEN ?? fromRootEnv("OWNER_TOKEN");

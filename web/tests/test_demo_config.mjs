@@ -23,7 +23,7 @@ function settings(env = {}, text = '') {
     throw new Error('Unexpected module access');
   };
   vm.runInNewContext(compiled, { module, exports: module.exports, require,
-    process: { env: { ...env }, cwd: () => process.cwd() } });
+    URL, process: { env: { ...env }, cwd: () => process.cwd() } });
   return { ...module.exports, reads };
 }
 

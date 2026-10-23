@@ -18,8 +18,13 @@ from polaris.db.session import session_scope
 from polaris.report import BEIJING
 
 
-def require_owner(authorization: Annotated[str | None, Header()] = None) -> None:
-    token = get_settings().owner_token
+def require_owner(authorization: Annotated[str | None, Header()] = None,
+                  expected_dataset: Annotated[str | None, Header(alias="X-Polaris-Expected-Dataset")] = None) -> None:
+    settings = get_settings()
+    dataset = "synthetic_demo" if settings.demo_mode else "personal"
+    if expected_dataset is not None and expected_dataset != dataset:
+        raise HTTPException(409, "网页与API的数据集模式不一致，未执行操作。请核对配置并重新连接。")
+    token = settings.owner_token
     if token is None:
         raise HTTPException(503, "personal endpoints are disabled: OWNER_TOKEN is not configured")
     if not authorization or not hmac.compare_digest(authorization.encode(), f"Bearer {token.get_secret_value()}".encode()):

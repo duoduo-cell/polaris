@@ -1,5 +1,10 @@
 # 给编程 agent 的说明
 
+2026-10-24 01:02 最新接续：演示代理候选先无口令／正文GET公开health，严格ok／database true／synthetic_demo才转发，每请求重验、3秒信号、不重试；本机HTTP(S)根地址限制与尾斜线归一。业务请求附X-Polaris-Expected-Dataset，当前require_owner在鉴权及业务前核模式，不符409；旧无头客户端保留原鉴权。真实模式误连转发已用隔离fetch复现，无真实资料／服务请求。后端相邻182通过、3项数据库检查未选、0跳过；网页配置8＋代理9共17通过，TS／ESLint／Ruff通过。见docs/research/2026-10-24-demo-api-identity.md和DEMO.md。
+
+第一阶段未通过、第二阶段未部署；候选未加载。01:01常驻任务Disabled／Enabled=false、项目相关端口无监听，本轮无真实HTTP、PG、模型调用或.env／网络修改，保持不自行启动。下一步按LOCAL_ACCEPTANCE梳理独立演示交付材料与必须运行验证的证据，不用模块数代替整任务。真实镜像／迁移导入／网页完整任务与预留／干净启动／视频仍欠；旧六份dirty文档和10-22三份未跟踪资料保留。
+
+
 2026-10-24 00:49 最新接续：独立演示配置／迁移候选已修。应用、Alembic共用显式文件与演示目标限制，迁移DB配置不要求模型密钥，online／offline都先核最终目标；网页显式配置不可读／空路径／非法DEMO_MODE拒绝回退，未选文件的个人纯环境模式保留。UTF-8 BOM模式读取一致。后端相邻172通过、3项数据库检查未选、0跳过；网页模块8通过、TS／ESLint／Ruff通过。详见docs/research/2026-10-24-demo-config-and-migrations.md及更新的DEMO.md。
 
 14个迁移仅离线生成19471字节SQL，head c41d7e9a2b10；不证明PG语法／扩展或执行成功，未启动／连接数据库或真实模型。00:49常驻任务Disabled／Enabled=false、项目相关端口无监听，候选未加载，保持不自行启动。第一阶段未通过、第二阶段未部署。下一步核演示API身份与前端代理边界，显式URL尚不证明dataset正确；先做离线故障检查。真实迁移／导入／网页整任务／独立演示／视频仍欠，旧六份dirty文档及10-22三份未跟踪资料保留。
