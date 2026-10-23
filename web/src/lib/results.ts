@@ -14,11 +14,16 @@ export type Question = {
   interview_date?: string | null;
 };
 export type Check = { key: string; label: string; ok: boolean | null; detail: string };
+export type RequirementReview = {
+  key: string; label: string; status: string; requirements: string[];
+  personal: string | number | null; personal_source?: string | null; note: string;
+};
 export type Match = {
   criteria?: { city?: string; direction?: string; job_type?: string; max_days_per_week?: number };
   score: number; level: "good" | "ok" | "weak"; checks: Check[];
   eligibility?: "incompatible" | "uncertain";
   note?: string;
+  requirements_review?: RequirementReview[];
   skills: { required: string[]; have: string[]; missing: string[]; not_stated?: string[]; known: boolean };
 };
 

@@ -212,6 +212,11 @@ def render_report(plan: CareerReportPlan, calls: list[dict[str, Any]]) -> str:
                   "岗位门槛原文（学历、论文、出勤、实习时长与优先项按原句核对）："])
     lines.extend(_quoted(r) for r in detail.get("requirements") or [])
     fit = detail.get("match") or {}
+    for review in fit.get("requirements_review") or []:
+        personal = review.get("personal")
+        lines.append(f"{_text(review['label'])}解释：个人已记录情况={_text(personal if personal is not None else '未记录')}；"
+                     f"{_text(review['note'])}")
+        lines.extend(_quoted(r) for r in review.get("requirements") or [])
     labels = {True: "符合已检查条件", False: "明确不符", None: "未知"}
     lines.extend(f"{_text(c.get('label'))}：{labels[c.get('ok')]}；{_text(c.get('detail'))}。"
                  for c in fit.get("checks", []))

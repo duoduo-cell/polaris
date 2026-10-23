@@ -37,7 +37,7 @@ def settings() -> dict[str, Any]:
 
 def profile_from_memory(now: datetime) -> Profile:
     with session_scope() as s:
-        facts = card(s, now.date())
+        facts = card(s, now.astimezone(BEIJING).date())
         by: dict[str, list[Any]] = {}
         for f in facts:
             by.setdefault(f.attribute, []).append(f)

@@ -178,6 +178,14 @@ function MatchSection({ detail, close }: { detail: Result; close: () => void }) 
         <CheckPill ok={c.ok}>{c.label}</CheckPill><span className={c.ok === false ? "text-bad" : "text-muted"}>{c.detail}</span>
       </li>)}
     </ul>
+    {!!match.requirements_review?.length && <div className="space-y-2" aria-label="门槛依据与个人情况">
+      {match.requirements_review.map((r) => <section key={r.key} className="rounded-lg bg-soft p-3 text-sm space-y-1">
+        <h4 className="font-medium">{r.label}与个人情况</h4>
+        <p className="text-muted">已记录：{r.personal ?? "未记录"}</p>
+        <p>{r.note}</p>
+        {r.requirements.map((quote, i) => <blockquote key={i} className="border-l-2 border-line pl-2 text-xs text-muted">{quote}</blockquote>)}
+      </section>)}
+    </div>}
     {match.skills.required.length > 0 && <div className="space-y-1.5">
       <p className="text-xs text-muted">{match.skills.known ? `岗位要的技能：已记录 ${match.skills.have.length} 项，另有 ${notStated.length} 项待确认`
         : "岗位要的技能（还不知道你会什么，跟北极星说说就能对比）"}</p>

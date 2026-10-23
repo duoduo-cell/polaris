@@ -220,3 +220,19 @@ def test_new_counts_and_unknown_date_kind_do_not_reuse_fixture_conclusions(sampl
     assert "来源发布日期=" not in text
     source.pop("date_kind")
     assert "性质未确认的来源日期=" in render_report(CareerReportPlan.model_validate(raw), calls)
+
+
+def test_personal_requirement_review_is_kept_in_report_without_invented_qualification(sample):
+    from polaris.db.models import Job
+    from polaris.match import job_match
+    from polaris.proactive.decide import Profile
+
+    calls, raw = sample
+    detail = calls[1]["output"]
+    j = Job(title="合成Agent实习", requirements=detail["requirements"], duration_months=6)
+    reviews = job_match(j, Profile(), background={"degree": "本科在读", "paper_experience": "无论文"})["requirements_review"]
+    detail["match"]["requirements_review"] = reviews
+    answer = render_report(CareerReportPlan.model_validate(raw), calls)
+    assert "学历解释：个人已记录情况=本科在读" in answer
+    assert "论文解释：个人已记录情况=无论文" in answer
+    assert "论文非必要" in answer and "时长未记录" in answer
