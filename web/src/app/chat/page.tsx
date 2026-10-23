@@ -29,6 +29,9 @@ function TaskNote({ task, stop }: { task: Task; stop: (id: string) => void }) {
     return <p className="text-xs text-faint text-right">排队中，前面的回答完就开始 · <button type="button" className="hover:text-bad" onClick={() => stop(task.id)}>取消</button></p>;
   }
   if (task.state === "cancelled") return <p className="text-xs text-faint text-right">已停止{task.error ? ` · ${task.error}` : ""}</p>;
+  if (task.state === "waiting_approval" && task.cancel_requested) {
+    return <p className="text-xs text-faint text-right">回答已停止，待确认动作仍需你批准或拒绝。</p>;
+  }
   if (task.error && ["failed", "interrupted"].includes(task.state)) return <ErrorNote error={task.error} />;
   return null;
 }

@@ -78,11 +78,13 @@ def cancel(task_id: str) -> dict[str, Any]:
         if task is None:
             raise LookupError("task not found")
         lock_thread(s, task.thread_id)
+        s.refresh(task)  # 等锁时可能已被认领或完成；不能按旧queued状态覆盖它。
         if task.state == "queued":
             task.state, task.finished_at = "cancelled", datetime.now(UTC)
             task.error = "这条消息还没开始处理就停止了，原话已保留。"
         elif task.state == "running":
             task.cancel_requested = True
+            task.live = {}
         return task_dict(task)
 
 
@@ -149,6 +151,9 @@ class TaskService:
                                .order_by(case((ChatTask.kind == "resume", 0), else_=1), ChatTask.created_at).limit(100)).all()
             for task in queued:
                 lock_thread(s, task.thread_id)
+                s.refresh(task)
+                if task.state != "queued":  # 等锁期间用户可能已经取消。
+                    continue
                 running = s.scalar(select(ChatTask.id).where(ChatTask.thread_id == task.thread_id, ChatTask.state == "running"))
                 if running or (s.get(ChatThread, task.thread_id).approvals and task.kind != "resume"):
                     continue
@@ -164,7 +169,11 @@ class TaskService:
             return
         with session_scope(self.engine) as s:
             task = s.get(ChatTask, task_id)
-            if not task or task.state != "running":
+            if not task:
+                return
+            lock_thread(s, task.thread_id)
+            s.refresh(task)
+            if task.state != "running" or (task.cancel_requested and kind in ("draft", "compacting")):
                 return
             live = dict(task.live or {})
             if kind == "draft":
@@ -216,16 +225,34 @@ class TaskService:
                                                             ChatTask.kind == "chat").order_by(ChatTask.created_at.desc()).limit(1))
                     result["question"] = parent.payload["message"] if parent else ""
             with session_scope(self.engine) as s:
+                # 与停止请求使用同一把事务锁；谁先提交，决定正式交付是否成立。
+                # 不使用有0.5秒缓存的stopper做最终检查，也不在取得锁前读取任务。
+                lock_thread(s, thread_id)
                 task = s.get(ChatTask, task_id)
+                if task is None or task.state != "running":
+                    return
+                if task.cancel_requested:
+                    # 工具、记忆写入和模型耗用已经发生，只撤下未正式交付的回答／卡片。
+                    # 已挂起的审批保留给本人决定，不自动批准／拒绝或丢失检查点动作。
+                    result = {**result, "answer": "", "results": [], "error": STOPPED}
                 finish_turn(s, thread_id, task_id, result)
-                task.result, task.error, task.finished_at, task.live = result, turn.error, datetime.now(UTC), {}
-                task.state = ("cancelled" if turn.error == STOPPED and not turn.answer else
-                              "waiting_approval" if turn.approvals else ("failed" if turn.error and not turn.answer else "completed"))
+                task.result, task.error, task.finished_at, task.live = result, result["error"], datetime.now(UTC), {}
+                task.state = ("waiting_approval" if result["approvals"] else
+                              "cancelled" if result["error"] == STOPPED and not result["answer"] else
+                              "failed" if result["error"] and not result["answer"] else "completed")
         except Exception as e:  # noqa: BLE001  故障也必须持久化，重连才能看见
             log.exception("chat task failed: %s", task_id)
             with session_scope(self.engine) as s:
                 task = s.get(ChatTask, task_id)
-                task.state, task.error, task.finished_at = "failed", f"{type(e).__name__}: {e}"[:500], datetime.now(UTC)
+                if task is None:
+                    return
+                lock_thread(s, task.thread_id)
+                s.refresh(task)
+                if task.state != "running":
+                    return
+                task.state = "cancelled" if task.cancel_requested else "failed"
+                task.error = STOPPED if task.cancel_requested else f"{type(e).__name__}: {e}"[:500]
+                task.finished_at = datetime.now(UTC)
                 task.live = {}
         finally:
             self.wake.set()
