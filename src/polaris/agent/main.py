@@ -46,7 +46,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v35"  # v35：演示公司名仅作标签，预置记录为合成；沿用既有来源校验。
+PROMPT_VERSION = "main-v36"  # v36：最终会话写入／读回失败保留保存未确认；v35演示范围声明保留。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -489,8 +489,12 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
             messages = ([last.model_copy(update={"content": "报告收尾已结束，实际交付见下一条答复。"})]
                         if last.type == "tool" and last.name == "career_report" else [])
             messages.append(AIMessage(content=final.answer, id=last.id if last.type == "ai" else None))
-            agent.update_state(config, {"messages": messages}, as_node="model")
-            state = dict(agent.get_state(config).values)
+            try:
+                agent.update_state(config, {"messages": messages}, as_node="model")
+                state = dict(agent.get_state(config).values)
+            except Exception:  # noqa: BLE001  写入可能成功而读回失败；不把不确定状态报作完成或自动重跑模型
+                state = None
+                err = "报告已生成，但最终会话保存未能确认；请先重新连接查看保存状态，不要自动重复生成。"
     elif runtime.calls and runtime.calls[-1]["tool"] == "career_report" and not runtime.calls[-1]["ok"]:
         err = runtime.calls[-1]["output"]
     if stop():
