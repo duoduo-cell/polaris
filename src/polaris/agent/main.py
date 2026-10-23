@@ -47,7 +47,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v37"  # v37：任务归属与未交付内容在下一轮模型上下文中的隔离。
+PROMPT_VERSION = "main-v38"  # v38：停止补齐当前工具批协议、结果未确认与待本人审批保留。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -426,15 +426,23 @@ def _stream(agent: Any, payload: Any, config: dict[str, Any], on_event: Event,
 
 
 def _close_dangling(agent: Any, config: dict[str, Any]) -> None:
-    """停在"模型要调工具、工具还没跑"之间时，补上工具结果，否则下一句话发给模型会因为缺工具回复而报错。"""
-    messages = agent.get_state(config).values.get("messages", [])
-    if not messages or messages[-1].type != "ai" or not getattr(messages[-1], "tool_calls", None):
+    """补齐停止时当前批缺失的协议结果；不推断工具未执行，不替用户结束审批。"""
+    snapshot = agent.get_state(config)
+    if getattr(snapshot, "interrupts", ()):
         return
-    answered = {m.tool_call_id for m in messages if m.type == "tool"}
-    missing = [tc for tc in messages[-1].tool_calls if tc["id"] not in answered]
+    messages = snapshot.values.get("messages", [])
+    index = len(messages) - 1
+    while index >= 0 and messages[index].type == "tool":
+        index -= 1
+    if index < 0 or messages[index].type != "ai" or not getattr(messages[index], "tool_calls", None):
+        return
+    answered = {m.tool_call_id for m in messages[index + 1:]}
+    missing = [tc for tc in messages[index].tool_calls if tc["id"] not in answered]
     if missing:
-        agent.update_state(config, {"messages": [ToolMessage(content="用户停止了这次回答，这个查询没有执行。",
-                                                             tool_call_id=tc["id"], name=tc["name"]) for tc in missing]},
+        agent.update_state(config, {"messages": [ToolMessage(
+            content="用户已停止本次回答；该调用的执行结果在检查点中未确认，不能据此断言未执行或成功。不要自动重放可能已生效的操作。",
+            tool_call_id=tc["id"], name=tc["name"], status="error",
+            additional_kwargs={"polaris_internal": True}) for tc in missing]},
                            as_node="tools")
 
 
@@ -504,6 +512,13 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
         err = runtime.calls[-1]["output"]
     if stop():
         state, err = None, STOPPED
+        try:
+            snapshot = agent.get_state(config)
+            if snapshot.interrupts:
+                # 停止回答不等于本人拒绝动作；让任务收尾保留审批，避免界面与检查点脱节。
+                state = {"messages": snapshot.values.get("messages", []), "__interrupt__": list(snapshot.interrupts)}
+        except Exception:  # noqa: BLE001  无法读回时不猜审批，不重放动作。
+            pass
     return state, runtime, tracer, err, int((time.perf_counter() - start) * 1000)
 
 

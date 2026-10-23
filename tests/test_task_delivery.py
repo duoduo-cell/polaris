@@ -279,3 +279,38 @@ def test_regular_answer_has_owner_and_completed_alone_does_not_prove_delivery(qu
     second = Model(messages=iter([AIMessage(content="新回答")]))
     _, _, _, error, _ = run(second, "下一条")
     assert error is None and REPORT not in str([message.content for message in second.seen[0]])
+
+
+def test_stop_at_actual_approval_interrupt_keeps_pending_decision_in_queue_snapshot_data(queue, monkeypatch):
+    engine, instance = queue
+    saver = setup(monkeypatch, engine)
+    effects = []
+
+    class ForgetArgs(BaseModel):
+        attribute: str
+
+    monkeypatch.setitem(main.REGISTRY, "memory_forget", ToolSpec(
+        "memory_forget", "合成审批动作", ForgetArgs, lambda args: effects.append(args.attribute), read_only=False))
+    model = Model(messages=iter([AIMessage(content="", tool_calls=[{
+        "id": "stopped-approval", "name": "memory_forget", "args": {"attribute": "school"}}])]), disable_streaming=True)
+    chat = main.chat
+    monkeypatch.setattr(main, "chat", lambda *a, **kw: chat(*a, **kw, model=model, memory_first=True,
+                        remember_fn=lambda *a, **kw: {"events": [], "questions": []}))
+
+    def stop_after_interrupt():
+        row = saver.get_tuple({"configurable": {"thread_id": "synthetic-thread"}})
+        interrupted = bool(row and any(channel == "__interrupt__" for _, channel, _ in row.pending_writes))
+        if interrupted:
+            with db_session.session_scope(engine) as session:
+                session.get(ChatTask, "synthetic-task").cancel_requested = True
+        return interrupted
+
+    monkeypatch.setattr(instance, "_stopper", lambda task_id: stop_after_interrupt)
+    instance._work("synthetic-task")
+    with db_session.session_scope(engine) as session:
+        task = session.get(ChatTask, "synthetic-task")
+        thread = session.get(ChatThread, "synthetic-thread")
+        assert task.state == "waiting_approval" and task.error == main.STOPPED and task.cancel_requested
+        assert task.result["answer"] == "" and task.result["approvals"] == thread.approvals
+        assert thread.approvals[0]["name"] == "memory_forget" and effects == []
+        assert session.scalars(select(ChatMessage)).all() == []
