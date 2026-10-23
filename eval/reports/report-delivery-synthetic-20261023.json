@@ -1,0 +1,72 @@
+{
+  "scope": "synthetic report suffix replay; not full career workflow acceptance",
+  "disclosure": "All jobs, interview content and personal facts are synthetic; company names are example labels, not real recruitment.",
+  "fixture": "demo-fixture-v2",
+  "prompt_version": "main-v36",
+  "synthetic_as_of": "2026-10-23T15:38:42.488582+00:00",
+  "latency_ms": 20866,
+  "recorded_attempt_model_calls": 2,
+  "call_summaries": [
+    {
+      "purpose": "synthetic-report-suffix",
+      "model": "qwen3.7-plus",
+      "latency_ms": 7449,
+      "prompt_tokens": 10354,
+      "completion_tokens": 93,
+      "cached_tokens": 0,
+      "reasoning_tokens": null,
+      "cost_usd": null
+    },
+    {
+      "purpose": "career_report:preparation",
+      "model": "qwen3.7-plus",
+      "latency_ms": 13371,
+      "prompt_tokens": 344,
+      "completion_tokens": 384,
+      "cached_tokens": 0,
+      "reasoning_tokens": null,
+      "cost_usd": null
+    }
+  ],
+  "recorded_attempt_input_tokens": 10698,
+  "recorded_attempt_output_tokens": 477,
+  "cost_usd": null,
+  "tool_selection": [
+    {
+      "tool": "career_report",
+      "args": {
+        "job_ids": [
+          "J-1"
+        ],
+        "question_id": "Q-1",
+        "jd_basis": {
+          "field": "requirements",
+          "requirement_index": 2,
+          "text": "负责Agent工具调用与可靠性评测，记录延迟、失败及恢复结果。"
+        }
+      },
+      "ok": true
+    }
+  ],
+  "report_status": "ready",
+  "checkpoint_matches": true,
+  "checkpoint_backend": "InMemorySaver",
+  "database_accessed": false,
+  "services_started": false,
+  "retrieval_executed": false,
+  "tool_history_basis": "Constructed from demo fixture and existing stateless projections; not a SQL query run.",
+  "seed_calls_sha256": "85ce419bdafc52968c787673341fbd970afec568a2cf0d42c35b9826e84f9c49",
+  "previous_failed_attempt_usage": {
+    "preserved": false,
+    "tokens": null,
+    "cost_usd": null,
+    "reason": "Probe trace serialization failed before output persistence; this is not a product failure or a zero-cost attempt."
+  },
+  "answer": "合成演示：预置岗位、面经及档案为人工虚构，公司名仅为示例标签，并非真实招聘信息。\n\n本次查本地库，条件：city=上海、direction=Agent、job_type=intern、max_days_per_week=4。\n\n结构化范围候选 3 条；本页返回 2 条；本次列出 1 条。\n\n本次未执行关键词召回，不能把召回候选字段说成关键词命中数。\n\n还有后页候选，下一页 offset=2；本页数量不是总数。\n\n应用每周天数限制之前、更宽的结构化范围中，有 0 条未写天数，未当作天数符合；该数不属于筛后候选内部。\n\n[J-1] 腾讯 · Agent工具工程实习（合成）；原记录城市：上海、北京；每周天数：4；实习月数：6。\n\n[J-1] 匹配核对：仅核对以下已检查条件，不能确认全部达标。城市：符合已检查条件；上海；类型：符合已检查条件；实习；每周天数：符合已检查条件；每周 4 天；方向：符合已检查条件；Agent。\n\n展开 [J-1]。城市字段仅是原记录所列城市，当前各地名额和能否自由选择尚未确认。\n\n岗位门槛原文（学历、论文、出勤、实习时长与优先项按原句核对）：\n\n> 本科及以上在读，论文不是必要条件。\n\n> 实习至少6个月。\n\n> 负责Agent工具调用与可靠性评测，记录延迟、失败及恢复结果。\n\n> 每周至少到岗4天。\n\n学历解释：个人已记录情况=本科在读；学历层级可对应；不能据此确认专业、在读状态或其他附加条件全部满足。\n\n> 本科及以上在读，论文不是必要条件。\n\n论文解释：个人已记录情况=无论文；原文明示论文非必要；没有论文本身不构成论文硬冲突。\n\n> 本科及以上在读，论文不是必要条件。\n\n实习时长解释：个人已记录情况=未记录；岗位实习时长字段：6个月；个人可实习时长未记录，待核实。\n\n> 实习至少6个月。\n\n城市：符合已检查条件；上海。\n\n类型：符合已检查条件；实习。\n\n每周天数：符合已检查条件；每周 4 天。\n\n方向：符合已检查条件；Agent。\n\n岗位实习时长字段为 6 个月；现有检查未确定个人时长是否满足，待核实。\n\n学历、论文等未出现在已检查条目时，不自动判为满足；优先项不等于硬门槛，某项竞赛是否被雇主认可不能由相似名称或其他竞赛列表自动推定。\n\n个人尚未记录的技能：评测/Benchmark、工具调用；未记录不代表不会。\n\n来源 [J-1]：合成演示（非真实招聘）；来源发布日期=2026-10-19T15:38:42.488582+00:00；本份原文快照保存时刻=2026-10-21T15:38:42.488582+00:00。\n\n最近再次识别日期=2026-10-23。来源日期不保证首次上线；快照保存不等于首次采到；再次识别不等于原文更新或现在仍在招。本报告未使用实时核验结果。\n\n面经题 [Q-1]，出自 [P-1]（作者自述）：\n\n> 如何评测Agent工具超时后的重试和恢复是否正确？\n\n工具记录的原文依据：\n\n> 面试官问：如何评测Agent工具超时后的重试和恢复是否正确？\n\n原帖标题：\n\n> 腾讯Agent一面与二面面经（合成）\n\n题目定位轮次：未知。题目级未知不代表整帖未标轮次，也不能仅凭标题给单题补轮次。\n\n面经团队字段：未知；岗位团队字段：合成应用组。同公司不等于同团队；现有字段不能证明具体岗位对应的同一团队面试。\n\n以下是本工具给出的备考答题建议，不能当原帖标准答案或个人做过的经历：\n\n- 定义明确的超时阈值与重试策略（如指数退避），并验证其在Agent执行中的实际触发情况。\n\n- 构建可控制的故障注入环境，模拟工具调用超时场景，观测Agent是否按预期发起重试。\n\n- 记录每次调用的开始时间、超时时间点、重试次数及最终状态，用于计算延迟和成功率。\n\n- 验证恢复逻辑的正确性，确保重试成功后Agent能正确解析结果并继续后续任务流。\n\n- 检查失败后的降级或报错机制，确保在达到最大重试次数后能正确记录失败原因而非静默丢失。\n\n- 设计指标监控看板，实时展示平均延迟、超时率、重试成功率等关键可靠性指标。\n\n根据岗位原文设计的自测题（建议，不是面经原题）：\n\n> 针对JD中提到的'记录延迟、失败及恢复结果'，请设计一个具体的实验方案来验证Agent在第三方API响应缓慢（但未完全超时）时的行为，并说明需要采集哪些数据字段来评估其可靠性？\n\nJD依据：\n\n> 负责Agent工具调用与可靠性评测，记录延迟、失败及恢复结果。\n\n该自测题的答题建议：\n\n- 实验方案：使用Mock服务器模拟第三方API，设置随机延迟分布（如50%请求延迟2秒，50%延迟10秒），观察Agent在不同延迟下的处理逻辑。\n\n- 数据采集字段：请求发起时间戳、收到响应时间戳、实际耗时、是否触发重试、重试间隔时间、最终状态（成功/失败/超时）。\n\n- 评估指标：计算P95延迟，统计因延迟导致的误判超时比例，验证恢复结果的一致性（即慢响应返回的数据是否与快响应一致）。\n\n- 验证建议：对比有无重试机制下的任务完成率，确保记录的数据能支撑后续的SLA分析和优化决策。\n\n仍需核实：当前招聘及各城市名额、个人能否满足出勤与实习时长、未检查的学历／专业／论文条件、技能与具体竞赛认可、面经的团队归属。以上均未由相似经历或库内 active 状态自动确认为满足。",
+  "remaining_limits": [
+    "No current-version PostgreSQL import, checkpoint failure or reconnect acceptance",
+    "No website or clean-start acceptance",
+    "No real source fetch, collection, notifications or applications",
+    "Generated preparation suggestions remain subject to semantic review"
+  ]
+}

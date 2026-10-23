@@ -68,6 +68,7 @@ uv run polaris metrics answers --fresh # 回答质量评测（在隔离库上跑
 - [docs/PURPOSE.md](docs/PURPOSE.md)：为什么做
 - [docs/HIRING.md](docs/HIRING.md)：大厂看什么，北极星怎么证明
 - [docs/INTERVIEW.md](docs/INTERVIEW.md)：讲法、简历条目、高频追问
+- [报告交付工程案例](docs/design/REPORT_DELIVERY.md)：生成与保存状态分开、未知状态不自动重复；含失败／修复证据和合成模型回放，未替代网页整体验收
 - [docs/TECH.md](docs/TECH.md)、[docs/design/](docs/design/)：技术方案和各模块设计
 - [docs/STATUS.md](docs/STATUS.md)：进度
 - [eval/reports/](eval/reports/)：各模块指标
