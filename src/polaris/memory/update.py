@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from polaris.db.models import MemoryEvent, MemoryFact, MemorySuppression
 from polaris.memory.schema import ATTRIBUTES, qualifier_key, value_key
+from polaris.report import BEIJING
 
 STALE_DAYS = 30
 # 按公司分的属性互相牵连：你否认投过某公司时，这家的"面试进度"推断也一并作废（面试意味着投过）
@@ -96,7 +97,7 @@ def decide(c: Candidate, slot: list[MemoryFact], suppressed: bool, now: datetime
         return Decision("add", "新信息")
     if attr.evolves:  # 进度类的变化在说的时候就已经发生了（"一面过了，下周二面"：现在就是"等二面"），不排到将来
         return Decision("update", f"{attr.label}往前走了", slot)
-    today = now.date()
+    today = now.astimezone(BEIJING).date()
     if c.valid_from and c.valid_from > today:
         return Decision("schedule", f"从 {c.valid_from.isoformat()} 起按新的，之前仍按旧的", slot)
     if c.change_signal:
@@ -172,11 +173,12 @@ def apply(ctx: Context, c: Candidate) -> tuple[dict[str, Any], str | None]:
     if c.attribute not in ATTRIBUTES:
         return {"op": "skip", "attribute": c.attribute, "reason": "不在属性表里"}, None
     s, now = ctx.session, ctx.now
+    today = now.astimezone(BEIJING).date()
     _lock_writer(s)
     q = qualifier_key(c.qualifier)
     slot = slot_facts(s, c.attribute, q)
     if not ATTRIBUTES[c.attribute].multi:  # 单值槽：只看"现在或将来还成立"的那几条
-        slot = [f for f in slot if f.valid_to is None or f.valid_to > now.date()]
+        slot = [f for f in slot if f.valid_to is None or f.valid_to > today]
     d = decide(c, slot, is_suppressed(s, c.attribute, value_key(c.attribute, c.value), q), now,
                slot_facts(s, c.attribute, q, ("pending",)))
     if c.polarity == "negate" and q and c.kind == "stated":
@@ -197,7 +199,7 @@ def apply(ctx: Context, c: Candidate) -> tuple[dict[str, Any], str | None]:
         return _event(ctx, d.op, c.attribute, q, c.value, d.reason), None
     if d.op == "invalidate":
         for f in d.old:
-            f.status, f.superseded_at, f.valid_to = "retracted", now, f.valid_to or now.date()
+            f.status, f.superseded_at, f.valid_to = "retracted", now, f.valid_to or today
         return _event(ctx, "invalidate", c.attribute, q, c.value, d.reason, old=d.old[0]), None
     if d.op == "add":
         f = _new_fact(ctx, c, "active")
@@ -218,7 +220,7 @@ def apply(ctx: Context, c: Candidate) -> tuple[dict[str, Any], str | None]:
         c.valid_from = None
     for old in d.old:
         old.status, old.superseded_at = "superseded", now
-        old.valid_to = old.valid_to if old.valid_to and old.valid_to < now.date() else (c.valid_from or now.date())
+        old.valid_to = old.valid_to if old.valid_to and old.valid_to < today else (c.valid_from or today)
     f = _new_fact(ctx, c, "active", supersedes=d.old[0])
     return _event(ctx, "update", c.attribute, q, c.value, d.reason, f, d.old[0]), None
 
@@ -243,7 +245,7 @@ def confirm(s: Session, fact_id: int, accept: bool, now: datetime | None = None,
         for old in slot_facts(s, f.attribute, f.qualifier):
             if old.id != f.id:
                 old.status, old.superseded_at = "superseded", now
-                old.valid_to = old.valid_to or now.date()
+                old.valid_to = old.valid_to or now.astimezone(BEIJING).date()
     f.status, f.kind, f.last_confirmed_at = "active", "stated", now
     return _event(ctx, "confirm", f.attribute, f.qualifier, f.value, "你确认了", f)
 
@@ -261,7 +263,7 @@ def forget(s: Session, attribute: str, qualifier: str | None = None, value: str 
     out = []
     ctx = Context(s, now, source_text)
     for f in facts:
-        f.status, f.superseded_at, f.valid_to = "retracted", now, f.valid_to or now.date()
+        f.status, f.superseded_at, f.valid_to = "retracted", now, f.valid_to or now.astimezone(BEIJING).date()
         _suppress(s, f.attribute, f.value_key, "你要求忘掉")
         out.append(_event(ctx, "forget", f.attribute, f.qualifier, f.value, "你要求忘掉", old=f))
     return out
@@ -271,7 +273,7 @@ def forget(s: Session, attribute: str, qualifier: str | None = None, value: str 
 
 def card(s: Session, on: date | None = None) -> list[MemoryFact]:
     """某一天成立的事实（默认今天）：你的"卡片"，常驻在对话上下文里。"""
-    on = on or datetime.now(UTC).date()
+    on = on or datetime.now(BEIJING).date()
     stmt = select(MemoryFact).where(MemoryFact.status == "active",
                                     or_(MemoryFact.valid_from.is_(None), MemoryFact.valid_from <= on),
                                     or_(MemoryFact.valid_to.is_(None), MemoryFact.valid_to > on))

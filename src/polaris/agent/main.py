@@ -41,6 +41,7 @@ from polaris.config import get_settings
 from polaris.db.session import session_scope
 from polaris.llm.recorder import DbRecorder
 from polaris.memory.update import card, pending, render_card
+from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
@@ -344,8 +345,9 @@ def _background_context(facts: list[Any]) -> str:
 
 
 def _system_prompt(now: datetime, questions: list[str]) -> str:
+    today = now.astimezone(BEIJING).date()
     with session_scope() as s:
-        card_text = _background_context(card(s, now.date()))
+        card_text = _background_context(card(s, today))
         from polaris.followups import context
         if progress := context(s):
             card_text += "\n\n用户明确保存的具体岗位状态（按岗位分别记录）：\n" + progress
@@ -357,7 +359,7 @@ def _system_prompt(now: datetime, questions: list[str]) -> str:
         asks = "\n还有没确认的记忆（用户提到相关的事时可以顺带问）：" + "；".join(waiting[:3]) + "\n"
     from polaris.tools.base import defense_off
 
-    return SYSTEM.format(today=now.date().isoformat(), card=card_text, asks=asks, defense="" if defense_off() else DEFENSE)
+    return SYSTEM.format(today=today.isoformat(), card=card_text, asks=asks, defense="" if defense_off() else DEFENSE)
 
 
 def _interrupts(state: dict[str, Any]) -> list[dict[str, Any]]:

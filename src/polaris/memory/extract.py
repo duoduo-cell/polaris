@@ -15,6 +15,7 @@ from polaris.db.session import session_scope
 from polaris.llm.client import LLM
 from polaris.memory.schema import ATTRIBUTES
 from polaris.memory.update import Candidate, Context, apply, card, render_card
+from polaris.report import BEIJING
 
 PROMPT_VERSION = "memory-extract-v6"  # v6：临时请求与个人偏好分开；v5：明确的实习/论文背景。
 # 改口要有明确的说法。模型常把"换了个数"也标成改口（10-11 开发集、留出集和实测里都出现过："我每周能去 5 天"被当成改口，
@@ -140,7 +141,7 @@ def remember(message: str, *, llm: LLM | None = None, now: datetime | None = Non
         from polaris.memory.job_scope import recent_jobs, resolve, sync_followup
 
         recent = recent_jobs(s, thread_id)
-        context = render_card(card(s, now.date()))
+        context = render_card(card(s, now.astimezone(BEIJING).date()))
         if recent:
             context += "\n最近展示的岗位（只用于解析指代）：\n" + "\n".join(
                 f"J-{j.id} {j.company} · {j.title}" for j in recent)
@@ -151,7 +152,7 @@ def remember(message: str, *, llm: LLM | None = None, now: datetime | None = Non
             s.add(MemoryEvent(op="request_only", attribute=f.attribute, qualifier=f.qualifier, value=f.value,
                               reason=reason, source_text=message, run_id=run_id, thread_id=thread_id, created_at=now))
 
-        candidates = extract(llm, message, context, now.date(), run_id, on_request=audit_request)
+        candidates = extract(llm, message, context, now.astimezone(BEIJING).date(), run_id, on_request=audit_request)
         ctx = Context(s, now, message, thread_id, run_id)
         events, questions = [], []
         explicit = has_change_words(message)

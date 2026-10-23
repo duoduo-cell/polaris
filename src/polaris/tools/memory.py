@@ -4,7 +4,7 @@ memory/extract.py 先抽候选事实、memory/update.py 按规则改记忆；这
 对标：Muse 的记忆文件能看、能改、能下载、能让它忘掉；Dots 的记忆看不到单条。北极星每条都带"从哪句话来、什么时候成立、
 什么时候被取代"（`PLAN.md` 0.0 第 3 条）。
 """
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime, time
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ from polaris.db.models import MemoryFact
 from polaris.db.session import session_scope
 from polaris.memory.schema import ATTRIBUTES, qualifier_key
 from polaris.memory.update import card, forget, known_at, pending
+from polaris.report import BEIJING
 from polaris.tools.base import ToolError, ToolSpec
 
 AttrName = Literal[tuple(ATTRIBUTES)]  # type: ignore[valid-type]
@@ -30,9 +31,9 @@ def _fact(f: MemoryFact, detailed: bool = False) -> dict[str, Any]:
         out["valid_to"] = f.valid_to.isoformat()
     if detailed:
         out.update({"status": f.status, "kind": "你说的" if f.kind == "stated" else "推断的",
-                    "recorded": f.recorded_at.date().isoformat(), "from_text": f.source_text[:120]})
+                    "recorded": f.recorded_at.astimezone(BEIJING).date().isoformat(), "from_text": f.source_text[:120]})
         if f.superseded_at:
-            out["superseded"] = f.superseded_at.date().isoformat()
+            out["superseded"] = f.superseded_at.astimezone(BEIJING).date().isoformat()
     return out
 
 
@@ -41,10 +42,11 @@ class MemoryCardArgs(BaseModel):
 
 
 def memory_card(args: MemoryCardArgs) -> dict:
+    on = args.on or datetime.now(BEIJING).date()
     with session_scope() as s:
-        facts = [_fact(f) for f in card(s, args.on)]
+        facts = [_fact(f) for f in card(s, on)]
         waiting = [{"id": f"M-{f.id}", "statement": f.statement} for f in pending(s)]
-    out: dict[str, Any] = {"on": (args.on or datetime.now(UTC).date()).isoformat(), "facts": facts}
+    out: dict[str, Any] = {"on": on.isoformat(), "facts": facts}
     if waiting:
         out["waiting_for_confirmation"] = waiting
     if not facts:
@@ -74,7 +76,7 @@ class MemoryKnownAtArgs(BaseModel):
 
 
 def memory_known_at(args: MemoryKnownAtArgs) -> dict:
-    at = datetime.combine(args.day, time.max, tzinfo=UTC)
+    at = datetime.combine(args.day, time.max, tzinfo=BEIJING)
     with session_scope() as s:
         facts = [_fact(f) for f in known_at(s, at)]
     return {"day": args.day.isoformat(), "facts": facts,
