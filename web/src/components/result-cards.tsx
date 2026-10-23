@@ -10,7 +10,7 @@ import { Badge, Button, ErrorNote, Markdown, ScoreRing } from "@/components/mark
 import { useChatSession } from "@/components/chat-session";
 import { api, stripUntrusted } from "@/lib/client";
 import { hideRefs } from "@/lib/refs";
-import { type Followup, type Match, type Question, type Result, KINDS, STATUSES, matchSummary } from "@/lib/results";
+import { type Followup, type Match, type Question, type Result, KINDS, STATUSES, matchSummary, visibleResultCards } from "@/lib/results";
 
 const MARK_TONES = ["bg-accent-soft text-accent", "bg-ok-soft text-ok", "bg-warn-soft text-warn", "bg-bad-soft text-bad", "bg-soft text-muted"];
 
@@ -314,10 +314,11 @@ export function ResultCards({ results, text, fold = false }: { results: Result[]
   const [opened, setOpened] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Result>>({});
   const [more, setMore] = useState(false);
-  const cards = results.map((r) => overrides[r.id] ?? r);
+  const cards = results.map((r) => overrides[r.id] ? { ...r, ...overrides[r.id], show_card: r.show_card } : r);
   const refs = useMemo(() => new Map(cards.map((r) => [r.id, r.kind === "job" ? r.display_title : hideRefs(r.display_title)])), [cards]);
-  const questions = fold ? cards.filter((r) => r.kind === "question") : [];
-  const rest = fold ? cards.filter((r) => r.kind !== "question") : cards;
+  const visible = visibleResultCards(cards);
+  const questions = fold ? visible.filter((r) => r.kind === "question") : [];
+  const rest = fold ? visible.filter((r) => r.kind !== "question") : visible;
   const others = rest.filter((r) => r.kind !== "job");
   const shown = fold && !more ? [...rest.filter((r) => r.kind === "job"), ...others.slice(0, 4)] : rest;
   const hidden = rest.length - shown.length;

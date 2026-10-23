@@ -123,6 +123,22 @@ def titles(s: Session, references: list[str]) -> dict[str, str]:
     return out
 
 
+def _reference_only_jobs(answer: str) -> set[str]:
+    """仅识别独立段落开头的明确未列出声明；保守处理混合／后续改为推荐的表述。
+
+    这是卡片布局规则，不是通用推荐意图分类或资格判断。证据和行内详情入口始终保留。
+    """
+    mentions: dict[str, list[bool]] = {}
+    for paragraph in re.split(r"\n\s*\n", answer):
+        refs = {r for r in REF_RE.findall(paragraph) if r.startswith("J-")}
+        plain = paragraph.lstrip(" \t>*-#")
+        explicit = (len(refs) == 1 and not re.search(r"[?？]", plain)
+                    and bool(re.match(r"未列出|未放入|不推荐|不纳入|仅作对照|仅供对照", plain)))
+        for ref in refs:
+            mentions.setdefault(ref, []).append(explicit)
+    return {ref for ref, flags in mentions.items() if all(flags)}
+
+
 def presentation(s: Session, answer: str, calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
     allowed = set().union(*(refs_from_output(c.get("output", "")) for c in calls if c.get("ok")))
     selected = list(dict.fromkeys(r for r in REF_RE.findall(answer) if r in allowed))[:12]
@@ -139,7 +155,9 @@ def presentation(s: Session, answer: str, calls: list[dict[str, Any]]) -> list[d
         for item in data.get("items", [data]) if isinstance(data, dict) else []:
             if isinstance(item, dict) and item.get("id") in selected and isinstance(item.get("match"), dict):
                 snapshots[item["id"]] = item["match"]
-    return [{**card, "match": snapshots[card["id"]]} if card["id"] in snapshots else card for card in cards]
+    reference_only = _reference_only_jobs(answer)
+    return [{**card, **({"match": snapshots[card["id"]]} if card["id"] in snapshots else {}),
+             **({"show_card": False} if card["id"] in reference_only else {})} for card in cards]
 
 
 def activity(call: dict[str, Any], data: Any = None) -> dict[str, Any]:

@@ -38,6 +38,7 @@ export function matchSummary(match: Match): { label: string; description: string
   return { label: "已知条件对得上", description: "已知条件一致，仍需核实岗位现状与完整任职要求；分数不是录用概率。", ok: true };
 }
 export type Result = {
+  show_card?: boolean;
   id: string; kind: "job" | "interview" | "question" | "referral" | "recruitment" | "study" | "post" | "raw";
   display_title: string; title?: string; company?: string | null; unit?: string | null; city?: string | null;
   type?: string | null; job_type?: string | null; sources: Source[]; summary?: string; requirements?: string[];
@@ -52,6 +53,9 @@ export type Result = {
     alternatives?: { value: unknown; sources?: string[] }[]; others?: { value: unknown; sources?: string[] }[] }[];
   jd_text?: string; text?: string; followup?: Followup; attribution?: string; match?: Match; listings?: number;
 };
+export function visibleResultCards(results: Result[]): Result[] {
+  return results.filter((r) => r.show_card !== false);
+}
 export const STATUSES: Record<string, string> = {
   untracked: "未投递", skipped: "暂不考虑", applied: "已投递", interview: "面试中",
   offer: "已获 Offer", rejected: "未通过", withdrawn: "已撤回",

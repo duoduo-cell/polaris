@@ -19,7 +19,7 @@ def recent_jobs(s: Session, thread_id: str | None) -> list[Job]:
                          .order_by(ChatMessage.id.desc()).limit(5)).all()
     for message in messages:
         ids = [int(r["id"][2:]) for r in (message.turn or {}).get("results", [])
-               if r.get("kind") == "job" and re.fullmatch(r"J-\d+", r.get("id", ""))]
+               if r.get("kind") == "job" and r.get("show_card") is not False and re.fullmatch(r"J-\d+", r.get("id", ""))]
         if ids:
             by_id = {j.id: j for j in s.scalars(select(Job).where(Job.id.in_(ids))).all()}
             return [by_id[i] for i in ids if i in by_id]

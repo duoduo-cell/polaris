@@ -89,6 +89,49 @@ def test_three_verified_recommendations_have_sources_and_hallucinations_do_not(d
         assert presentation(s, f"J-{ids[0]}", [{"ok": False, "output": calls[0]["output"]}]) == []
 
 
+@pytest.mark.parametrize("label", ["未列出的第三条是", "未放入前两项：", "不推荐：", "仅供对照："])
+def test_explicitly_unlisted_job_stays_linkable_without_an_extra_featured_card(db, label):
+    ids, _ = seed()
+    calls = [{"ok": True, "output": json.dumps({"items": [{"id": f"J-{i}"} for i in ids]})}]
+    answer = f"推荐J-{ids[0]}、J-{ids[1]}。\n\n{label}J-{ids[2]}，偏后端。"
+    with session_scope() as s:
+        cards = presentation(s, answer, calls)
+    assert len(cards) == 3  # 引用和详情证据仍在，不能把原文编号变成不可点击。
+    assert [r["id"] for r in cards if r.get("show_card", True)] == [f"J-{i}" for i in ids[:2]]
+    assert cards[2]["sources"] and cards[2]["show_card"] is False
+
+
+@pytest.mark.parametrize("text", ["不是不推荐J-{i}", "推荐J-{i}", "对照J-{i}与J-{j}",
+                                 "未列出J-{i}\n\n后来改为推荐J-{i}", "不推荐J-{i}，但推荐J-{j}"])
+def test_ambiguous_or_later_recommended_mentions_are_not_hidden(db, text):
+    ids, _ = seed()
+    answer = text.format(i=ids[0], j=ids[1])
+    calls = [{"ok": True, "output": json.dumps({"items": [{"id": f"J-{i}"} for i in ids]})}]
+    with session_scope() as s:
+        cards = presentation(s, answer, calls)
+    assert all(r.get("show_card", True) for r in cards)
+
+
+def test_unlisted_card_flag_survives_reconnect_and_does_not_shift_job_ordinals(db):
+    from polaris.agent.tasks import snapshot
+    from polaris.db.models import ChatMessage, ChatThread
+    from polaris.memory.job_scope import recent_jobs
+
+    ids, _ = seed()
+    calls = [{"ok": True, "output": json.dumps({"items": [{"id": f"J-{i}"} for i in ids]})}]
+    answer = f"推荐J-{ids[0]}和J-{ids[1]}\n\n未列出的第三条：J-{ids[2]}"
+    with session_scope() as s:
+        cards = presentation(s, answer, calls)
+        s.add(ChatThread(id="unlisted-result", history_imported=True))
+        s.flush()
+        s.add(ChatMessage(thread_id="unlisted-result", source_key="answer", role="assistant",
+                          content=answer, turn={"answer": answer, "results": cards}))
+    result = snapshot("unlisted-result")["messages"][-1]["turn"]["results"]
+    assert result[-1]["id"] == f"J-{ids[2]}" and result[-1]["show_card"] is False
+    with session_scope() as s:
+        assert [j.id for j in recent_jobs(s, "unlisted-result")] == ids[:2]
+
+
 def test_refs_in_stats_examples_trend_and_sources_count_but_not_refs_inside_text():
     """10-12 回答评测：kg_stats 的例子、jobs_trend 的新岗位、来源的原始记录里的编号以前不认，回答里引用了也点不开。"""
     from polaris.results import refs_from_output
