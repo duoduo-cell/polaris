@@ -45,7 +45,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v29"  # v29：资料不足先查证；保留v28草稿遮蔽、v27来源三态与v25日期口径。
+PROMPT_VERSION = "main-v30"  # v30：所有本轮工具后给收尾及程序计数口径；北京时间业务日期统一。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
