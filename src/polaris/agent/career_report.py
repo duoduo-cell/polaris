@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from polaris.matching_scope import criteria
 
+SYNTHETIC_NOTICE = "合成演示：预置岗位、面经及档案为人工虚构，公司名仅为示例标签，并非真实招聘信息。"
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -200,6 +202,8 @@ def render_report(plan: CareerReportPlan, calls: list[dict[str, Any]]) -> str:
     lines = [f"本次查本地库，条件：{filters or '未指定结构化条件'}。",
              f"结构化范围候选 {meta['candidates_before_query']} 条；本页返回 {page['shown']} 条；"
              f"本次列出 {len(evidence.jobs)} 条。"]
+    if (search.get("library") or {}).get("synthetic") is True:
+        lines.insert(0, SYNTHETIC_NOTICE)
     if meta["query_executed"]:
         lines.append(f"关键词召回 {meta['retrieved_candidates']} 条，是召回子集，不能当全库符合数量。")
     else:

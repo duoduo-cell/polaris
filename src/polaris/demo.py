@@ -13,12 +13,13 @@ from sqlalchemy.orm import Session
 from polaris.config import Settings, get_settings
 from polaris.db.models import Base, InterviewQuestion, Job, MemoryFact, Post, Posting, RawItem, Run, SearchChunk
 from polaris.db.session import get_engine, session_scope
+from polaris.interviews import profile
 from polaris.memory.schema import value_key
 from polaris.search.chunking import Chunk, chunk_values, job_chunks
 
-VERSION = "demo-fixture-v1"
-DISCLOSURE = "纯合成演示，全部预置公司、岗位、面经及档案为人工虚构，不是实际招聘。"
-COMPANY = "星河演示科技"
+VERSION = "demo-fixture-v2"
+DISCLOSURE = "纯合成演示，预置岗位、面经及档案为人工虚构；公司名仅为示例标签，与实际招聘无关。"
+COMPANY = "腾讯"
 
 
 @dataclass
@@ -67,7 +68,7 @@ def fixture(now: datetime) -> DemoRows:
         postings.append(posting)
         chunks.extend(SearchChunk(**chunk_values(c)) for c in job_chunks(job))
     question = "如何评测Agent工具超时后的重试和恢复是否正确？"
-    post_text = f"星河演示科技Agent一面与二面面经（合成）\n{DISCLOSURE}\n一面问了系统设计，二面交流工程项目。\n面试官问：{question}"
+    post_text = f"{COMPANY}Agent一面与二面面经（合成）\n{DISCLOSURE}\n一面问了系统设计，二面交流工程项目。\n面试官问：{question}"
     raws.append(RawItem(id=6, source="demo", tier="A", kind="post", external_id=f"{VERSION}:post:1",
                         url="https://example.invalid/polaris-demo/interviews/1", raw_text=post_text,
                         raw_json={"demo_fixture": VERSION, "title": post_text.splitlines()[0]},
@@ -77,9 +78,8 @@ def fixture(now: datetime) -> DemoRows:
     post = Post(id=1, raw_item_id=6, post_type="面经", companies=[COMPANY], big_companies=[],
                 roles=["Agent"], directions=["Agent"], job_type="intern", summary=post_text,
                 interview_questions=[question], evidence_profile={}, published_at=published)
-    q = InterviewQuestion(id=1, key="post:1:q0", post_id=1, company=COMPANY, role="Agent", team=None,
-                          job_type="intern", round=None, category="Agent", material="firsthand",
-                          attribution="explicit", evidence=f"面试官问：{question}", question=question, published_at=published)
+    # 与正常同步路径复用同一原文解析；不手填公司／轮次绕过来源规则。
+    q = InterviewQuestion(id=1, **profile(post, post_text, raws[-1].raw_json)["questions"][0])
     for c in [Chunk(key="post:1", kind="post", header=f"{COMPANY}｜合成面经", body=post_text,
                     post_id=1, companies=(COMPANY,), published_at=published, is_synthetic=True),
               Chunk(key=q.key, kind="question", header=f"{COMPANY}｜Agent｜合成面经题", body=question,

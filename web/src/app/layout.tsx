@@ -32,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="main-pad flex-1 min-w-0 px-4 md:px-10">
             <div className="mx-auto max-w-5xl">
               {demoMode() && <p role="status" className="my-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-                合成演示：预置公司、岗位、面经及个人档案均为虚构，不代表实时招聘。请勿输入真实个人资料。
+                合成演示：预置岗位、面经及个人档案为虚构，公司名称仅为示例标签，不代表实际招聘。请勿输入真实个人资料。
               </p>}
               {children}
             </div>

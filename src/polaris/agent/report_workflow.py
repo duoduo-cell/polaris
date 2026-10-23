@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import Field
 
 from polaris.agent.career_report import (
+    SYNTHETIC_NOTICE,
     CareerEvidenceSelection,
     CareerReportPlan,
     JdQuote,
@@ -24,7 +25,7 @@ from polaris.llm.client import LLM
 from polaris.llm.recorder import DbRecorder, Recorder
 from polaris.tools.base import FinalResponse, ToolSpec
 
-VERSION = "career-report-v4"
+VERSION = "career-report-v5"
 
 
 class ReportRequest(StrictModel):
@@ -86,6 +87,8 @@ def _partial(calls: list[dict[str, Any]], warning: str) -> str:
     for call in reversed(calls):
         if call.get("tool") != "jobs_search" or not (data := _data(call)):
             continue
+        if (data.get("library") or {}).get("synthetic") is True:
+            lines.insert(0, SYNTHETIC_NOTICE)
         meta, page = data.get("search") or {}, data.get("pagination") or {}
         if type(meta.get("candidates_before_query")) is int and type(page.get("shown")) is int:
             lines.append(f"该次结构化范围候选{meta['candidates_before_query']}条，本页返回{page['shown']}条；不代表市场全部岗位。")

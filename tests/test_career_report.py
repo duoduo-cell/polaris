@@ -62,6 +62,14 @@ def test_three_counts_and_pre_days_scope_are_rendered_from_tool(sample):
     assert "下一页 offset=2" in text
 
 
+def test_exportable_report_carries_synthetic_scope_without_relying_on_web_banner(sample):
+    calls, raw = sample
+    calls[0]["output"]["library"] = {"synthetic": True}
+    text = render_report(CareerReportPlan.model_validate(raw), calls)
+    assert text.startswith("合成演示：")
+    assert "公司名仅为示例标签" in text
+
+
 def test_parent_title_and_unknown_question_round_are_both_retained(sample):
     calls, raw = sample
     text = render_report(CareerReportPlan.model_validate(raw), calls)
@@ -298,6 +306,16 @@ class Extractor:
 
 def notes_of(raw):
     return PreparationNotes.model_validate({k: raw[k] for k in PreparationNotes.model_fields})
+
+
+def test_partial_report_keeps_synthetic_scope_when_preparation_fails(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, raw = sample
+    calls[0]["output"]["library"] = {"synthetic": True}
+    result = produce_report("合成完整请求", calls, selection=selection_of(raw), llm=Extractor([None]))
+    assert result.status == "insufficient_evidence" and result.answer.startswith("合成演示：")
+    assert "这次完整报告未完成" in result.answer and "公司名仅为示例标签" in result.answer
 
 
 def test_stop_during_invalid_preparation_is_not_delivered_as_partial_report(sample):

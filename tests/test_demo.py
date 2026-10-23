@@ -105,6 +105,22 @@ def test_fixture_contains_only_synthetic_sources_with_distinct_date_meanings():
     assert all("人工虚构" in f.source_text for f in rows.groups[-1])
 
 
+def test_seeded_question_post_parser_and_tool_projection_agree_on_source_facts():
+    from polaris.interviews import profile
+    from polaris.tools.jobs import _post_row
+    from polaris.tools.knowledge import question_row
+
+    rows = fixture(NOW).groups
+    post, raw, seeded = rows[3][0], rows[0][-1], rows[4][0]
+    parsed = profile(post, raw.raw_text, raw.raw_json)["questions"][0]
+    for field in ("company", "role", "team", "job_type", "round", "category", "material", "attribution", "evidence"):
+        assert getattr(seeded, field) == parsed[field], field
+    post_card, question_card = _post_row(post, raw, True), question_row(seeded, post, raw)
+    assert post_card["interview_company"] == question_card["company"]
+    assert question_card["company"] in post_card["companies"]
+    assert question_card["round"] is None and "一面与二面" in question_card["post_title"]
+
+
 def test_fixture_exercises_real_matching_without_inventing_missing_personal_months():
     from polaris.match import job_match
     from polaris.proactive.decide import Profile

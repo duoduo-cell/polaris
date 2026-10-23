@@ -46,7 +46,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v34"  # v34：独立合成演示限定本地工具和资料范围；v33的有界报告收尾保留。
+PROMPT_VERSION = "main-v35"  # v35：演示公司名仅作标签，预置记录为合成；沿用既有来源校验。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -363,8 +363,9 @@ def _system_prompt(now: datetime, questions: list[str]) -> str:
 
     result = SYSTEM.format(today=today.isoformat(), card=card_text, asks=asks, defense="" if defense_off() else DEFENSE)
     if get_settings().demo_mode:
-        result += ("\n当前为纯合成演示：公司、岗位、面经和初始个人档案是人工虚构资料，不能当真实招聘或竞争统计。"
-                   "演示公司不在真实大厂名单，查演示岗位用big_only=false；不使用现查或知识图谱工具。"
+        result += ("\n当前为纯合成演示：预置岗位、面经和初始个人档案是人工虚构资料，公司名仅作示例标签，"
+                   "不能当真实招聘或竞争统计。演示记录不关联真实大厂名单，查演示岗位用big_only=false；"
+                   "不使用现查或知识图谱工具。"
                    "演示只启用关键词召回，不声称向量、图谱或实时核验已成功。")
     return result
 
