@@ -84,6 +84,44 @@ def test_no_hc_or_contest_equivalence_and_no_claim_of_user_skill(sample):
     assert "同公司不等于同团队" in text
 
 
+def test_later_candidate_conflicts_and_unknowns_are_not_hidden_by_first_job(sample):
+    calls, raw = sample
+    calls[0]["output"]["items"][1]["match"] = {
+        "criteria": calls[0]["args"], "score": 95, "eligibility": "incompatible",
+        "checks": [{"key": "degree", "label": "学历", "ok": False, "detail": "要求硕士，个人记录为本科"},
+                   {"key": "months", "label": "实习时长", "ok": None, "detail": "个人可实习时长尚未记录"}],
+    }
+    text = render_report(CareerReportPlan.model_validate(raw), calls)
+    assert "[J-2] 匹配核对" in text
+    assert "学历：明确不符；要求硕士，个人记录为本科" in text
+    assert "实习时长：未知；个人可实习时长尚未记录" in text
+    assert "存在明确硬门槛冲突，不作为推荐" in text
+
+
+def test_later_candidate_without_match_is_explicitly_unassessed(sample):
+    calls, raw = sample
+    text = render_report(CareerReportPlan.model_validate(raw), calls)
+    assert "[J-2] 匹配核对：未取得个人门槛核对，不能当作个人符合" in text
+
+
+def test_later_candidate_cannot_borrow_match_from_another_search_scope(sample):
+    calls, raw = sample
+    calls[0]["output"]["items"][1]["match"] = {"criteria": {"city": "北京"}, "checks": []}
+    with pytest.raises(ReportEvidenceError, match="列表岗位匹配条件"):
+        render_report(CareerReportPlan.model_validate(raw), calls)
+
+
+def test_later_candidate_direction_mismatch_remains_separate_from_hard_rejection(sample):
+    calls, raw = sample
+    calls[0]["output"]["items"][1]["match"] = {
+        "criteria": calls[0]["args"], "checks": [
+            {"key": "role", "label": "方向", "ok": False, "detail": "岗位方向与当前意向不一致"}],
+    }
+    text = render_report(CareerReportPlan.model_validate(raw), calls)
+    assert "方向：明确不符；岗位方向与当前意向不一致" in text
+    assert "存在明确硬门槛冲突" not in text
+
+
 def test_dates_do_not_turn_active_into_live_recruitment(sample):
     calls, raw = sample
     calls[1]["output"]["status"] = "active"
@@ -260,6 +298,19 @@ class Extractor:
 
 def notes_of(raw):
     return PreparationNotes.model_validate({k: raw[k] for k in PreparationNotes.model_fields})
+
+
+def test_stop_during_invalid_preparation_is_not_delivered_as_partial_report(sample):
+    from polaris.agent.report_workflow import produce_report
+
+    calls, raw = sample
+    stopped = []
+    model = Extractor([None], after=lambda: stopped.append(True))
+    result = produce_report("合成完整请求", calls, selection=selection_of(raw), llm=model,
+                            should_stop=lambda: bool(stopped))
+    assert result.status == "stopped" and result.answer == ""
+    assert result.llm_call_ids == [1]
+    assert len(model.calls) == 1
 
 
 def test_workflow_is_bounded_and_preserves_two_independent_outlines(sample):

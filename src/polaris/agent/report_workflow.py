@@ -24,7 +24,7 @@ from polaris.llm.client import LLM
 from polaris.llm.recorder import DbRecorder, Recorder
 from polaris.tools.base import FinalResponse, ToolSpec
 
-VERSION = "career-report-v3"
+VERSION = "career-report-v4"
 
 
 class ReportRequest(StrictModel):
@@ -139,6 +139,8 @@ def produce_report(request: str, calls: list[dict[str, Any]], *, selection: Care
         plan = CareerReportPlan.model_validate({**selection.model_dump(), **notes.model_dump()})
         return result(render_report(plan, calls), "ready")
     except ReportEvidenceError as exc:
+        if stop():
+            return cancelled()
         warning = str(exc)
         return result(_partial(calls, warning), "insufficient_evidence", warning)
     except Exception:  # noqa: BLE001  服务错误只进现有私有调用日志，不把原始异常或密钥发给网页

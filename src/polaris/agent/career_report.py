@@ -1,6 +1,6 @@
-"""离线候选：模型选择本轮证据及备考建议，关键事实由成功工具结果呈现。
+"""完整求职报告：模型选择本轮证据及备考建议，关键事实由成功工具结果呈现。
 
-未接入主对话；不执行工具、不读写数据库。Schema 只校验形状，validate_plan 再检查
+由 report_workflow 接入主对话；本模块不执行工具、不读写数据库。Schema 只校验形状，validate_plan 再检查
 证据归属与范围。建议文字仍需审阅，不能把引用校验当作自然语言事实证明。
 """
 import json
@@ -116,6 +116,10 @@ def validate_selection(plan: CareerEvidenceSelection, calls: list[dict[str, Any]
     if [x for x in ids if x in plan.job_ids] != plan.job_ids:
         raise ReportEvidenceError("所列岗位不能改变本页顺序")
     jobs = [x for x in items if x.get("id") in plan.job_ids]
+    for job in jobs:
+        fit = job.get("match")
+        if fit is not None and criteria(fit.get("criteria") or {}) != criteria(args):
+            raise ReportEvidenceError("列表岗位匹配条件与本次搜索不一致")
     if not items:
         if (plan.job_ids or plan.detail_call_index is not None or plan.question_call_index is not None
                 or plan.question_id or plan.jd_basis):
@@ -176,6 +180,18 @@ def _quoted(value: Any) -> str:
     return "\n".join("> " + _text(line) for line in str(value).splitlines())
 
 
+def _candidate_review(job_id: str, fit: dict[str, Any] | None) -> str:
+    checks = (fit or {}).get("checks") or []
+    if not checks:
+        return f"[{job_id}] 匹配核对：未取得个人门槛核对，不能当作个人符合。"
+    hard = [c for c in checks if c.get("key") in ("avoid", "city", "type", "days", "months", "degree", "paper")]
+    conflict = any(c.get("ok") is False for c in hard)
+    heading = "存在明确硬门槛冲突，不作为推荐" if conflict else "仅核对以下已检查条件，不能确认全部达标"
+    labels = {True: "符合已检查条件", False: "明确不符", None: "未知"}
+    details = "；".join(f"{_text(c.get('label'))}：{labels[c.get('ok')]}；{_text(c.get('detail'))}" for c in checks)
+    return f"[{job_id}] 匹配核对：{heading}。{details}。"
+
+
 def render_report(plan: CareerReportPlan, calls: list[dict[str, Any]]) -> str:
     evidence = validate_plan(plan, calls)
     search, args = evidence.search, evidence.search_args
@@ -206,6 +222,8 @@ def render_report(plan: CareerReportPlan, calls: list[dict[str, Any]]) -> str:
                      f"原记录城市：{_text(j.get('city') or '未写')}；"
                      f"每周天数：{_text(j.get('days_per_week', '未写'))}；"
                      f"实习月数：{_text(j.get('duration_months', '未写'))}。")
+        fit = (evidence.detail or {}).get("match") if j["id"] == plan.job_ids[0] else j.get("match")
+        lines.append(_candidate_review(j["id"], fit))
     detail, question = evidence.detail, evidence.question
     assert detail is not None and question is not None
     lines.extend([f"展开 [{detail['id']}]。城市字段仅是原记录所列城市，当前各地名额和能否自由选择尚未确认。",
