@@ -7,9 +7,10 @@ from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 
 ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DATABASE_URL = "postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris"
 
 Role = Literal["chat", "extract", "judge", "brief"]
 
@@ -23,8 +24,26 @@ def openai_base(url: str) -> str:
     return url if url.endswith("/v1") else url + "/v1"
 
 
+def settings_file() -> Path:
+    config_file = os.environ.get("POLARIS_ENV_FILE")
+    if config_file is not None and (not config_file.strip() or not Path(config_file).is_file()):
+        raise ValueError("POLARIS_ENV_FILE指定的文件不存在，拒绝回退到个人配置或默认数据库")
+    return Path(config_file) if config_file is not None else ROOT / ".env"
+
+
+def require_demo_database_url(value: str | URL) -> None:
+    error = "DEMO_MODE仅允许本机或独立Compose内的polaris_demo数据库"
+    try:
+        url = make_url(value)
+    except Exception:
+        raise ValueError(error) from None
+    if (url.get_backend_name() != "postgresql" or url.database != "polaris_demo"
+            or url.host not in ("127.0.0.1", "localhost", "::1", "db")):
+        raise ValueError(error)
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ROOT / ".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ROOT / ".env", env_file_encoding="utf-8-sig", extra="ignore")
 
     # 对话模型。四个角色不单独配时都用 llm_model；提交时按 PLAN 第 7 节分给不同的 Nemotron
     llm_base_url: str
@@ -56,7 +75,7 @@ class Settings(BaseSettings):
     rerank_base_url: str | None = None
     rerank_model: str | None = None
 
-    database_url: str = "postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris"
+    database_url: str = DEFAULT_DATABASE_URL
     demo_mode: bool = False
     ingest_token: SecretStr | None = None
     mcp_token: SecretStr | None = None  # /mcp 的口令；不配就关闭 MCP
@@ -68,10 +87,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_demo_database(self) -> "Settings":
         if self.demo_mode:
-            url = make_url(self.database_url)
-            if (url.get_backend_name() != "postgresql" or url.database != "polaris_demo"
-                    or url.host not in ("127.0.0.1", "localhost", "::1", "db")):
-                raise ValueError("DEMO_MODE仅允许本机或独立Compose内的polaris_demo数据库")
+            require_demo_database_url(self.database_url)
         return self
 
     def model_for(self, role: Role) -> str:
@@ -127,10 +143,7 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    config_file = os.environ.get("POLARIS_ENV_FILE")
-    if config_file is not None and (not config_file.strip() or not Path(config_file).is_file()):
-        raise ValueError("POLARIS_ENV_FILE指定的文件不存在，拒绝回退到个人配置或默认数据库")
-    s = Settings(_env_file=config_file if config_file is not None else ROOT / ".env")
+    s = Settings(_env_file=settings_file())
     if s.embed_dim != EMBED_DIM:
         raise ValueError(f"EMBED_DIM={s.embed_dim}，但表结构的向量列是 {EMBED_DIM} 维；改维度要先做数据库迁移")
     return s

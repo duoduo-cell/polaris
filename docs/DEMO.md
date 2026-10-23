@@ -6,6 +6,8 @@
 
 ## 当前可验证范围
 
+- 2026-10-24补充：迁移入口与应用共享配置文件及演示目标检查，DEMO_MODE为真时，继承的DATABASE_URL或Alembic显式覆盖都不能指向个人库；指定文件缺失／空路径直接报错。网页也拒绝显式配置不可读／空路径及非法DEMO_MODE，不回退个人API。环境变量仍优先，必须先核对DEMO_MODE未被覆盖为false。详见[迁移与配置证据](research/2026-10-24-demo-config-and-migrations.md)。
+
 - 当前资料版本 `demo-fixture-v2`。第一版手工标注的虚构公司不在现有词表，导致同题重解析归属不同；现在用公开公司名作显式演示标签，题目元数据由现有原文解析生成。没有放宽真实来源规则或复制真实面经。旧v1成功标记不会自动升级或重置；本机此前没有执行过演示导入。
 - 默认运行 `uv run python -m polaris.demo` 只在内存构造并检查样本，不读取模型配置、不连接数据库、不启动服务。
 - 数据写入需要 `--seed --apply`；实际引擎与配置的目标都必须是本机或独立Compose中的 `polaris_demo`。非空库且没有本演示的成功导入记录时拒绝，不清理或覆盖。
@@ -21,12 +23,13 @@
 需要Docker、Python 3.12+、uv和Node.js。克隆仓库后，在项目根目录用新PowerShell窗口操作：
 
 1. 使用者复制 `config/demo.env.example` 到根目录 `.env.demo`，填写独立数据库密码、独立OWNER_TOKEN和自己的模型服务配置。数据库URL中的密码与DEMO_DB_PASSWORD保持一致；URL含特殊字符时做URL编码。不要提交 `.env.demo`，不要将真实Cookie、简历或采集数据库复制进来。
-2. 安装项目依赖并指定**这个配置文件的绝对路径**。环境变量优先于文件；新窗口中不要继承个人数据库或OWNER_TOKEN的覆盖值。
+2. 安装项目依赖并指定**这个配置文件的绝对路径**。环境变量优先于文件；新窗口中不要继承个人DATABASE_URL、DEMO_MODE、POLARIS_API或OWNER_TOKEN的覆盖值。编辑文件后重启对应进程，应用和网页都按该进程加载的配置工作。
 
 ```powershell
 uv sync --frozen
 $env:POLARIS_ENV_FILE = (Resolve-Path .env.demo).Path
 uv run python -m polaris.demo
+uv run python -c "from polaris.config import get_settings; from polaris.db.migration_config import migration_database_url; s=get_settings(); assert s.demo_mode, 'DEMO_MODE必须为true'; assert migration_database_url()==s.database_url, '迁移与应用目标不一致'; print('演示配置与迁移目标一致；未连接数据库，未校验模型服务。')"
 ```
 
 3. 明确启动独立数据库，等待健康检查通过。此Compose只定义数据库，绑定127.0.0.1:55432，项目名 `polaris-demo`，使用独立卷，未挂载个人数据。
@@ -37,7 +40,7 @@ uv run alembic upgrade head
 uv run python -m polaris.demo --seed --apply
 ```
 
-`POLARIS_ENV_FILE`让Alembic和应用使用演示配置；如果已有 `DATABASE_URL` 环境变量，它优先于文件，应在新窗口中清除或核对。配置错误应停止，不能改名个人库、清库或将真实副本标为合成来继续。
+`POLARIS_ENV_FILE`让Alembic和应用使用演示配置；如果已有 `DATABASE_URL` 环境变量，它优先于文件，应在新窗口中清除或核对。DEMO_MODE为真时，迁移在构造引擎前检查最终目标，不能用命令行／环境变量绕过目标限制。迁移本身只需数据库配置，不要求模型密钥；上面的应用预检会要求配置字段，但不发送模型请求。配置错误应停止，不能改名个人库、清库或将真实副本标为合成来继续。
 
 4. 在该窗口手动启动API（前台运行，Ctrl+C停止）。
 
@@ -45,7 +48,7 @@ uv run python -m polaris.demo --seed --apply
 uv run polaris serve --port 8010
 ```
 
-5. 新开PowerShell窗口到同一项目根目录，给网页指定相同配置文件与演示API。未指定演示API会连回默认8000，必须同时设置。
+5. 新开PowerShell窗口到同一项目根目录，给网页指定相同配置文件与演示API。演示模式没有API配置会报错；不要依赖个人默认8000。示例文件已有POLARIS_API，仍应同时设置并核对。
 
 ```powershell
 $env:POLARIS_ENV_FILE = (Resolve-Path .env.demo).Path
@@ -77,6 +80,8 @@ docker compose --env-file .env.demo -f compose.demo.yml stop
 这些是待实测预期，不能用手写示例答案或脚本模型代替真实模型完成验收。
 
 ## 尚未完成的验收
+
+2026-10-24离线配置与迁移核查：当前相邻后端172通过、3项数据库检查未选、0跳过；网页实际配置模块8项通过，TypeScript／ESLint／Ruff通过。14个迁移成功渲染离线SQL至head c41d7e9a2b10，包含vector／pg_search初始化及jieba BM25索引；没有构造数据库引擎或由PostgreSQL解析／执行，不证明镜像扩展可用。真实迁移、导入、网页和模型验收仍欠。
 
 2026-10-23离线验证：后端与相邻集合110项通过、3项数据库检查未选、0跳过；4项网页配置模块检查通过，TypeScript、ESLint、Ruff通过；`docker compose ... config --quiet`只做配置解析并退出0，没有拉取镜像或启动容器。私有记录为 `data/probe/demo-offline-regression-20261023.xml`、`demo-web-static-20261023.json`、`demo-compose-config-20261023.json`。初版新增检查中1项把既有实习时长解释的key误写成duration_months而失败，改为实际months后通过，这是测试夹具错误，不计产品修复。
 

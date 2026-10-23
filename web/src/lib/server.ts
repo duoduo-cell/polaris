@@ -3,18 +3,27 @@ import "server-only";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-function fromRootEnv(name: string): string | undefined {
+function rootEnvText(): string {
+  const selected = process.env.POLARIS_ENV_FILE;
+  if (selected !== undefined && !selected.trim()) {
+    throw new Error("POLARIS_ENV_FILE为空，拒绝回退到个人配置");
+  }
   try {
-    const envPath = process.env.POLARIS_ENV_FILE
-      ? resolve(process.env.POLARIS_ENV_FILE)
+    const envPath = selected !== undefined
+      ? resolve(selected)
       : join(process.cwd(), "..", ".env");
-    const text = readFileSync(envPath, "utf-8");
-    for (const line of text.split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-      if (m && m[1] === name) return m[2].replace(/^["']|["']$/g, "");
-    }
+    return readFileSync(envPath, "utf-8");
   } catch {
-    // 没有 .env 就当没配
+    if (selected !== undefined) throw new Error("无法读取POLARIS_ENV_FILE，拒绝回退到个人配置或API");
+    return ""; // 未显式选择文件时，保留纯环境变量配置。
+  }
+}
+
+const envText = rootEnvText();
+function fromRootEnv(name: string): string | undefined {
+  for (const line of envText.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && m[1] === name) return m[2].replace(/^["']|["']$/g, "");
   }
   return undefined;
 }
@@ -30,5 +39,8 @@ export function ownerToken(): string | undefined {
 }
 
 export function demoMode(): boolean {
-  return /^(1|true|t|yes|y|on)$/i.test(process.env.DEMO_MODE ?? fromRootEnv("DEMO_MODE") ?? "false");
+  const value = process.env.DEMO_MODE ?? fromRootEnv("DEMO_MODE") ?? "false";
+  if (/^(1|true|t|yes|y|on)$/i.test(value)) return true;
+  if (/^(0|false|f|no|n|off)$/i.test(value)) return false;
+  throw new Error("DEMO_MODE必须是明确的布尔值，拒绝猜测配置模式");
 }

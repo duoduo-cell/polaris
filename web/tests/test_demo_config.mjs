@@ -15,7 +15,11 @@ function settings(env = {}, text = '') {
   const require = name => {
     if (name === 'server-only') return {};
     if (name === 'node:path') return path;
-    if (name === 'node:fs') return { readFileSync: file => { reads.push(file); return text; } };
+    if (name === 'node:fs') return { readFileSync: file => {
+      reads.push(file);
+      if (text instanceof Error) throw text;
+      return text;
+    } };
     throw new Error('Unexpected module access');
   };
   vm.runInNewContext(compiled, { module, exports: module.exports, require,
@@ -51,4 +55,26 @@ test('explicit environment overrides the selected demo file consistently', () =>
   assert.equal(value.demoMode(), true);
   assert.equal(value.ownerToken(), 'synthetic-env-token');
   assert.equal(value.API_BASE, 'http://127.0.0.1:8011');
+});
+
+test('missing or unreadable explicit file cannot fall back even with inherited personal values', () => {
+  assert.throws(() => settings({ POLARIS_ENV_FILE: 'missing-demo.env', OWNER_TOKEN: 'synthetic-personal-token',
+    POLARIS_API: 'http://127.0.0.1:8000' }, new Error('synthetic access error')), /拒绝回退/);
+});
+
+test('blank selected path cannot silently read the personal file', () => {
+  for (const file of ['', '   ']) {
+    assert.throws(() => settings({ POLARIS_ENV_FILE: file },
+      'OWNER_TOKEN=synthetic-personal-token\nPOLARIS_API=http://127.0.0.1:8000\n'), /拒绝回退/);
+  }
+});
+
+test('invalid demo mode is rejected instead of treated as personal mode', () => {
+  for (const value of ['', 'typo']) assert.throws(() => settings({ DEMO_MODE: value }), /DEMO_MODE/);
+});
+
+test('missing implicit personal file remains compatible with an environment-only setup', () => {
+  const value = settings({ OWNER_TOKEN: 'synthetic-env-token' }, new Error('no personal env file'));
+  assert.equal(value.API_BASE, 'http://127.0.0.1:8000');
+  assert.equal(value.ownerToken(), 'synthetic-env-token');
 });

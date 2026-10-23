@@ -7,10 +7,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Engine, func, select, table, text
-from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
-from polaris.config import Settings, get_settings
+from polaris.config import Settings, get_settings, require_demo_database_url
 from polaris.db.models import Base, InterviewQuestion, Job, MemoryFact, Post, Posting, RawItem, Run, SearchChunk
 from polaris.db.session import get_engine, session_scope
 from polaris.interviews import profile
@@ -99,10 +98,8 @@ def require_demo_target(settings: Settings, engine: Engine) -> None:
     if not settings.demo_mode:
         raise ValueError("仅DEMO_MODE允许合成演示导入")
     # 不仅核对配置，也核对实际注入的引擎，防止调用方意外传入个人库。
-    for url in (make_url(settings.database_url), engine.url):
-        if (url.get_backend_name() != "postgresql" or url.database != "polaris_demo"
-                or url.host not in ("127.0.0.1", "localhost", "::1", "db")):
-            raise ValueError("仅允许独立polaris_demo目标，未写入任何资料")
+    for url in (settings.database_url, engine.url):
+        require_demo_database_url(url)
 
 
 def assert_ready(session: Session) -> None:

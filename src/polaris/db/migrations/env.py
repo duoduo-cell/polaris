@@ -1,10 +1,10 @@
 """Alembic 迁移入口。数据库地址按这个顺序取：命令行或测试传入的 sqlalchemy.url、环境变量 DATABASE_URL、.env。"""
-import os
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import create_engine, pool
 
+from polaris.db.migration_config import migration_database_url
 from polaris.db.models import Base
 
 config = context.config
@@ -20,12 +20,7 @@ def include_object(obj, name, type_, reflected, compare_to) -> bool:
 
 
 def database_url() -> str:
-    url = config.get_main_option("sqlalchemy.url") or os.environ.get("DATABASE_URL")
-    if url:
-        return url
-    from polaris.config import get_settings
-
-    return get_settings().database_url
+    return migration_database_url(config.get_main_option("sqlalchemy.url"))
 
 
 def run_migrations_offline() -> None:
