@@ -13,7 +13,7 @@ from sqlalchemy import select
 from polaris.companies import match as big_company
 from polaris.db.models import InterviewQuestion, Job, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
-from polaris.interviews import MATERIAL_LABELS
+from polaris.interviews import MATERIAL_LABELS, split_text
 from polaris.search.retrieve import SearchQuery, degraded, search
 from polaris.sources import source_dict
 from polaris.tools.base import ToolError, ToolSpec
@@ -68,6 +68,8 @@ def questions_search(args: QuestionsSearchArgs) -> dict:
 
 def question_row(q: InterviewQuestion, p: Post, raw: RawItem) -> dict[str, Any]:
     return {"id": f"Q-{q.id}", "from": f"P-{p.id}", "display_title": q.question, "question": q.question,
+            "post_title": split_text(raw.raw_text, raw.raw_json)[0], "round_scope": "question",
+            "round_note": "round只表示该题定位到的轮次；空值不能推断整帖未标轮次。原帖范围看post_title或posts_get。",
             "companies": [q.company] if q.company else [], "company": q.company, "role": q.role, "team": q.team,
             "job_type": q.job_type, "round": q.round, "category": q.category, "material": q.material,
             "material_label": MATERIAL_LABELS[q.material], "attribution": q.attribution, "evidence": q.evidence,
