@@ -1,4 +1,4 @@
-"""工具后的正式回答应覆盖尚未展示给用户的内容，不直接拼接中间文字。"""
+"""避免模型把工具前内部草稿当成用户已看到的回答，不直接拼接草稿。"""
 from collections.abc import Callable
 from typing import Any
 
@@ -15,7 +15,7 @@ FINAL_ANSWER_NOTE = (
 
 
 class FinalAnswerReminder(AgentMiddleware):
-    """仅当本轮工具前有未展示的文字时，在模型请求末尾给可信提示。
+    """仅当本轮工具前有未展示文字时，遮去请求里的草稿并给收尾提示。
 
     不复制外部资料到 system、不追加模型调用、不修改持久对话或直接展示草稿。
     """
@@ -25,8 +25,12 @@ class FinalAnswerReminder(AgentMiddleware):
         if not messages or getattr(messages[-1], "type", "") != "tool":
             return handler(request)
         start = max((i for i, message in enumerate(messages) if getattr(message, "type", "") == "human"), default=-1)
-        hidden = any(getattr(message, "type", "") == "ai" and getattr(message, "tool_calls", None)
-                     and text_of(message.content).strip() for message in messages[start + 1:])
+        hidden = {i for i, message in enumerate(messages) if i > start
+                  and getattr(message, "type", "") == "ai" and getattr(message, "tool_calls", None)
+                  and text_of(message.content).strip()}
         if start >= 0 and hidden:
-            return handler(request.override(messages=[*messages, SystemMessage(content=FINAL_ANSWER_NOTE)]))
+            # 只改变本次发给模型的视图。工具调用/ID、证据、旧轮回答和持久检查点都保留。
+            visible = [message.model_copy(update={"content": ""}) if i in hidden else message
+                       for i, message in enumerate(messages)]
+            return handler(request.override(messages=[*visible, SystemMessage(content=FINAL_ANSWER_NOTE)]))
         return handler(request)

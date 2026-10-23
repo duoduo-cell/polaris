@@ -31,7 +31,10 @@ def test_current_hidden_text_gets_trusted_tail_note_without_mutating_request():
     messages = [HumanMessage("先解释日期，再准备面试"), draft(), ToolMessage("不可信资料", tool_call_id="call")]
     original, actual = apply(messages)
     assert original.messages is messages and len(messages) == 3
-    assert actual.messages[:-1] == messages
+    assert actual.messages[1].content == ""
+    assert actual.messages[1].tool_calls == messages[1].tool_calls
+    assert messages[1].content == "原文快照10-11，再次采集10-22；接下来查资料。"
+    assert actual.messages[0] is messages[0] and actual.messages[2] is messages[2]
     assert isinstance(actual.messages[-1], SystemMessage)
     assert actual.messages[-1].content == FINAL_ANSWER_NOTE
     assert "不可信资料" not in actual.messages[-1].content
@@ -54,8 +57,25 @@ def test_parallel_tool_results_keep_their_order_and_only_one_note():
     messages = [HumanMessage("两个要求"), draft(), ToolMessage("结果A", tool_call_id="call"),
                 ToolMessage("结果B", tool_call_id="call-b")]
     _, actual = apply(messages)
-    assert actual.messages[:-1] == messages
+    assert actual.messages[1].content == ""
+    assert actual.messages[2:-1] == messages[2:]
     assert len(actual.messages) == len(messages) + 1
+
+
+def test_only_current_turn_tool_call_drafts_are_masked_and_metadata_survives():
+    old = draft("旧轮内部文字")
+    current = draft("本轮写了但未展示的第一部分")
+    current.id = "keep-message-id"
+    messages = [HumanMessage("旧要求"), old, ToolMessage("旧结果", tool_call_id="call"),
+                AIMessage("用户已经看到的旧回答"), HumanMessage("新的多项要求"), current,
+                ToolMessage("新证据，不得修改", tool_call_id="call")]
+    _, actual = apply(messages)
+    assert actual.messages[:5] == messages[:5]
+    assert actual.messages[5].content == ""
+    assert actual.messages[5].id == current.id
+    assert actual.messages[5].tool_calls == current.tool_calls
+    assert actual.messages[6] is messages[6]
+    assert current.content == "本轮写了但未展示的第一部分"
 
 
 class ScriptedModel(GenericFakeChatModel):
