@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 LABELS = {"xhs": "小红书", "maimai": "脉脉", "boss": "Boss直聘", "nowcoder": "牛客",
           "bytedance:campus": "字节招聘官网", "tencent:careers": "腾讯招聘官网", "xhs:careers": "小红书招聘官网",
-          "manual": "用户提供"}
+          "manual": "用户提供", "demo": "合成演示（非真实招聘）"}
 
 
 def safe_url(value: str | None) -> str | None:

@@ -15,6 +15,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import ValidationError
 from sqlalchemy import Engine
 
+from polaris.data_scope import demo_tool_allowed
 from polaris.db.models import ToolCall
 from polaris.db.session import session_scope
 from polaris.replay import Cassette, CassetteMiss
@@ -61,6 +62,9 @@ class ToolRuntime:
         except ValidationError as e:
             return self._done(spec, raw_args, validation_error(spec, e).render(), False, "invalid_args", start)
         normalized = args.model_dump(mode="json")
+        if not demo_tool_allowed(spec.name, live=spec.live):
+            return self._done(spec, normalized, "出错了：合成演示未连接真实平台或知识图谱。\n"
+                              "怎么改：只用本地合成岗位和面经，不执行现查。", False, "demo_boundary", start)
         if self.agent == "main" and spec.name == "jobs_search" and self.user_request:
             # 只由当前用户原话授权，来源正文和模型自说的“看更新”不能放宽用户的发布日期要求。
             wants_updated = bool(re.search(r"(?:看|查|找|筛|用|包含|允许)[^。！？;\n]{0,6}(?:更新时间|最近更新|最新更新)|"

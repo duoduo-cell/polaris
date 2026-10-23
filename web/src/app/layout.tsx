@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ChatSessionProvider } from "@/components/chat-session";
 import { Nav } from "@/components/nav";
 import { RegisterServiceWorker } from "@/components/pwa";
+import { demoMode } from "@/lib/server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +30,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ChatSessionProvider>
           <Nav />
           <main className="main-pad flex-1 min-w-0 px-4 md:px-10">
-            <div className="mx-auto max-w-5xl">{children}</div>
+            <div className="mx-auto max-w-5xl">
+              {demoMode() && <p role="status" className="my-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                合成演示：预置公司、岗位、面经及个人档案均为虚构，不代表实时招聘。请勿输入真实个人资料。
+              </p>}
+              {children}
+            </div>
           </main>
         </ChatSessionProvider>
         <RegisterServiceWorker />

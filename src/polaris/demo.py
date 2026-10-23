@@ -1,0 +1,163 @@
+"""独立合成演示数据。默认只检查；--seed --apply才写入，不复制或清理任何数据库。"""
+import argparse
+import hashlib
+import json
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from sqlalchemy import Engine, func, select, table, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.orm import Session
+
+from polaris.config import Settings, get_settings
+from polaris.db.models import Base, InterviewQuestion, Job, MemoryFact, Post, Posting, RawItem, Run, SearchChunk
+from polaris.db.session import get_engine, session_scope
+from polaris.memory.schema import value_key
+from polaris.search.chunking import Chunk, chunk_values, job_chunks
+
+VERSION = "demo-fixture-v1"
+DISCLOSURE = "纯合成演示，全部预置公司、岗位、面经及档案为人工虚构，不是实际招聘。"
+COMPANY = "星河演示科技"
+
+
+@dataclass
+class DemoRows:
+    groups: list[list[Any]]  # 空库内固定编号，按外键依赖顺序插入
+
+    @property
+    def counts(self) -> dict[str, int]:
+        return {type(rows[0]).__tablename__: len(rows) for rows in self.groups if rows}
+
+
+def fixture(now: datetime) -> DemoRows:
+    """只在内存构造，零网络／数据库调用。固定编号仅允许在全新空库首次导入。"""
+    if now.tzinfo is None:
+        raise ValueError("合成资料基准时刻必须带时区")
+    now = now.astimezone(UTC)
+    published, fetched = now - timedelta(days=4), now - timedelta(days=2)
+    specs = [
+        ("Agent工具工程实习（合成）", "上海、北京", "Agent", 4, 6, "本科及以上在读，论文不是必要条件。"),
+        ("Agent应用后端实习（合成）", "上海", "Agent", 3, 3, "本科及以上在读，有工程项目经验优先。"),
+        ("Agent研究实习（合成）", "上海", "Agent", 4, 6, "硕士及以上在读，至少发表一篇论文。"),
+        ("RAG应用实习（合成，天数未知）", "上海", "RAG", None, 6, "本科及以上在读。"),
+        ("RAG评测实习（合成）", "北京", "RAG", 3, 3, "本科及以上在读，论文非必需。"),
+    ]
+    raws, jobs, postings, chunks = [], [], [], []
+    for n, (title, city, direction, days, months, degree) in enumerate(specs, 1):
+        requirements = [degree, f"实习至少{months}个月。", f"负责{direction}工具调用与可靠性评测，记录延迟、失败及恢复结果。"]
+        if days is not None:
+            requirements.append(f"每周至少到岗{days}天。")
+        jd = f"{DISCLOSURE}\n职责：负责{direction}应用的工程开发。\n任职要求\n" + "\n".join(requirements)
+        raw = RawItem(id=n, source="demo", tier="A", kind="job", external_id=f"{VERSION}:job:{n}",
+                      url=f"https://example.invalid/polaris-demo/jobs/{n}", raw_text=jd,
+                      raw_json={"demo_fixture": VERSION, "datePosted": published.isoformat()},
+                      content_hash=hashlib.sha256(jd.encode()).hexdigest(), fetched_at=fetched,
+                      first_seen_at=fetched, last_seen_at=now, published_at=published,
+                      fetch_method="synthetic", collector_version=VERSION, is_synthetic=True)
+        values = dict(company_name=COMPANY, title=title, directions=[direction], jd_text=jd,
+                      requirements=requirements, city=city, job_type="intern", posted_at=published.date(),
+                      duration_months=months, days_per_week=days)
+        job = Job(id=n, key=f"{VERSION}:job:{n}", company=COMPANY, unit="合成应用组", cities=city.split("、"),
+                  first_seen_at=fetched, last_seen_at=now, status="active", posting_count=1, conflicts=[],
+                  field_sources={}, is_synthetic=True, **values)
+        posting = Posting(id=n, raw_item_id=n, job_id=n, is_synthetic=True, **values)
+        raws.append(raw)
+        jobs.append(job)
+        postings.append(posting)
+        chunks.extend(SearchChunk(**chunk_values(c)) for c in job_chunks(job))
+    question = "如何评测Agent工具超时后的重试和恢复是否正确？"
+    post_text = f"星河演示科技Agent一面与二面面经（合成）\n{DISCLOSURE}\n一面问了系统设计，二面交流工程项目。\n面试官问：{question}"
+    raws.append(RawItem(id=6, source="demo", tier="A", kind="post", external_id=f"{VERSION}:post:1",
+                        url="https://example.invalid/polaris-demo/interviews/1", raw_text=post_text,
+                        raw_json={"demo_fixture": VERSION, "title": post_text.splitlines()[0]},
+                        content_hash=hashlib.sha256(post_text.encode()).hexdigest(), fetched_at=fetched,
+                        first_seen_at=fetched, last_seen_at=now, published_at=published,
+                        fetch_method="synthetic", collector_version=VERSION, is_synthetic=True))
+    post = Post(id=1, raw_item_id=6, post_type="面经", companies=[COMPANY], big_companies=[],
+                roles=["Agent"], directions=["Agent"], job_type="intern", summary=post_text,
+                interview_questions=[question], evidence_profile={}, published_at=published)
+    q = InterviewQuestion(id=1, key="post:1:q0", post_id=1, company=COMPANY, role="Agent", team=None,
+                          job_type="intern", round=None, category="Agent", material="firsthand",
+                          attribution="explicit", evidence=f"面试官问：{question}", question=question, published_at=published)
+    for c in [Chunk(key="post:1", kind="post", header=f"{COMPANY}｜合成面经", body=post_text,
+                    post_id=1, companies=(COMPANY,), published_at=published, is_synthetic=True),
+              Chunk(key=q.key, kind="question", header=f"{COMPANY}｜Agent｜合成面经题", body=question,
+                    post_id=1, companies=(COMPANY,), published_at=published, is_synthetic=True)]:
+        chunks.append(SearchChunk(**chunk_values(c)))
+    facts = []
+    for attr, value in [("degree", "本科在读"), ("paper_experience", "无论文"), ("target_city", "北京"),
+                        ("target_role", "Agent"), ("job_type", "日常实习"), ("days_per_week", "4"),
+                        ("skill", "Python"), ("skill", "RAG")]:
+        facts.append(MemoryFact(attribute=attr, value=value, value_key=value_key(attr, value), statement=f"合成档案：{value}",
+                                kind="stated", status="active", source_text=f"{DISCLOSURE} 合成档案：{attr}={value}",
+                                recorded_at=fetched, last_confirmed_at=fetched, valid_from=published.date()))
+    return DemoRows([raws, jobs, postings, [post], [q], chunks, facts])
+
+
+def require_demo_target(settings: Settings, engine: Engine) -> None:
+    if not settings.demo_mode:
+        raise ValueError("仅DEMO_MODE允许合成演示导入")
+    # 不仅核对配置，也核对实际注入的引擎，防止调用方意外传入个人库。
+    for url in (make_url(settings.database_url), engine.url):
+        if (url.get_backend_name() != "postgresql" or url.database != "polaris_demo"
+                or url.host not in ("127.0.0.1", "localhost", "::1", "db")):
+            raise ValueError("仅允许独立polaris_demo目标，未写入任何资料")
+
+
+def assert_ready(session: Session) -> None:
+    marker = session.scalar(select(Run).where(Run.kind == "demo-seed", Run.status == "ok"))
+    if marker is None or (marker.params or {}).get("fixture") != VERSION:
+        raise ValueError("演示库尚未导入当前合成资料，拒绝启动")
+    for model in (RawItem, Job, Posting, SearchChunk):
+        if session.scalar(select(func.count()).select_from(model).where(model.is_synthetic.is_not(True))):
+            raise ValueError("演示库混入非合成标记资料，拒绝启动；未删除任何记录")
+    if session.scalar(select(func.count()).select_from(RawItem).where(RawItem.source != "demo")):
+        raise ValueError("演示库存在其他来源，拒绝启动；未删除任何记录")
+
+
+def seed(engine: Engine, settings: Settings, now: datetime) -> dict[str, Any]:
+    require_demo_target(settings, engine)
+    rows = fixture(now)
+    with session_scope(engine) as s:
+        s.execute(text("select pg_advisory_xact_lock(739514629)"))
+        marker = s.scalar(select(Run).where(Run.kind == "demo-seed", Run.status == "ok"))
+        if marker is not None:
+            assert_ready(s)
+            return {"status": "already_seeded", "fixture": VERSION}
+        for business_table in Base.metadata.sorted_tables:
+            if s.scalar(select(func.count()).select_from(business_table)):
+                raise ValueError("目标库并非空库，拒绝导入；不会清空或覆盖已有资料")
+        # LangGraph检查点不在业务metadata里，不能把只剩模型历史的库误判成空库。
+        for name in ("checkpoints", "checkpoint_blobs", "checkpoint_writes", "checkpoint_migrations"):
+            if (s.scalar(select(func.to_regclass(f"public.{name}"))) is not None
+                    and s.scalar(select(func.count()).select_from(table(name, schema="public")))):
+                raise ValueError("目标库存在检查点记录，拒绝导入；不会清理模型历史")
+        for group in rows.groups:
+            s.add_all(group)
+            s.flush()
+        # 空库手工编号后同步序列，避免后续正常写入碰撞。仅作用于本次已导入的具体表。
+        for name in ("raw_items", "jobs", "postings", "posts", "interview_questions"):
+            s.execute(text(f"SELECT setval(pg_get_serial_sequence('{name}', 'id'), (SELECT max(id) FROM {name}), true)"))
+        s.add(Run(kind="demo-seed", params={"fixture": VERSION}, status="ok", stats=rows.counts,
+                  started_at=now, finished_at=now))
+    return {"status": "seeded", "fixture": VERSION, "counts": rows.counts}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seed", action="store_true", help="向独立空演示库导入资料，不启动数据库或API")
+    parser.add_argument("--apply", action="store_true", help="明确执行导入；无此开关仅检查内存样本")
+    args = parser.parse_args()
+    if args.apply and not args.seed:
+        parser.error("--apply须配合--seed")
+    if not args.seed or not args.apply:
+        print(json.dumps({"status": "offline_check", "fixture": VERSION, "counts": fixture(datetime.now(UTC)).counts,
+                          "disclosure": DISCLOSURE, "database_accessed": False}, ensure_ascii=False))
+        return
+    settings = get_settings()
+    print(json.dumps(seed(get_engine(), settings, datetime.now(UTC)), ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

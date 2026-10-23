@@ -1,11 +1,13 @@
 """配置：全部从环境变量和项目根目录的 .env 读，key 用 SecretStr，不会出现在日志和 repr 里。"""
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -55,12 +57,22 @@ class Settings(BaseSettings):
     rerank_model: str | None = None
 
     database_url: str = "postgresql+psycopg://polaris:polaris@127.0.0.1:5432/polaris"
+    demo_mode: bool = False
     ingest_token: SecretStr | None = None
     mcp_token: SecretStr | None = None  # /mcp 的口令；不配就关闭 MCP
     owner_token: SecretStr | None = None  # 你自己用的接口（/api/me：对话、记忆、简报）的口令；不配就关闭
     neo4j_uri: str = "bolt://127.0.0.1:7687"  # 知识图谱（M4）
     neo4j_user: str = "neo4j"
     neo4j_password: SecretStr | None = None
+
+    @model_validator(mode="after")
+    def validate_demo_database(self) -> "Settings":
+        if self.demo_mode:
+            url = make_url(self.database_url)
+            if (url.get_backend_name() != "postgresql" or url.database != "polaris_demo"
+                    or url.host not in ("127.0.0.1", "localhost", "::1", "db")):
+                raise ValueError("DEMO_MODE仅允许本机或独立Compose内的polaris_demo数据库")
+        return self
 
     def model_for(self, role: Role) -> str:
         return getattr(self, f"llm_model_{role}") or self.llm_model
@@ -109,12 +121,16 @@ class Settings(BaseSettings):
             "rerank_host": self.host(self.rerank_base_url) if self.rerank_base_url else None,
             "rerank_model": self.rerank_model,
             "cache": self.llm_cache,
+            "dataset": "synthetic_demo" if self.demo_mode else "personal",
         }
 
 
 @lru_cache
 def get_settings() -> Settings:
-    s = Settings()
+    config_file = os.environ.get("POLARIS_ENV_FILE")
+    if config_file is not None and (not config_file.strip() or not Path(config_file).is_file()):
+        raise ValueError("POLARIS_ENV_FILE指定的文件不存在，拒绝回退到个人配置或默认数据库")
+    s = Settings(_env_file=config_file if config_file is not None else ROOT / ".env")
     if s.embed_dim != EMBED_DIM:
         raise ValueError(f"EMBED_DIM={s.embed_dim}，但表结构的向量列是 {EMBED_DIM} 维；改维度要先做数据库迁移")
     return s

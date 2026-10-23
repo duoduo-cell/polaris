@@ -12,7 +12,7 @@
 每一步的条数和耗时记在 trace 里，回答时能说清"为什么是这几条"。
 """
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Literal
 
@@ -20,6 +20,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from polaris.companies import match as big_company
+from polaris.config import get_settings
+from polaris.data_scope import synthetic_filter
 from polaris.db.models import InterviewQuestion, Post, RawItem, SearchChunk
 from polaris.db.session import session_scope
 from polaris.llm.client import LLM, LLMError
@@ -89,8 +91,8 @@ class Hit:
 
 def _filters(q: SearchQuery) -> list[Any]:
     conds: list[Any] = []
-    if not q.include_synthetic:
-        conds.append(SearchChunk.is_synthetic.is_(False))
+    if get_settings().demo_mode or not q.include_synthetic:
+        conds.append(synthetic_filter(SearchChunk.is_synthetic))
     kinds = {"jobs": JOB_KINDS, "posts": POST_KINDS, "questions": ("question",)}.get(q.scope)
     if kinds:
         conds.append(SearchChunk.kind.in_(kinds))
@@ -227,12 +229,17 @@ DEGRADED_NOTE = ("向量检索或重排暂时用不了（模型服务出错）�
 
 def degraded(trace: dict[str, Any]) -> str | None:
     """这次检索有没有打折扣：向量或重排出错时给模型一句话，写进工具结果。"""
+    if trace.get("demo_note"):
+        return trace["demo_note"]
     return DEGRADED_NOTE if trace.get("vector_error") or trace.get("rerank_error") else None
 
 
 def search(q: SearchQuery, llm: LLM | None = None) -> tuple[list[Hit], dict[str, Any]]:
     llm = llm or LLM()
     trace: dict[str, Any] = {"query": q.text, "scope": q.scope}
+    if get_settings().demo_mode:
+        q = replace(q, channels=("keyword",), rerank=False)
+        trace["demo_note"] = "纯合成演示只启用关键词召回，未运行向量、图谱或重排；不代表完整检索性能。"
     t0 = time.perf_counter()
     channels: dict[str, list[tuple[int, float]]] = {}
     with session_scope() as s:

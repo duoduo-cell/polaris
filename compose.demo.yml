@@ -1,0 +1,20 @@
+# 独立演示数据库。显式运行才启动；没有个人数据挂载、采集器或自动重启策略。
+name: polaris-demo
+services:
+  db:
+    image: paradedb/paradedb:v0.22.6
+    environment:
+      POSTGRES_USER: polaris
+      POSTGRES_PASSWORD: ${DEMO_DB_PASSWORD:?Set a separate DEMO_DB_PASSWORD}
+      POSTGRES_DB: polaris_demo
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - demo-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polaris -d polaris_demo"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  demo-pgdata:

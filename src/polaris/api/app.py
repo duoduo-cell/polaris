@@ -27,6 +27,12 @@ mcp_app = mcp.streamable_http_app()
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     from polaris.agent.tasks import service, shutdown
 
+    if get_settings().demo_mode:
+        from polaris.demo import assert_ready, require_demo_target
+
+        with session_factory()() as session:
+            require_demo_target(get_settings(), session.get_bind())
+            assert_ready(session)
     service()
     async with mcp.session_manager.run():
         try:
@@ -56,7 +62,7 @@ class BearerGuard:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             token = get_settings().mcp_token
-            if token is None:
+            if get_settings().demo_mode or token is None:
                 await JSONResponse({"detail": "MCP is disabled: MCP_TOKEN is not configured"}, 503)(scope, receive, send)
                 return
             auth = dict(scope.get("headers") or []).get(b"authorization", b"")
@@ -275,6 +281,8 @@ app.include_router(personal_router)
 
 
 def require_ingest_token(authorization: Annotated[str | None, Header()] = None) -> None:
+    if get_settings().demo_mode:
+        raise HTTPException(503, "合成演示不接收平台采集或外部导入")
     token = get_settings().ingest_token
     if token is None:
         raise HTTPException(503, "ingest is disabled: INGEST_TOKEN is not configured")

@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import any_, func, or_, select
 
 from polaris.companies import match
+from polaris.config import get_settings
+from polaris.data_scope import synthetic_filter
 from polaris.db.models import InterviewQuestion, Job, Post, Posting, RawItem
 from polaris.db.session import session_scope
 from polaris.followups import states
@@ -59,7 +61,8 @@ class JobsSearchArgs(Page):
     city: str | None = Field(None, description="城市，如 北京；多城市岗位只要包含就算")
     job_type: Literal["intern", "campus", "social"] | None = Field(None, description="intern 实习、campus 校招、social 社招")
     direction: str | None = Field(None, description="方向，如 Agent、RAG、大模型、后端、算法")
-    big_only: bool = Field(True, description="只看风向标大厂名单里的公司")
+    big_only: bool = Field(default_factory=lambda: not get_settings().demo_mode,
+                           description="只看风向标大厂名单里的公司；合成演示公司不属于真实大厂名单")
     since_days: int | None = Field(None, ge=1, le=365, description="最近N个自然日（含今天）；发布日期未知的排除，不用抓取日期凑数")
     date_basis: Literal["published", "reported"] = Field("published", description=(
         "published只用明确来源发布日期；reported允许来源更新时间，只在用户要求看最近更新时用"))
@@ -119,6 +122,11 @@ def library_note(kind: str, dated: bool = False) -> dict[str, Any]:
     from polaris.report import BEIJING
 
     with session_scope() as s:
+        if get_settings().demo_mode:
+            count = s.scalar(select(func.count()).select_from(RawItem).where(RawItem.kind == kind,
+                                                                            synthetic_filter(RawItem.is_synthetic)))
+            return {"scope": "纯合成演示库，人工编写资料，不是平台采集或实时招聘", "synthetic": True,
+                    "by_source": f"合成原始记录{count}条；不能当作真实岗位覆盖或市场统计"}
         latest = s.scalar(select(func.max(RawItem.fetched_at)).where(RawItem.kind == kind))
         from polaris.sources import label
 
@@ -131,8 +139,8 @@ def library_note(kind: str, dated: bool = False) -> dict[str, Any]:
                                "by_source": "原始采集记录数（不同来源可能是同一岗位，不可相加当岗位数）：" + have
                                + (f"；{'、'.join(missing)}还没有采到" if missing else "")}
         if dated:
-            total = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active"))
-            known = s.scalar(select(func.count()).select_from(Job).where(Job.is_synthetic.is_(False), Job.status == "active",
+            total = s.scalar(select(func.count()).select_from(Job).where(synthetic_filter(Job.is_synthetic), Job.status == "active"))
+            known = s.scalar(select(func.count()).select_from(Job).where(synthetic_filter(Job.is_synthetic), Job.status == "active",
                                                                           Job.posted_at.is_not(None)))
             out["dated"] = (f"在库岗位有来源日期的为 {known}/{total} 个（可能是发布或更新）；"
                             "仅明确发布日期能进入 published 筛选，具体排除数量见 scope")
@@ -157,7 +165,7 @@ def jobs_trend(args: JobsTrendArgs) -> dict:
     now = datetime.now(UTC)
     since = now - timedelta(days=args.days)
     with session_scope() as s:
-        stmt = select(Job).where(Job.is_synthetic.is_(False))
+        stmt = select(Job).where(synthetic_filter(Job.is_synthetic))
         if args.company:
             stmt = stmt.where(_company_filter(Job.company_name, Job.company, args.company))
         if args.direction:
@@ -202,7 +210,7 @@ def jobs_search(args: JobsSearchArgs) -> dict:
     current = criteria(args.model_dump())
     # 先核实结构化范围，避免在已无候选时仍付费换关键词；不在数据库事务中等待检索服务。
     with session_scope() as s:
-        stmt = select(Job).where(Job.is_synthetic.is_(False), Job.status == "active")
+        stmt = select(Job).where(synthetic_filter(Job.is_synthetic), Job.status == "active")
         if args.company:
             stmt = stmt.where(_company_filter(Job.company_name, Job.company, args.company))
         if args.city:
@@ -371,7 +379,7 @@ def posts_search(args: PostsSearchArgs) -> dict:
     order, note = ranked_ids(args.query, "posts", args.company) if args.query else (None, None)
     with session_scope() as s:
         stmt = select(Post, RawItem).join(RawItem, RawItem.id == Post.raw_item_id)
-        stmt = stmt.where(RawItem.is_synthetic.is_(False))
+        stmt = stmt.where(synthetic_filter(RawItem.is_synthetic))
         if args.keyword:
             stmt = stmt.where(Post.summary.ilike(f"%{args.keyword}%") | RawItem.raw_text.ilike(f"%{args.keyword}%"))
         if order is not None:

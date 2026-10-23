@@ -38,6 +38,7 @@ from polaris.agent.minimal import text_of
 from polaris.agent.models import chat_model
 from polaris.agent.tracing import PolarisTracer
 from polaris.config import get_settings
+from polaris.data_scope import demo_tool_allowed
 from polaris.db.session import session_scope
 from polaris.llm.recorder import DbRecorder
 from polaris.memory.update import card, pending, render_card
@@ -45,7 +46,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v33"  # v33：完整求职报告可用有界证据收尾工具；门槛说明保留个人事实与原句。
+PROMPT_VERSION = "main-v34"  # v34：独立合成演示限定本地工具和资料范围；v33的有界报告收尾保留。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -360,7 +361,12 @@ def _system_prompt(now: datetime, questions: list[str]) -> str:
         asks = "\n还有没确认的记忆（用户提到相关的事时可以顺带问）：" + "；".join(waiting[:3]) + "\n"
     from polaris.tools.base import defense_off
 
-    return SYSTEM.format(today=today.isoformat(), card=card_text, asks=asks, defense="" if defense_off() else DEFENSE)
+    result = SYSTEM.format(today=today.isoformat(), card=card_text, asks=asks, defense="" if defense_off() else DEFENSE)
+    if get_settings().demo_mode:
+        result += ("\n当前为纯合成演示：公司、岗位、面经和初始个人档案是人工虚构资料，不能当真实招聘或竞争统计。"
+                   "演示公司不在真实大厂名单，查演示岗位用big_only=false；不使用现查或知识图谱工具。"
+                   "演示只启用关键词召回，不声称向量、图谱或实时核验已成功。")
+    return result
 
 
 def _interrupts(state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -443,7 +449,8 @@ def _run(payload: Any, thread_id: str, now: datetime, questions: list[str], mode
     stop = should_stop or (lambda: False)
     from polaris.agent.report_workflow import report_tool
 
-    tools = runtime.langchain_tools([REGISTRY[n] for n in TOOLS] + [report_tool(runtime, stop, tracer.t0)])
+    tools = runtime.langchain_tools([REGISTRY[n] for n in TOOLS if demo_tool_allowed(n, live=REGISTRY[n].live)]
+                                   + [report_tool(runtime, stop, tracer.t0)])
     callbacks: list[Any] = [tracer]
     if on_event is not None:
         from polaris.agent.steps import outcome

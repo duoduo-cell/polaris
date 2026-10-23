@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from polaris.config import get_settings
+from polaris.data_scope import synthetic_filter
 from polaris.db.models import Notification
 from polaris.db.session import session_scope
 from polaris.report import BEIJING
@@ -279,7 +280,7 @@ def browse_questions(company: str | None = None, role: str | None = None, job_ty
         raise HTTPException(422, "筛选或分页参数不合法")
     with session_scope() as s:
         stmt = select(InterviewQuestion, Post, RawItem).join(Post, Post.id == InterviewQuestion.post_id)
-        stmt = stmt.join(RawItem, RawItem.id == Post.raw_item_id).where(RawItem.is_synthetic.is_(False))
+        stmt = stmt.join(RawItem, RawItem.id == Post.raw_item_id).where(synthetic_filter(RawItem.is_synthetic))
         if company:
             big = match(company)
             stmt = stmt.where(InterviewQuestion.company == (big.name if big else company))
@@ -356,6 +357,8 @@ def traces_endpoint(days: int = 7) -> dict[str, Any]:
 
 @router.get("/agenda", summary="What Polaris is doing, needs from you, has scheduled and finished today")
 def agenda_endpoint() -> dict[str, Any]:
+    if get_settings().demo_mode:
+        raise HTTPException(503, "合成演示不读取本机采集日程或真实简报")
     from polaris.agenda import agenda
 
     return agenda()
@@ -363,6 +366,8 @@ def agenda_endpoint() -> dict[str, Any]:
 
 @router.get("/brief", summary="Today's brief (markdown)")
 def brief_endpoint(day: date | None = None) -> dict[str, Any]:
+    if get_settings().demo_mode:
+        return {"day": (day or datetime.now(BEIJING).date()).isoformat(), "markdown": None}
     from polaris.proactive.daily import BRIEFS
 
     day = day or datetime.now(BEIJING).date()
@@ -471,7 +476,7 @@ def answer_feedback_endpoint(body: AnswerFeedbackIn) -> dict[str, Any]:
 
     from polaris.config import ROOT
 
-    path = ROOT / FEEDBACK_FILE
+    path = ROOT / ("data/demo/feedback/answers.jsonl" if get_settings().demo_mode else FEEDBACK_FILE)
     path.parent.mkdir(parents=True, exist_ok=True)
     row = {"at": datetime.now(UTC).isoformat(timespec="seconds"), "db": get_settings().database_url.rsplit("/", 1)[-1],
            **body.model_dump()}
