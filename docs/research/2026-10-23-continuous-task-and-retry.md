@@ -2,6 +2,24 @@
 
 当前完整任务尚未通过。不能把下列回放改善、部分网页成功或工具成功率称为本机阶段完成。
 
+## 10:32最新检查点
+
+`7f4ef25` main-v29将收尾提示改为“资料未齐先继续合适工具，不编造原题”。9725末轮请求的固定材料回放9736先提出posts_search和questions_search，约8.09秒；没有实际执行回放里的工具。随后第三次真实网页确实用了jobs_search、jobs_get、posts_search、posts_get四个工具，约67.418秒，主模型4次请求无错误，但仍**未通过完整任务**：把展示2岗说成总共2岗（工具候选18），又把last_seen解释成链接可访问／未下架的证明，且没给面经原题单独的答题要点。题目引用这次有真实posts_get证据。不能用覆盖四个标题来替代事实与需求验收；私有 `continuous-acceptance-run3-20261023.json` 保留失败。
+
+`89d6598` 增加程序性引用检查：明确括注的J/P/Q/R引用若既没有本轮成功结构化工具结果、也没有本线程近20条正式结果支持，保留答复同时写现有Turn.error“引用未取证／尚未核验”，重连仍保留。代码例子和普通编号描述不按引用检查，失败工具、外部正文中的编号不作证据。修前新4项中3失败；修后相邻37项通过，随后新增重连项的5项补验通过（4项重复），Ruff通过。对保存失败的离线复核：第二次错误Q-12被识别，第三次合法引用不告警。它不审查自然语言数量／日期／所有事实，也不自动改写旧回答，不是全面事实验证器。
+
+先复用现有bounded_audit／原始层读取和审查schema做一次离线语义复核，不新建冻结副本、不重跑旧评测入口。调用9780返回了不存在的证据键，schema拒绝；没有把失败输出算审查通过，也**未接入生产自动审查**。初次装置使用网页结果摘要而缺工具output，修正为读本线程原始ToolCall后才发出模型请求。材料 `continuous-semantic-review-input/output-20261023.json`，明确不是冻结评测／当前SQL独立计数。设计参考[LangChain确定性与模型护栏的边界](https://docs.langchain.com/oss/python/langchain/guardrails)和[中间件钩子](https://docs.langchain.com/oss/python/langchain/middleware/custom)，文档支持实现方式，不证明本项目已经有效。
+
+### 受限思考实验，未许诺整体改善
+
+对第三次失败的末轮9763固定消息／工具证据，保持qwen3.7-plus、开启1024思考Token预算：首个45秒零重试实验超时；另一次90秒零重试回放9809于57.66秒返回，修正候选18／展示2并补齐两题答题要点。用量20,321 Token，其中思考1,024、输出3,344；费用未知，不报0。这只是一条最终生成的非流式回放，不证明完整工具编排、所有日期断言或持续稳定性。
+
+官方确认该模型支持思考模式、Function Calling与思考预算；这是参数依据，不是效果保证：[百炼深度思考](https://help.aliyun.com/zh/model-studio/deep-thinking/)、[工具调用](https://help.aliyun.com/zh/model-studio/qwen-function-calling)。
+
+`d2557ec` 增加可选进程配置LLM_CHAT_ENABLE_THINKING／LLM_CHAT_THINKING_BUDGET，默认沿用既有行为；显式调用参数仍优先，关闭思考时不泄漏默认预算。新边界6项修前2失败，修后LLM／config／main／收尾／引用相邻46项通过，Ruff与启动参数冒烟通过。只有使用 `scripts/run_web_bailian.py --chat-thinking-budget 1024` 才在临时网页入口开启主对话受限思考；抽取、审查、简报仍false，不写.env、不改采集。预算是**每次主模型请求**的思考Token上限，不是整个任务或金额上限，既有次数限制仍适用。
+
+已核无活跃ChatTask后安全加载该本轮自有API，launcher9116／listener12868，原49256等历史PID失效。`web-chat-thinking-process-20261023.json`为新运行快照。新完整网页任务3af931b1-7fc7-49a7-bc90-9c9ef289e544于10:32运行中，尚无验收结论；目标active。采集19096正在上午窗口，日志修正9abccc2仍未加载它。下一步先检查该任务的真实结果、来源／数量／日期／两个答题要点和记忆指纹，再决定保留模型模式；另有凌晨UTC日历／有效期边界待修，不能省略。
+
 ## 完整请求与两次真实网页失败
 
 请求在执行前固定于私有 `data/probe/continuous-acceptance-prompt-20261023.txt`：本次上海／Agent／日常实习／每周最多4天，最多两岗；解释符合、冲突、未知；选第一岗读原文、说明学历／论文及三个日期；查相关面经原题并说明团队，再给JD自测和各自答题要点。禁止修改长期记忆、联网核验、采集或保存真实投递。
