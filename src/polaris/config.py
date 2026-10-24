@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     demo_mode: bool = False
     ingest_token: SecretStr | None = None
     mcp_token: SecretStr | None = None  # /mcp 的口令；不配就关闭 MCP
+    portfolio_url: str | None = None  # 跟进消息里附的作品链接；不配就留“[作品链接]”让你自己填
     owner_token: SecretStr | None = None  # 你自己用的接口（/api/me：对话、记忆、简报）的口令；不配就关闭
     neo4j_uri: str = "bolt://127.0.0.1:7687"  # 知识图谱（M4）
     neo4j_user: str = "neo4j"

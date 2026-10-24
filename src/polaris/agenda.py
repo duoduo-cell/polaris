@@ -26,7 +26,8 @@ def _hm(t: datetime) -> str:
     return t.astimezone(BEIJING).strftime("%H:%M")
 
 
-def agenda(now: datetime | None = None) -> dict[str, Any]:
+def agenda(now: datetime | None = None, *, demo: bool = False) -> dict[str, Any]:
+    """demo=True：合成演示只汇总演示库里的事（对话、记忆、跟进），不读本机采集、简报和推送设置这些个人文件。"""
     from polaris.match import profile
     from polaris.proactive.daily import BRIEFS, settings
 
@@ -44,8 +45,10 @@ def agenda(now: datetime | None = None) -> dict[str, Any]:
             question = (task.payload or {}).get("message") or "你的决定"
             doing.append({"kind": "chat", "text": f"{'在回答' if task.state == 'running' else '排队中'}：{question[:28]}",
                           "href": "/chat", "thread_id": task.thread_id})
-        last = s.scalar(select(func.max(RawItem.fetched_at)))
-        if p and (p.roles or p.cities):
+        last = None if demo else s.scalar(select(func.max(RawItem.fetched_at)))
+        if demo:
+            doing.append({"kind": "watch", "text": "合成演示：不运行采集，岗位和面经都是预置的虚构资料"})
+        elif p and (p.roles or p.cities):
             what = " · ".join(x for x in ("、".join(p.cities[:2]), "、".join(p.roles[:2])) if x)
             level = settings().get("level", "normal")
             doing.append({"kind": "watch", "text": f"盯着{what}的新岗位和帖子",
@@ -73,24 +76,32 @@ def agenda(now: datetime | None = None) -> dict[str, Any]:
             else:
                 scheduled.append({"kind": "followup", "when": when.isoformat(), "job": f"J-{j.id}",
                                   "text": f"跟进 {name}（你定的日期）"})
+        from polaris.followups import STATUSES, stale
+
+        for f, j, days in stale(s, now)[:5]:
+            name = " · ".join(x for x in (j.company or j.company_name, j.title) if x)
+            needs.append({"kind": "followup", "job": f"J-{j.id}",
+                          "text": f"{STATUSES[f.status]} {days} 天没有新进展：{name}，可以起草一条跟进消息"})
         for f in s.scalars(select(MemoryFact).where(MemoryFact.status == "active", MemoryFact.valid_from > today)
                            .order_by(MemoryFact.valid_from).limit(10)):
             scheduled.append({"kind": "memory", "when": f.valid_from.isoformat(), "detail": "到时自动生效",
                               "text": f"{ATTRIBUTES[f.attribute].label}：{f.value}" if f.attribute in ATTRIBUTES else f.statement})
         brief_today = (BRIEFS / f"{today.isoformat()}.md").exists()
-        if not brief_today:
+        if demo:
+            pass
+        elif not brief_today:
             scheduled.insert(0, {"kind": "brief", "when": "08:30", "text": "出今日简报（有你的条件时）"})
         else:
             done.append({"kind": "brief", "when": "今天", "text": "今日简报已经出了", "href": "/"})
 
-        fetched = s.execute(select(RawItem.source, func.count()).where(RawItem.fetched_at >= start)
-                            .group_by(RawItem.source)).all()
+        fetched = [] if demo else s.execute(select(RawItem.source, func.count()).where(RawItem.fetched_at >= start)
+                                            .group_by(RawItem.source)).all()
         if fetched:
             total = sum(n for _, n in fetched)
             parts = "、".join(f"{label(src)} {n}" for src, n in sorted(fetched, key=lambda x: -x[1]))
             done.append({"kind": "collect", "when": _hm(last) if last else "今天", "text": f"采到 {total} 条新内容（{parts}）"})
-        new_jobs = s.scalar(select(func.count()).select_from(Job).where(Job.first_seen_at >= start,
-                                                                        Job.is_synthetic.is_(False))) or 0
+        new_jobs = 0 if demo else s.scalar(select(func.count()).select_from(Job).where(
+            Job.first_seen_at >= start, Job.is_synthetic.is_(False))) or 0
         if new_jobs:
             done.append({"kind": "jobs", "when": "今天", "text": f"发现 {new_jobs} 个新岗位", "href": "/jobs"})
         sent = dict(s.execute(select(Notification.channel, func.count()).where(Notification.created_at >= start)

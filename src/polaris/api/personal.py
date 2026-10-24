@@ -238,6 +238,33 @@ def update_followup(reference: str, body: FollowupIn) -> dict[str, Any]:
         raise HTTPException(422, str(e)) from e
 
 
+@router.post("/jobs/{reference}/followup/draft", summary="Draft a follow-up message for one job; never sent by Polaris")
+def draft_followup(reference: str) -> dict[str, Any]:
+    from polaris.followups import draft
+    from polaris.llm.client import LLMError
+    from polaris.tools.base import ToolError
+    from polaris.tools.jobs import _parse
+
+    try:
+        job_id = _parse(reference, "J", "jobs_search", '{"job_id": "J-12"}')
+        with session_scope() as s:
+            return draft(s, job_id)
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    except (ValueError, ToolError) as e:
+        raise HTTPException(422, str(e)) from e
+    except LLMError as e:
+        raise HTTPException(503, "模型服务暂时连不上，过一会儿再点一次") from e
+
+
+@router.get("/funnel", summary="Application funnel: furthest step each job reached, by channel and week")
+def funnel_endpoint() -> dict[str, Any]:
+    from polaris.followups import funnel
+
+    with session_scope() as s:
+        return funnel(s)
+
+
 @router.get("/followups", summary="Saved jobs and independent application progress")
 def followups_endpoint() -> list[dict[str, Any]]:
     from sqlalchemy import or_
@@ -362,11 +389,9 @@ def traces_endpoint(days: int = 7) -> dict[str, Any]:
 
 @router.get("/agenda", summary="What Polaris is doing, needs from you, has scheduled and finished today")
 def agenda_endpoint() -> dict[str, Any]:
-    if get_settings().demo_mode:
-        raise HTTPException(503, "合成演示不读取本机采集日程或真实简报")
     from polaris.agenda import agenda
 
-    return agenda()
+    return agenda(demo=get_settings().demo_mode)  # 演示只汇总演示库里的事，不读本机采集日程和真实简报
 
 
 @router.get("/brief", summary="Today's brief (markdown)")

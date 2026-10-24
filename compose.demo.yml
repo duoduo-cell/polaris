@@ -2,7 +2,7 @@
 name: polaris-demo
 services:
   db:
-    image: paradedb/paradedb:v0.22.6
+    image: paradedb/paradedb:v0.22.6-pg17  # 和个人库同为 PG17；本机已有这个镜像，不用再拉 PG18 版
     environment:
       POSTGRES_USER: polaris
       POSTGRES_PASSWORD: ${DEMO_DB_PASSWORD:?Set a separate DEMO_DB_PASSWORD}

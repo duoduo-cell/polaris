@@ -5,7 +5,6 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Brain, CircleHelp, History, MessageCircle, Quote, Trash2, X } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorNote, PageHeader, Skeleton } from "@/components/markdown";
-import { FollowupList } from "@/components/result-cards";
 import { api } from "@/lib/client";
 import { hideRefs } from "@/lib/refs";
 
@@ -18,13 +17,13 @@ const ATTRS: Record<string, string> = {
   想找的方向: "target_role", 想去的城市: "target_city", 找什么类型: "job_type", 最早什么时候能开始: "available_from",
   每周能到岗几天: "days_per_week", "能实习多久（月）": "duration_months", 毕业年份: "grad_year", 学校: "school", 学历: "degree",
   专业: "major", 会的技术: "skill", 做过的项目: "project", 想去的公司: "company_like", 不想去的公司或团队: "company_avoid",
-  投递过的岗位: "applied", 面试进度: "interview_stage", 期望薪资: "salary_expect", 其他硬条件: "constraint",
+  投递过的岗位: "applied", 面试进度: "interview_stage", 被拒的反馈: "rejection_feedback", 期望薪资: "salary_expect", 其他硬条件: "constraint",
 };
 const SECTIONS = [
   { title: "想找什么", keys: ["target_role", "target_city", "job_type", "company_like", "company_avoid", "salary_expect", "constraint"] },
   { title: "时间", keys: ["available_from", "days_per_week", "duration_months", "grad_year"] },
   { title: "背景", keys: ["school", "degree", "major", "skill", "project"] },
-  { title: "投递和面试", keys: ["applied", "interview_stage"] },
+  { title: "投递和面试", keys: ["applied", "interview_stage", "rejection_feedback"] },
 ];
 const UNITS: Record<string, string> = { days_per_week: "天", duration_months: "个月" };
 const NEEDED: [string, string][] = [["target_role", "想找的方向"], ["target_city", "城市"], ["days_per_week", "每周能去几天"],
@@ -151,8 +150,6 @@ export default function Memory() {
           ))}
         </div>
       </section>}
-
-      <FollowupList />
 
       <AnimatePresence>
         {history && (

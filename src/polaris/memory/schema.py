@@ -36,6 +36,8 @@ ATTRIBUTES: dict[str, Attr] = {a.name: a for a in [
     Attr("company_avoid", "不想去的公司或团队", True),
     Attr("applied", "投递过的岗位", True, qualified=True, example="qualifier=公司，value=岗位名或 J- 编号"),
     Attr("interview_stage", "面试进度", False, qualified=True, evolves=True, example="qualifier=公司，value=二面已过"),
+    Attr("rejection_feedback", "被拒的反馈", True, qualified=True,
+         example="qualifier=公司 | 岗位，value=对方给的理由或你自己的复盘，如“项目深度不够、算法题没写出来”"),
     Attr("salary_expect", "期望薪资", False, example="日薪 300 以上"),
     Attr("constraint", "其他硬条件", True, example="不接受外包、需要能远程"),
 ]}

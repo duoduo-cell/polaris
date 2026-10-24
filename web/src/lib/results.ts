@@ -7,7 +7,9 @@ export type Followup = {
   saved: boolean; status: string; status_label?: string; stage: string | null; note: string | null;
   next_followup: string | null; revision: number;
   history?: { before: Followup; after: Followup; source_text: string; created_at: string }[];
+  memory_event?: { op: string; label: string; value: string | null } | null;
 };
+export type FollowupDraft = { text: string; scenario: string; status: string; asks: string[]; missing: string[]; portfolio_url: string | null };
 export type Question = {
   question: string; company?: string | null; role?: string | null; round?: string | null;
   category?: string; evidence?: string | null; material?: string; material_label?: string;

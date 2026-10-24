@@ -245,15 +245,26 @@ def test_demo_ingest_and_real_brief_are_unavailable_without_reading_files(demo_m
     from fastapi import HTTPException
 
     from polaris.api.app import require_ingest_token
-    from polaris.api.personal import agenda_endpoint, brief_endpoint
+    from polaris.api.personal import brief_endpoint
 
     with pytest.raises(HTTPException) as error:
         require_ingest_token("Bearer test-ingest-token")
     assert error.value.status_code == 503
     assert brief_endpoint()["markdown"] is None
-    with pytest.raises(HTTPException) as error:
-        agenda_endpoint()
-    assert error.value.status_code == 503
+
+
+def test_demo_agenda_reads_only_the_demo_database(db, monkeypatch, tmp_path):
+    """10-24：演示的“今天”页原来整页 503；现在只汇总演示库里的事，不碰本机采集记录、简报和推送设置文件。"""
+    from polaris import agenda as agenda_module
+    from polaris.proactive import daily
+
+    monkeypatch.setattr(daily, "settings", lambda: pytest.fail("演示不读个人推送设置"))
+    (tmp_path / f"{datetime.now(UTC).astimezone(agenda_module.BEIJING).date().isoformat()}.md").write_text("真实简报")
+    monkeypatch.setattr(daily, "BRIEFS", tmp_path)
+    out = agenda_module.agenda(demo=True)
+    assert out["doing"][0]["text"].startswith("合成演示：不运行采集")
+    assert out["last_collect"] is None
+    assert not [x for x in out["scheduled"] + out["done"] if x["kind"] in ("brief", "collect", "jobs")]
 
 
 def test_default_demo_command_does_not_even_load_settings_or_access_database(monkeypatch, capsys):

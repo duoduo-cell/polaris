@@ -63,7 +63,9 @@ class JobsSearchArgs(Page):
     company: str | None = Field(None, description="公司，大厂的简称、英文名、产品名都行，如 字节、TikTok、鹅厂请写腾讯")
     city: str | None = Field(None, description="城市，如 北京；多城市岗位只要包含就算")
     job_type: Literal["intern", "campus", "social"] | None = Field(None, description="intern 实习、campus 校招、social 社招")
-    direction: str | None = Field(None, description="方向，如 Agent、RAG、大模型、后端、算法")
+    direction: str | None = Field(None, description=(
+        "方向，如 Agent、RAG、大模型、后端、算法。用户这次点名了方向就填这里（不要只写进 query），"
+        "匹配会按这次的方向算，不拿长期偏好的方向判“不匹配”"))
     big_only: bool = Field(default_factory=lambda: not get_settings().demo_mode,
                            description="只看风向标大厂名单里的公司；合成演示公司不属于真实大厂名单")
     since_days: int | None = Field(None, ge=1, le=365, description="最近N个自然日（含今天）；发布日期未知的排除，不用抓取日期凑数")

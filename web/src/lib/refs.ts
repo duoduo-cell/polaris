@@ -6,6 +6,7 @@ export const REF = /(?<![A-Za-z0-9])([JPQRM]-\d+)(?!\d)/g;
 export function tidy(text: string): string {
   return text
     .replace(/[（(]\s*(?:编号)?[：:]?\s*[、，,;；/\s]*[)）]/g, "")
+    .replace(/\[\s*[、，,;；/\s]*\]/g, "")  // 10-24 演示：“本科在读 [M-3]”去掉编号后留下“[]”
     .replace(/([（(])\s*[、，,;；/]\s*/g, "$1")
     .replace(/([（(])[ \t]+/g, "$1")
     .replace(/[ \t]+([)）])/g, "$1")
@@ -14,6 +15,7 @@ export function tidy(text: string): string {
     .replace(/[、，,]\s*(?=[。.！!？?；;）)])/g, "")
     .replace(/([：:（(]\s*)[、，,]/g, "$1")
     .replace(/编号[：:]\s*(?=[，。；;,.\s]|$)/g, "")
+    .replace(/(?:编号为|编号是)\s*的/g, "这个")  // “没有编号为 J-999999 的岗位”去掉编号后读得通
     .replace(/[ \t]{2,}/g, " ");
 }
 

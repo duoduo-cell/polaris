@@ -5,12 +5,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Bookmark, Check, ExternalLink, Loader2, MessageCircle, Minus, X } from "lucide-react";
+import { Bookmark, Check, Copy, ExternalLink, Loader2, MessageCircle, Minus, PenLine, X } from "lucide-react";
 import { Badge, Button, ErrorNote, Markdown, ScoreRing } from "@/components/markdown";
 import { useChatSession } from "@/components/chat-session";
 import { api, stripUntrusted } from "@/lib/client";
 import { hideRefs } from "@/lib/refs";
-import { type Followup, type Match, type Question, type Result, KINDS, STATUSES, matchSummary, visibleResultCards } from "@/lib/results";
+import { type Followup, type FollowupDraft, type Match, type Question, type Result, KINDS, STATUSES, matchSummary, visibleResultCards } from "@/lib/results";
 
 const MARK_TONES = ["bg-accent-soft text-accent", "bg-ok-soft text-ok", "bg-warn-soft text-warn", "bg-bad-soft text-bad", "bg-soft text-muted"];
 
@@ -89,6 +89,7 @@ function FollowupForm({ result, changed }: { result: Result; changed: (f: Follow
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [remembered, setRemembered] = useState<string | null>(null);
   const pending = useRef<{ signature: string; id: string } | null>(null);
   async function save(changes: Record<string, unknown>, form = false) {
     if (busy) return;
@@ -100,6 +101,7 @@ function FollowupForm({ result, changed }: { result: Result; changed: (f: Follow
         request_id: pending.current.id, revision: initial.revision, changes,
       } });
       pending.current = null; changed(out); if (form) setSaved(true);
+      setRemembered(out.memory_event && out.memory_event.op !== "noop" ? `已记进你的卡片「${out.memory_event.label}」，之后找岗位和备面试会对照这条` : null);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -125,7 +127,7 @@ function FollowupForm({ result, changed }: { result: Result; changed: (f: Follow
       <label className="text-xs text-muted space-y-1">下次跟进日期
         <input aria-label="下次跟进日期" type="date" className={field} value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
       </label>
-      <label className="text-xs text-muted space-y-1 sm:col-span-2">我的备注 / 暂不考虑的理由
+      <label className="text-xs text-muted space-y-1 sm:col-span-2">{status === "rejected" ? "被拒理由 / 你的复盘（保存后记进卡片的“被拒的反馈”）" : "我的备注 / 暂不考虑的理由"}
         <textarea aria-label="岗位备注" className={field} maxLength={2000} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
       <div className="sm:col-span-2 flex items-center gap-3">
@@ -135,6 +137,8 @@ function FollowupForm({ result, changed }: { result: Result; changed: (f: Follow
       </div>
     </form>
     <ErrorNote error={error} />
+    {remembered && <p className="text-xs text-ok">{remembered}</p>}
+    <DraftBox reference={result.id} />
     {!!initial.history?.length && <details className="text-xs text-muted">
       <summary className="cursor-pointer">查看进度历史</summary>
       <ul className="mt-2 space-y-2">{initial.history.map((h, i) => <li key={i}>
@@ -144,6 +148,41 @@ function FollowupForm({ result, changed }: { result: Result; changed: (f: Follow
       </li>)}</ul>
     </details>}
   </section>;
+}
+
+// 按当前进度起草一条跟进消息：只起草，北极星不替你发；改好后复制出去自己发。
+function DraftBox({ reference }: { reference: string }) {
+  const [draft, setDraft] = useState<FollowupDraft | null>(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function make() {
+    setBusy(true); setError(null);
+    try { const out = await api<FollowupDraft>(`jobs/${reference}/followup/draft`, { body: {} }); setDraft(out); setText(out.text); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* 浏览器不让写剪贴板 */ }
+  }
+  return <div className="space-y-2">
+    <div className="flex items-center gap-3">
+      <Button type="button" icon={busy ? Loader2 : PenLine} disabled={busy} onClick={() => void make()}>{busy ? "起草中…" : draft ? "重新起草" : "起草跟进消息"}</Button>
+      <span className="text-xs text-muted">按现在的进度写一条给 HR 或内推人的消息，北极星不会替你发。</span>
+    </div>
+    <ErrorNote error={error} />
+    {draft && <div className="space-y-2">
+      <p className="text-xs text-muted">场景：{draft.scenario}{draft.asks.length ? `；顺带问：${draft.asks.join("、")}` : ""}
+        {draft.missing.length ? `；你的卡片里还没有${draft.missing.join("、")}，草稿里留了占位` : ""}</p>
+      <textarea aria-label="跟进消息草稿" className="rounded-lg border border-line bg-card px-3 py-2 text-sm w-full outline-none focus:border-accent" rows={6}
+                value={text} onChange={(e) => setText(e.target.value)} />
+      <div className="flex items-center gap-3">
+        <Button type="button" icon={copied ? Check : Copy} onClick={() => void copy()}>{copied ? "已复制" : "复制"}</Button>
+        <span className="text-xs text-muted">[方括号] 是需要你自己填的地方{draft.portfolio_url ? "" : "；作品链接可在 .env 的 PORTFOLIO_URL 里配好"}。</span>
+      </div>
+    </div>}
+  </div>;
 }
 
 function MatchSection({ detail, close }: { detail: Result; close: () => void }) {

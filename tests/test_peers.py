@@ -188,9 +188,11 @@ def test_failed_official_source_is_not_marked_done_or_retried_during_cooldown(db
     from polaris.daemon import BEIJING, OFFICIAL_RETRY_COOLDOWN, official_done_today, official_pending_sources
     from polaris.db.models import Run
 
-    now = datetime.now(BEIJING)
+    # 固定在当天中午：原来用当前时刻，晚上 23 点后“再过一小时”跨到第二天，腾讯又变成待采（10-24 23:13 失败过）
+    now = datetime.now(BEIJING).replace(hour=12, minute=0, second=0, microsecond=0)
     with session_scope() as s:
-        s.add(Run(kind="collect", params={"source": "tencent", "mode": "official-daily"}, status="ok", stats={}))
+        s.add(Run(kind="collect", params={"source": "tencent", "mode": "official-daily"}, status="ok", stats={},
+                  started_at=now - timedelta(minutes=20)))
         s.add(Run(kind="collect", params={"source": "bytedance", "mode": "official-daily"}, status="failed",
                   stats={}, started_at=now - timedelta(minutes=10)))
 
