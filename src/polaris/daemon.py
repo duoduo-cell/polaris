@@ -305,6 +305,12 @@ def loop(echo: Callable[[str], None] = print, idle_minutes: int = 10) -> None:
             if official_done_today(datetime.now(BEIJING)):
                 official_done = now.date().isoformat()
         try:
+            from polaris.watch import run_due
+
+            run_due(echo=echo)  # 跟进卡：读本地库看变化、到点写态势报告；不额外加大平台采集频率
+        except Exception as e:  # noqa: BLE001
+            echo(f"[跟进] 出错：{e}"[:300])
+        try:
             ran = tick(echo, notified)
         except Exception as e:  # noqa: BLE001  一轮出错不让整个常驻进程退出
             echo(f"这一轮出错：{e}"[:300])

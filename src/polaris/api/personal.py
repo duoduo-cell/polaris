@@ -265,6 +265,192 @@ def funnel_endpoint() -> dict[str, Any]:
         return funnel(s)
 
 
+class WatchCriteria(BaseModel):
+    city: str | None = Field(None, max_length=100)
+    job_type: Literal["intern", "campus", "social"] | None = None
+    direction: str | None = Field(None, max_length=100)
+    max_days_per_week: int | None = Field(None, ge=1, le=7)
+    big_only: bool | None = None
+    query: str | None = Field(None, max_length=100)
+
+
+class WatchIn(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    criteria: WatchCriteria = Field(default_factory=WatchCriteria)
+    job_ids: list[str] = Field(default_factory=list, max_length=20)
+    until: date | None = None
+    cadence_minutes: int = Field(60, ge=10, le=1440)
+    report_hour: int = Field(21, ge=0, le=23)
+    notify: Literal["desktop", "brief"] = "desktop"
+
+
+class WatchPatch(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=200)
+    criteria: WatchCriteria | None = None
+    until: date | None = None
+    cadence_minutes: int | None = Field(None, ge=10, le=1440)
+    report_hour: int | None = Field(None, ge=0, le=23)
+    notify: Literal["desktop", "brief"] | None = None
+    status: Literal["active", "paused", "ended"] | None = None
+
+
+class WatchTargetIn(BaseModel):
+    job: str
+    remove: bool = False
+
+
+def _watch_or_404(s: Any, watch_id: int) -> Any:
+    from polaris.db.models import Watch
+
+    w = s.get(Watch, watch_id)
+    if w is None:
+        raise HTTPException(404, "没有这张跟进卡")
+    return w
+
+
+def _job_id(reference: str) -> int:
+    from polaris.tools.base import ToolError
+    from polaris.tools.jobs import _parse
+
+    try:
+        return _parse(reference, "J", "jobs_search", '{"job_id": "J-12"}')
+    except ToolError as e:
+        raise HTTPException(422, "岗位编号不对") from e
+
+
+@router.get("/watches", summary="Follow-up cards (long-running goals): scope, targets, recent events, latest report")
+def list_watches() -> list[dict[str, Any]]:
+    from polaris.db.models import Watch
+    from polaris.watch import view
+
+    with session_scope() as s:
+        rows = s.scalars(select(Watch).order_by((Watch.status == "ended").asc(), Watch.id.desc()).limit(50)).all()
+        return [view(s, w, events=5) for w in rows]
+
+
+@router.post("/watches", summary="Open a follow-up card; the first check only builds a baseline")
+def create_watch(body: WatchIn) -> dict[str, Any]:
+    from polaris.watch import WatchError, create, view
+
+    try:
+        with session_scope() as s:
+            w = create(s, title=body.title, criteria=body.criteria.model_dump(exclude_none=True),
+                       job_ids=[_job_id(r) for r in body.job_ids], until=body.until, cadence_minutes=body.cadence_minutes,
+                       report_hour=body.report_hour, notify=body.notify)
+            return view(s, w)
+    except WatchError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/watches/{watch_id}", summary="One follow-up card with its event timeline and latest report")
+def get_watch(watch_id: int) -> dict[str, Any]:
+    from polaris.watch import view
+
+    with session_scope() as s:
+        return view(s, _watch_or_404(s, watch_id), events=200)
+
+
+@router.patch("/watches/{watch_id}", summary="Edit scope (bumps version), pause, resume or end a follow-up card")
+def patch_watch(watch_id: int, body: WatchPatch) -> dict[str, Any]:
+    from polaris.watch import WatchError, update, view
+
+    changes = body.model_dump(exclude_unset=True)
+    if "criteria" in changes and body.criteria is not None:
+        changes["criteria"] = body.criteria.model_dump(exclude_none=True)
+    try:
+        with session_scope() as s:
+            w = update(s, _watch_or_404(s, watch_id), changes)
+            return view(s, w)
+    except WatchError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.post("/watches/{watch_id}/targets", summary="Add or remove a target job; adding snapshots it right away")
+def watch_target(watch_id: int, body: WatchTargetIn) -> dict[str, Any]:
+    from polaris.watch import WatchError, add_target, remove_target, view
+
+    job_id = _job_id(body.job)
+    try:
+        with session_scope() as s:
+            w = _watch_or_404(s, watch_id)
+            if body.remove:
+                remove_target(s, w, job_id)
+            else:
+                add_target(s, w, job_id)
+            s.flush()
+            return view(s, w)
+    except WatchError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.post("/watches/{watch_id}/check", summary="Check now (reads the local library; no model call)")
+def check_watch(watch_id: int) -> dict[str, Any]:
+    from polaris.watch import check, view
+
+    with session_scope() as s:
+        w = _watch_or_404(s, watch_id)
+        if w.status != "active":
+            raise HTTPException(409, "暂停或结束的跟进卡不检查")
+        result = check(s, w)
+        return {"result": result, "watch": view(s, w)}
+
+
+@router.post("/watches/{watch_id}/report", summary="Write a situation report now (rules first, then the model; falls back to rules)")
+def report_watch(watch_id: int) -> dict[str, Any]:
+    from polaris.watch import view
+    from polaris.watch_report import write_report
+
+    with session_scope() as s:
+        w = _watch_or_404(s, watch_id)
+        if w.last_check_at is None:
+            raise HTTPException(409, "先检查一次再写报告")
+        write_report(s, w)
+        return view(s, w)
+
+
+@router.post("/watches/{watch_id}/events/read", summary="Mark this card's events as read")
+def read_watch_events(watch_id: int) -> dict[str, Any]:
+    from sqlalchemy import update as sql_update
+
+    from polaris.db.models import WatchEvent
+
+    with session_scope() as s:
+        _watch_or_404(s, watch_id)
+        n = s.execute(sql_update(WatchEvent).where(WatchEvent.watch_id == watch_id, WatchEvent.read_at.is_(None))
+                      .values(read_at=datetime.now(BEIJING))).rowcount
+        return {"marked": n}
+
+
+@router.get("/demo/script", summary="Synthetic demo only: where the follow-up card script is")
+def demo_script() -> dict[str, Any]:
+    if not get_settings().demo_mode:
+        return {"available": False}
+    from polaris.demo import script_state
+
+    with session_scope() as s:
+        return script_state(s)
+
+
+@router.post("/demo/advance", summary="Synthetic demo only: change a little synthetic data, then check the demo card")
+def demo_advance() -> dict[str, Any]:
+    if not get_settings().demo_mode:
+        raise HTTPException(404, "只有合成演示能推进剧本")
+    from polaris.demo import advance
+
+    with session_scope() as s:
+        return advance(s)
+
+
+@router.post("/demo/reset", summary="Synthetic demo only: undo the script so it can be shown again")
+def demo_reset() -> dict[str, Any]:
+    if not get_settings().demo_mode:
+        raise HTTPException(404, "只有合成演示能重置剧本")
+    from polaris.demo import reset_script
+
+    with session_scope() as s:
+        return reset_script(s)
+
+
 @router.get("/followups", summary="Saved jobs and independent application progress")
 def followups_endpoint() -> list[dict[str, Any]]:
     from sqlalchemy import or_

@@ -17,7 +17,7 @@ from polaris.memory.schema import ATTRIBUTES
 from polaris.memory.update import Candidate, Context, apply, card, render_card
 from polaris.report import BEIJING
 
-PROMPT_VERSION = "memory-extract-v6"  # v6：临时请求与个人偏好分开；v5：明确的实习/论文背景。
+PROMPT_VERSION = "memory-extract-v7"  # v7：比较/问门槛不算投递，查询天数不算自身到岗天数；v6：临时请求与个人偏好分开。
 # 改口要有明确的说法。模型常把"换了个数"也标成改口（10-11 开发集、留出集和实测里都出现过："我每周能去 5 天"被当成改口，
 # 直接覆盖了刚说过的 4 天），所以代码再核对一遍：这句话里没有这些词，就不算改口，规则会先问你以哪个为准。
 CHANGE_WORDS = re.compile(r"改|变|换|现在|目前|其实|不再|不能|不考虑|算了|还是|说错|更正|纠正|调整|以后|之后|重新|不想|只能")
@@ -74,6 +74,8 @@ SYSTEM += """
 - 投递和面试按具体岗位分开；用最近展示的岗位只解决指代，不把推荐、点击、收藏、阅读面经当作用户投递或掌握技术。
 - 公司有多个岗位而用户未说明是哪一个时，不猜具体岗位。job_ref 留空。
 - 只是在备考某公司的资料，不代表已经投递、收到面试邀请或参加了面试。
+- 和某公司拿到 offer 的人比较、问某公司门槛或“我能不能进”，都只是request，不代表投递过，不生成 applied。
+- 查询条件里的“每周最多 N 天”“只看 N 天以内的”是筛选条件（request）；只有用户说自己“能去/只能去 N 天”才是 days_per_week。
 - 用户说不想做、不考虑某类岗位或工作（纯算法岗、测试、销售、外包驻场……），记一条 constraint，value 写成"不做纯算法岗"这样；
   同一句里说了想做什么（更想做工程落地），另记 target_role。"""
 

@@ -64,7 +64,7 @@ def test_all_demo_migrations_emit_offline_without_model_configuration(migration,
     assert "CREATE TABLE chat_tasks" in sql and "CREATE TABLE job_followup_events" in sql
     script = ScriptDirectory.from_config(cfg)
     revisions = list(script.walk_revisions())
-    assert len(revisions) == 14 and all(revision.revision in sql for revision in revisions)
+    assert len(revisions) == 15 and all(revision.revision in sql for revision in revisions)  # 10-24 加了跟进卡
     assert script.get_current_head() in sql and sql.strip().endswith("COMMIT;")
 
 

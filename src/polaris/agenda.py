@@ -76,7 +76,19 @@ def agenda(now: datetime | None = None, *, demo: bool = False) -> dict[str, Any]
             else:
                 scheduled.append({"kind": "followup", "when": when.isoformat(), "job": f"J-{j.id}",
                                   "text": f"跟进 {name}（你定的日期）"})
+        from polaris.db.models import Watch, WatchEvent
         from polaris.followups import STATUSES, stale
+
+        urgent = s.execute(select(WatchEvent, Watch).join(Watch, Watch.id == WatchEvent.watch_id).where(
+            Watch.status == "active", WatchEvent.importance == "urgent", WatchEvent.read_at.is_(None),
+            WatchEvent.watch_version == Watch.version).order_by(WatchEvent.id.desc()).limit(5)).all()
+        for e, w in urgent:
+            needs.append({"kind": "watch", "text": f"跟进「{w.title}」：{e.title}", "href": f"/watches?id={w.id}"})
+        active_watches = s.execute(select(Watch).where(Watch.status == "active")).scalars().all()
+        for w in active_watches:
+            if w.next_check_at:
+                scheduled.append({"kind": "watch", "when": w.next_check_at.astimezone(BEIJING).strftime("%H:%M"),
+                                  "text": f"检查跟进卡「{w.title}」", "href": f"/watches?id={w.id}"})
 
         for f, j, days in stale(s, now)[:5]:
             name = " · ".join(x for x in (j.company or j.company_name, j.title) if x)

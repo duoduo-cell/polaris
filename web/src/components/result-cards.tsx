@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Bookmark, Check, Copy, ExternalLink, Loader2, MessageCircle, Minus, PenLine, X } from "lucide-react";
+import { Bookmark, Check, Copy, ExternalLink, Loader2, MessageCircle, Minus, PenLine, Radar, X } from "lucide-react";
 import { Badge, Button, ErrorNote, Markdown, ScoreRing } from "@/components/markdown";
 import { useChatSession } from "@/components/chat-session";
 import { api, stripUntrusted } from "@/lib/client";
@@ -150,6 +150,44 @@ function FollowupForm({ result, changed }: { result: Result; changed: (f: Follow
   </section>;
 }
 
+// 把这个岗位加进一张跟进卡：之后它的下架、要求变化会单独提醒。没有卡时去“跟进”页新建（带上这个岗位）。
+function WatchPicker({ reference }: { reference: string }) {
+  const [watches, setWatches] = useState<{ id: number; title: string; status: string; targets: { ref: string | null }[] }[] | null>(null);
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    api<{ id: number; title: string; status: string; targets: { ref: string | null }[] }[]>("watches")
+      .then((rows) => { if (!active) return; const open = rows.filter((w) => w.status !== "ended"); setWatches(open); setChosen(open[0]?.id ?? null); })
+      .catch(() => { if (active) setWatches([]); });
+    return () => { active = false; };
+  }, []);
+  if (watches === null) return null;
+  async function add() {
+    if (chosen == null) return;
+    setError(null);
+    try {
+      const w = await api<{ title: string }>(`watches/${chosen}/targets`, { body: { job: reference } });
+      setDone(`已加入「${w.title}」，之后它下架或改了要求会单独提醒`);
+    } catch (e) { setError((e as Error).message); }
+  }
+  const already = watches.filter((w) => w.targets.some((t) => t.ref === reference)).map((w) => w.title);
+  return <section className="space-y-2" aria-label="加入跟进卡">
+    <h3 className="font-semibold flex items-center gap-1.5"><Radar size={15} aria-hidden />持续跟进这个岗位</h3>
+    {already.length > 0 && <p className="text-xs text-muted">已经在跟进卡：{already.join("、")}</p>}
+    {watches.length ? <div className="flex flex-wrap items-center gap-2">
+      <select aria-label="选择跟进卡" className="rounded-lg border border-line bg-card px-3 py-2 text-sm" value={chosen ?? ""}
+              onChange={(e) => setChosen(Number(e.target.value))}>
+        {watches.map((w) => <option key={w.id} value={w.id}>{w.title}{w.status === "paused" ? "（已暂停）" : ""}</option>)}
+      </select>
+      <Button type="button" onClick={() => void add()}>加入</Button>
+    </div> : <a className="text-sm text-accent hover:underline" href={`/watches?job=${encodeURIComponent(reference)}`}>新建一张跟进卡并盯住这个岗位</a>}
+    {done && <p className="text-xs text-ok">{done}</p>}
+    <ErrorNote error={error} />
+  </section>;
+}
+
 // 按当前进度起草一条跟进消息：只起草，北极星不替你发；改好后复制出去自己发。
 function DraftBox({ reference }: { reference: string }) {
   const [draft, setDraft] = useState<FollowupDraft | null>(null);
@@ -290,6 +328,7 @@ export function ResultPanel({ reference, close, onChanged, queryMatch }: {
             <FollowupForm key={detail.id} result={detail} changed={(followup) => {
               const next = { ...detail, followup }; setDetail(next); onChanged?.(next);
             }} />
+            <WatchPicker reference={detail.id} />
           </> : <>
             <div className="flex flex-wrap gap-2"><Badge>{["interview", "question", "study"].includes(detail.kind) ? detail.material_label : KINDS[detail.kind]}</Badge>
               {detail.kind === "interview" && <Badge>{detail.interview_company ?? "面试公司待核实"}</Badge>}</div>

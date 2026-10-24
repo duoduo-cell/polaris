@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { Activity, BarChart3, BookOpen, Brain, Briefcase, Menu, MessageCircle, Network, Send, Sun, X } from "lucide-react";
+import { Activity, BarChart3, BookOpen, Brain, Briefcase, Menu, MessageCircle, Network, Radar, Scale, Send, Sun, X } from "lucide-react";
 import { useChatSession } from "@/components/chat-session";
 import { api } from "@/lib/client";
 
@@ -14,6 +14,8 @@ const NAV = [
   { href: "/memory", label: "记忆", icon: Brain },
   { href: "/jobs", label: "岗位", icon: Briefcase },
   { href: "/applications", label: "投递", icon: Send },
+  { href: "/watches", label: "跟进", icon: Radar },
+  { href: "/review", label: "竞争力", icon: Scale },
   { href: "/interviews", label: "面经与内推", icon: BookOpen },
   { href: "/graph", label: "图谱", icon: Network },
   { href: "/traces", label: "追踪", icon: Activity },

@@ -71,32 +71,38 @@ def _dedupe(rows: list[Any]) -> list[Any]:
     return out
 
 
+def select_people(s: Any, args: PeersSearchArgs, now: datetime) -> tuple[list[Any], int]:
+    """按条件找人（去重后，按发帖时间从新到旧），以及因公司未知被排除的记录数。peers_search 和 peers_compare 共用。"""
+    stmt = (select(PeerProfile, RawItem).join(RawItem, RawItem.id == PeerProfile.raw_item_id)
+            .where(PeerProfile.published_at >= now - timedelta(days=args.since_days), PeerProfile.published_at <= now))
+    if args.company:
+        big = match(args.company)
+        name = big.name if big else args.company
+        stmt = stmt.where(or_(PeerProfile.big_company == name, PeerProfile.target_company.ilike(f"%{args.company}%"),
+                              PeerProfile.target_team.ilike(f"%{args.company}%")))
+    if args.direction:
+        d = f"%{args.direction}%"
+        stmt = stmt.where(or_(PeerProfile.direction.ilike(d), PeerProfile.target_role.ilike(d), PeerProfile.target_team.ilike(d)))
+    for col, value in ((PeerProfile.stage, args.stage), (PeerProfile.outcome, args.outcome)):
+        if value:
+            stmt = stmt.where(col == value)
+    if args.job_type == "实习":
+        stmt = stmt.where(PeerProfile.job_type.in_(("日常实习", "暑期实习")))
+    elif args.job_type:
+        stmt = stmt.where(PeerProfile.job_type == args.job_type)
+    excluded_unknown_company = 0
+    if args.big_only:
+        unknown = stmt.where(PeerProfile.big_company.is_(None)).subquery()
+        excluded_unknown_company = s.scalar(select(func.count()).select_from(unknown)) or 0
+        stmt = stmt.where(PeerProfile.big_company.is_not(None))
+    rows = _dedupe(s.execute(stmt.order_by(PeerProfile.published_at.desc())).all())
+    return rows, excluded_unknown_company
+
+
 def peers_search(args: PeersSearchArgs) -> dict[str, Any]:
     now = datetime.now(UTC)
     with session_scope() as s:
-        stmt = (select(PeerProfile, RawItem).join(RawItem, RawItem.id == PeerProfile.raw_item_id)
-                .where(PeerProfile.published_at >= now - timedelta(days=args.since_days), PeerProfile.published_at <= now))
-        if args.company:
-            big = match(args.company)
-            name = big.name if big else args.company
-            stmt = stmt.where(or_(PeerProfile.big_company == name, PeerProfile.target_company.ilike(f"%{args.company}%"),
-                                  PeerProfile.target_team.ilike(f"%{args.company}%")))
-        if args.direction:
-            d = f"%{args.direction}%"
-            stmt = stmt.where(or_(PeerProfile.direction.ilike(d), PeerProfile.target_role.ilike(d), PeerProfile.target_team.ilike(d)))
-        for col, value in ((PeerProfile.stage, args.stage), (PeerProfile.outcome, args.outcome)):
-            if value:
-                stmt = stmt.where(col == value)
-        if args.job_type == "实习":
-            stmt = stmt.where(PeerProfile.job_type.in_(("日常实习", "暑期实习")))
-        elif args.job_type:
-            stmt = stmt.where(PeerProfile.job_type == args.job_type)
-        excluded_unknown_company = 0
-        if args.big_only:
-            unknown = stmt.where(PeerProfile.big_company.is_(None)).subquery()
-            excluded_unknown_company = s.scalar(select(func.count()).select_from(unknown)) or 0
-            stmt = stmt.where(PeerProfile.big_company.is_not(None))
-        rows = _dedupe(s.execute(stmt.order_by(PeerProfile.published_at.desc())).all())
+        rows, excluded_unknown_company = select_people(s, args, now)
         people = [p for p, _ in rows]
         items = [_row(p, raw, now) for p, raw in rows[: args.limit]]
     known_stage = [p for p in people if p.stage in ("本科", "硕士", "博士", "已工作")]

@@ -513,3 +513,76 @@ class PeerProfile(Base):
     llm_call_id: Mapped[int | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"))
     prompt_version: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = created_at()
+
+
+class Watch(Base):
+    """跟进卡：用户委托北极星长期盯着的一个求职目标（范围、重点岗位、期限、可暂停）。设计见 docs/design/WATCH.md。"""
+
+    __tablename__ = "watches"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    criteria: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # 城市、类型、方向、每周最多天数、只看大厂、关键词
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active / paused / ended
+    until: Mapped[date | None] = mapped_column(Date)
+    cadence_minutes: Mapped[int] = mapped_column(Integer, default=60)
+    report_hour: Mapped[int] = mapped_column(Integer, default=21)  # 北京时间每天几点后写态势报告
+    notify: Mapped[str] = mapped_column(String(16), default="desktop")  # desktop：紧急的发系统通知；brief：都只进报告
+    version: Mapped[int] = mapped_column(Integer, default=1)  # 条件每改一次加一
+    baseline_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # 开卡时刻：之前就有的岗位不算新增
+    last_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_report_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    # 运行时状态：上次检查时范围内在招岗位的编号（比较集合找新增和下架，不依赖时间戳）；改条件后清空、下次重新建基线
+    state: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = created_at()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WatchTarget(Base):
+    """跟进卡里的重点岗位，连同上次检查时它的样子（用来逐字段比较）。"""
+
+    __tablename__ = "watch_targets"
+    __table_args__ = (UniqueConstraint("watch_id", "job_id", name="uq_watch_targets_job"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    watch_id: Mapped[int] = mapped_column(ForeignKey("watches.id", ondelete="CASCADE"), index=True)
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"))  # 岗位被清理后置空，快照留着
+    label: Mapped[str] = mapped_column(Text)
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    snapshot_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at()
+
+
+class WatchEvent(Base):
+    """跟进卡发现的一件事。同一张卡里 fingerprint 唯一：重复检查、重启重跑都不会重复记。"""
+
+    __tablename__ = "watch_events"
+    __table_args__ = (UniqueConstraint("watch_id", "fingerprint", name="uq_watch_events_fingerprint"),
+                      Index("ix_watch_events_watch_created", "watch_id", "created_at"))
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    watch_id: Mapped[int] = mapped_column(ForeignKey("watches.id", ondelete="CASCADE"))
+    watch_version: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(24))  # job_closed / job_reopened / job_changed / job_removed / new_job / ...
+    importance: Mapped[str] = mapped_column(String(8))  # urgent / brief / quiet
+    fingerprint: Mapped[str] = mapped_column(String(200))
+    ref: Mapped[str | None] = mapped_column(String(32))  # J-12 / P-3 / Q-8 / R-9
+    title: Mapped[str] = mapped_column(Text)
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WatchReport(Base):
+    """态势报告：先用规则算出事实（facts），再由模型只根据事实写成文字；模型失败或引用了事实外的编号时用规则版本。"""
+
+    __tablename__ = "watch_reports"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    watch_id: Mapped[int] = mapped_column(ForeignKey("watches.id", ondelete="CASCADE"), index=True)
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    facts: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    markdown: Mapped[str] = mapped_column(Text)
+    fallback: Mapped[str | None] = mapped_column(String(64))  # 为什么用了规则版本；模型写的为空
+    llm_call_id: Mapped[int | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = created_at()

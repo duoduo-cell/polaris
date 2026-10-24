@@ -141,11 +141,137 @@ def seed(engine: Engine, settings: Settings, now: datetime) -> dict[str, Any]:
     return {"status": "seeded", "fixture": VERSION, "counts": rows.counts}
 
 
+# ---- 跟进卡演示剧本：每推进一步改一点合成资料，再检查一次，演示变化怎样被发现、分级、写进报告 ----
+
+WATCH_TITLE = "上海 Agent 日常实习（合成演示）"
+WATCH_CRITERIA = {"city": "上海", "job_type": "intern", "direction": "Agent", "max_days_per_week": 4, "big_only": False}
+SCRIPT = [
+    "重点岗位“Agent工具工程实习”把每周到岗从 4 天改成 5 天（和你最多 4 天冲突）",
+    "重点岗位“Agent应用后端实习”下架",
+    "上海出现一个新的 Agent 日常实习",
+    "出现一篇新面经，和一位同方向求职者拿到 offer 的自述",
+]
+
+
+def _demo_raw(s: Session, kind: str, key: str, text_: str, now: datetime, **extra: Any) -> RawItem:
+    raw = RawItem(source="demo", tier="A", kind=kind, external_id=f"{VERSION}:{key}", url=f"https://example.invalid/polaris-demo/{key}",
+                  raw_text=text_, raw_json={"demo_fixture": VERSION, **extra}, content_hash=hashlib.sha256(text_.encode()).hexdigest(),
+                  fetched_at=now, first_seen_at=now, last_seen_at=now, published_at=now - timedelta(hours=1),
+                  fetch_method="synthetic", collector_version=VERSION, is_synthetic=True)
+    s.add(raw)
+    s.flush()
+    return raw
+
+
+def _apply_step(s: Session, step: int, now: datetime) -> None:
+    from polaris.db.models import PeerProfile
+
+    if step == 0:
+        job = s.get(Job, 1)
+        job.days_per_week = 5
+        job.requirements = [r.replace("每周至少到岗4天", "每周至少到岗5天") for r in job.requirements]
+        job.jd_text = (job.jd_text or "").replace("每周至少到岗4天", "每周至少到岗5天")
+    elif step == 1:
+        job = s.get(Job, 2)
+        job.status, job.last_seen_at = "gone", now - timedelta(days=2)
+    elif step == 2:
+        requirements = ["本科及以上在读。", "实习至少3个月。", "负责Agent平台的工具接入与评测。", "每周至少到岗4天。"]
+        jd = f"{DISCLOSURE}\n职责：负责Agent平台开发。\n任职要求\n" + "\n".join(requirements)
+        raw = _demo_raw(s, "job", "job:new-1", jd, now)
+        values = dict(company_name=COMPANY, title="Agent平台开发实习（合成·新）", directions=["Agent"], jd_text=jd,
+                      requirements=requirements, city="上海", job_type="intern", posted_at=now.date(), duration_months=3, days_per_week=4)
+        job = Job(key=f"{VERSION}:job:new-1", company=COMPANY, unit="合成平台组", cities=["上海"], first_seen_at=now,
+                  last_seen_at=now, status="active", posting_count=1, conflicts=[], field_sources={}, is_synthetic=True, **values)
+        s.add(job)
+        s.flush()
+        s.add(Posting(raw_item_id=raw.id, job_id=job.id, is_synthetic=True, **values))
+        for c in job_chunks(job):
+            s.add(SearchChunk(**chunk_values(c)))
+    elif step == 3:
+        question = "工具调用失败后怎么恢复，怎么证明恢复是对的？"
+        text_ = f"{COMPANY}Agent日常实习一面面经（合成·新）\n{DISCLOSURE}\n本科在读，一段小厂实习。\n面试官问：{question}"
+        raw = _demo_raw(s, "post", "post:new-1", text_, now, title=text_.splitlines()[0])
+        s.add(Post(raw_item_id=raw.id, post_type="面经", companies=[COMPANY], big_companies=[], roles=["Agent"], directions=["Agent"],
+                   job_type="intern", summary=text_, interview_questions=[question],
+                   evidence_profile={}, published_at=now - timedelta(hours=1), created_at=now))
+        s.add(PeerProfile(raw_item_id=raw.id, source="demo", published_at=now - timedelta(hours=1), who="作者", stage="本科",
+                          school="双非一本", internships=[{"company": "小厂"}], target_company=COMPANY, target_role="Agent 日常实习",
+                          job_type="日常实习", direction="Agent", outcome="拿到offer", reached="二面",
+                          evidence="本科在读，一段小厂实习，二面后拿到 offer（合成）", prompt_version=VERSION, created_at=now))
+
+
+def advance(s: Session, now: datetime | None = None) -> dict[str, Any]:
+    """演示剧本推进一步。第一次只开一张跟进卡并建立基线；之后每次改一点合成资料再检查。只在演示库里运行。"""
+    from polaris.db.models import Watch
+    from polaris.watch import check, create
+
+    if not get_settings().demo_mode:
+        raise ValueError("演示剧本只能在合成演示库里运行")
+    assert_ready(s)
+    now = now or datetime.now(UTC)
+    w = s.scalar(select(Watch).where(Watch.title == WATCH_TITLE, Watch.status != "ended"))
+    if w is None:
+        w = create(s, title=WATCH_TITLE, criteria=WATCH_CRITERIA, job_ids=[1, 2], until=(now + timedelta(days=14)).date(), now=now)
+        result = check(s, w, now)
+        return {"step": 0, "done": None, "next": SCRIPT[0], "watch": w.id, "check": result,
+                "message": "已开一张演示跟进卡，并记下现在的样子；再推进一步看变化怎样被发现。"}
+    step = s.scalar(select(func.count()).select_from(Run).where(Run.kind == "demo-advance")) or 0
+    if step >= len(SCRIPT):
+        return {"step": step, "done": None, "next": None, "watch": w.id, "message": "剧本已经走完；可以点“现在写报告”看态势分析。"}
+    _apply_step(s, step, now)
+    s.add(Run(kind="demo-advance", params={"step": step + 1, "fixture": VERSION}, status="ok", stats={},
+              started_at=now, finished_at=now))
+    s.flush()
+    if w.status != "active":
+        w.status = "active"
+    result = check(s, w, now)
+    return {"step": step + 1, "done": SCRIPT[step], "next": SCRIPT[step + 1] if step + 1 < len(SCRIPT) else None,
+            "watch": w.id, "check": result, "message": f"已推进：{SCRIPT[step]}。"}
+
+
+def reset_script(s: Session, now: datetime | None = None) -> dict[str, Any]:
+    """剧本重来：把被改过的两个合成岗位恢复原样，删掉剧本新增的岗位、面经、样本和演示跟进卡。只动剧本碰过的东西。"""
+    from polaris.db.models import Watch
+
+    if not get_settings().demo_mode:
+        raise ValueError("演示剧本只能在合成演示库里运行")
+    assert_ready(s)
+    now = now or datetime.now(UTC)
+    first, second = s.get(Job, 1), s.get(Job, 2)
+    first.days_per_week = 4
+    first.requirements = [r.replace("每周至少到岗5天", "每周至少到岗4天") for r in first.requirements]
+    first.jd_text = (first.jd_text or "").replace("每周至少到岗5天", "每周至少到岗4天")
+    second.status, second.last_seen_at = "active", now
+    s.execute(Job.__table__.delete().where(Job.key == f"{VERSION}:job:new-1"))
+    # 原文删了，挂在它下面的岗位挂牌、帖子、题目和同类样本按外键一起删
+    removed = s.execute(RawItem.__table__.delete().where(RawItem.external_id.in_(
+        [f"{VERSION}:job:new-1", f"{VERSION}:post:new-1"]))).rowcount
+    s.execute(Run.__table__.delete().where(Run.kind == "demo-advance"))
+    s.execute(Watch.__table__.delete().where(Watch.title == WATCH_TITLE))
+    return {"reset": True, "removed_raw_items": removed}
+
+
+def script_state(s: Session) -> dict[str, Any]:
+    from polaris.db.models import Watch
+
+    step = s.scalar(select(func.count()).select_from(Run).where(Run.kind == "demo-advance")) or 0
+    started = s.scalar(select(Watch.id).where(Watch.title == WATCH_TITLE)) is not None
+    return {"available": True, "started": started, "step": step, "total": len(SCRIPT), "steps": SCRIPT,
+            "next": None if step >= len(SCRIPT) else ("开一张演示跟进卡" if not started else SCRIPT[step])}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", action="store_true", help="向独立空演示库导入资料，不启动数据库或API")
     parser.add_argument("--apply", action="store_true", help="明确执行导入；无此开关仅检查内存样本")
+    parser.add_argument("--advance", action="store_true", help="跟进卡演示剧本推进一步（只在演示库里）")
     args = parser.parse_args()
+    if args.advance:
+        settings = get_settings()
+        require_demo_target(settings, get_engine())
+        with session_scope() as s:
+            print(json.dumps(advance(s), ensure_ascii=False, default=str))
+        return
     if args.apply and not args.seed:
         parser.error("--apply须配合--seed")
     if not args.seed or not args.apply:

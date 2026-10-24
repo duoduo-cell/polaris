@@ -48,8 +48,8 @@ from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
 # v39：没写天数的岗位保留并标待确认；v40：要面经原题却没查就收尾时退回先查；v41：卡片里的被拒反馈用于差距分析；
-# v42：本次点名的方向放 direction、不念英文字段名。
-PROMPT_VERSION = "main-v42"
+# v42：本次点名的方向放 direction、不念英文字段名；v43：HR 视角、同类样本对照、跟进卡四个新工具。
+PROMPT_VERSION = "main-v43"
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -60,7 +60,8 @@ PROMPT_VERSION = "main-v42"
 # v15：新工具 peers_search（帖子里"人和结果"）；帖子和数据都要写日期、距今多久和样本量（作者 10-12：回答没有时效性）
 # v16：背景对照必须同职能、同招聘类型；工具给出未知值和查询口径，不把小样本推成招聘门槛。
 TOOLS = ("jobs_search", "jobs_get", "jobs_trend", "posts_search", "posts_get", "questions_search", "kg_stats", "peers_search",
-         "memory_card", "memory_history", "memory_known_at", "memory_forget", "source_open", "platform_search")
+         "memory_card", "memory_history", "memory_known_at", "memory_forget", "source_open", "platform_search",
+         "watch_status", "watch_create", "profile_review", "peers_compare")
 MAX_MODEL_CALLS = 12
 # 上下文分两层管（10-12 探针：按 1.2 万 token 触发、保留 16 条消息时，工具结果很大，压完马上又超，几乎每轮都要多等一次摘要）：
 # 1. 发给模型前，超过 CLEAR_TRIGGER_TOKENS 就把前几轮对话里的工具结果换成占位符——不调模型，聊天和卡片不受影响；
@@ -201,6 +202,11 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
   reached 是面到哪轮，dates 是时间线，不能把投递、HR、OC 等时间点数量当面试轮数。论文与 offer 同时出现不等于靠论文拿到。
   拿用户自己的背景（卡片里的阶段、学校、论文、实习）逐项对照；样本少于 5 个就照实说样本少，不下"普遍"的结论。
 - 统计和分布（哪些公司要求某技能、某公司哪些部门在招、面试常考什么）：kg_stats。
+- 问“我在 HR 眼里怎么样”“我还差什么”：profile_review（资格被哪些硬门槛挡住、技能需求对照、项目证据、要问用户的缺口）；
+  问“和同组/同类的人比差在哪”：peers_compare（三层可比样本，单列拿到 offer 的人，再放上用户自己的情况）。
+  两者都按本次说的城市、方向、类型、天数；结论要带样本量，样本少于 5 人只说个例；卡片没写的列成要问用户的，不替用户编。
+- 用户要“持续关注 / 帮我盯着 / 有变化告诉我”：用 watch_create 提议开一张跟进卡（范围用这次的条件，重点岗位只放本轮查到、用户关心的几个），
+  要用户批准才会建；问“盯的那些怎么样了”“最近形势怎样”：watch_status。
 - 用户问自己的情况，看上面的卡片（含保存的岗位进度），不用再调 memory_card；
   卡片里的“被拒的反馈”是用户记下的拒绝理由：问差距、推荐岗位或准备面试时先对照这些短板，说明哪条反馈对应哪项准备；
   不把一次反馈说成用户整体能力的结论。
@@ -324,8 +330,10 @@ Event = Callable[[dict[str, Any]], None]
 
 def approval_policy() -> dict[str, Any]:
     """有副作用的工具都要批准（策略表见 TECH.md 第 5 节）；只能批准或拒绝，不让改参数后执行。"""
+    descriptions = {"memory_forget": "北极星想忘掉下列记忆，请确认是否同意",
+                    "watch_create": "北极星想开一张跟进卡，按下面的范围持续检查变化、写态势报告，可随时在“跟进”页暂停或结束"}
     return {name: {"allowed_decisions": ["approve", "reject"],
-                   "description": "北极星想忘掉下列记忆，请确认是否同意"}
+                   "description": descriptions.get(name, "北极星想修改你的数据，请确认是否同意")}
             for name in TOOLS if not REGISTRY[name].read_only}
 
 

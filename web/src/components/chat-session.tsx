@@ -58,6 +58,7 @@ export const TOOL_NAMES: Record<string, string> = {
   questions_search: "搜面试题", kg_stats: "查知识图谱", peers_search: "查拿到岗位的人", memory_card: "看你的记忆",
   memory_history: "查记忆的历史", memory_known_at: "查当时记着什么", memory_forget: "忘掉一条记忆",
   source_open: "打开原链接", platform_search: "现搜", jobs_trend: "看招聘变化",
+  watch_status: "看跟进卡", watch_create: "开一张跟进卡", profile_review: "按 HR 视角看你的情况", peers_compare: "和同类求职者对照",
 };
 
 // 发起的工具和返回的结果按顺序配对（同名工具并行时按先后）

@@ -35,6 +35,7 @@ get_engine.cache_clear()
 
 TABLES = ["interview_questions", "job_followup_events", "job_followups",
           "chat_tasks", "chat_messages", "chat_threads", "notifications", "memory_events", "memory_facts", "memory_suppressions",
+          "watch_reports", "watch_events", "watch_targets", "watches",
           "peer_profiles", "posts", "postings", "jobs", "raw_items", "companies", "search_queries", "tool_calls", "llm_calls", "runs"]
 
 

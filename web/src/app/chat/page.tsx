@@ -11,6 +11,12 @@ import { type Compacted, type Task, TOOL_NAMES, useChatSession } from "@/compone
 import { CompactDivider, ContextMeter, MemoryNotes, ThinkingDone, ThinkingLive } from "@/components/chat-thinking";
 import { hideRefs } from "@/lib/refs";
 
+// 审批卡片上参数的中文名
+const APPROVAL_ARGS: Record<string, string> = {
+  attribute: "记忆项", qualifier: "范围", value: "内容", title: "名字", city: "城市", job_type: "类型", direction: "方向",
+  max_days_per_week: "每周最多天数", big_only: "只看大厂", job_ids: "重点岗位", days: "盯多少天", cadence_minutes: "检查间隔（分钟）",
+};
+
 const SUGGESTIONS = [
   "我在北京，想找 Agent 开发的日常实习，每周能去 4 天，能实习 3 个月",
   "按我的条件推荐 3 个岗位，说说哪里合适、哪里不合适",
@@ -176,8 +182,9 @@ export default function Chat() {
                 <p className="text-sm text-muted">{a.description}</p>
                 <dl className="text-sm rounded-lg bg-card px-3 py-2 space-y-1">
                   {Object.entries(a.args).filter(([, value]) => value !== null).map(([key, value]) => (
-                    <div key={key}><dt className="inline text-muted">{{ attribute: "记忆项", qualifier: "范围", value: "内容" }[key] ?? key}：</dt>
-                      <dd className="inline">{hideRefs(String(value))}</dd></div>
+                    <div key={key}><dt className="inline text-muted">{APPROVAL_ARGS[key] ?? key}：</dt>
+                      <dd className="inline">{Array.isArray(value) ? `${value.length} 个（本轮查到的岗位）` : typeof value === "boolean" ? (value ? "是" : "否")
+                        : hideRefs(key === "job_type" ? ({ intern: "实习", campus: "校招", social: "社招" }[String(value)] ?? String(value)) : String(value))}</dd></div>
                   ))}
                 </dl>
                 <div className="flex gap-2">
