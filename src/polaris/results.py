@@ -155,6 +155,12 @@ def presentation(s: Session, answer: str, calls: list[dict[str, Any]]) -> list[d
         for item in data.get("items", [data]) if isinstance(data, dict) else []:
             if isinstance(item, dict) and item.get("id") in selected and isinstance(item.get("match"), dict):
                 snapshots[item["id"]] = item["match"]
+    from polaris.match import matches
+
+    for ref, snap in snapshots.items():
+        if "requirements_review" not in snap:  # 岗位列表为省篇幅去掉了逐条门槛解释，卡片按同一条件补回
+            full = matches(s, [int(ref[2:])], criteria=snap.get("criteria") or {}).get(int(ref[2:])) or {}
+            snapshots[ref] = {**full, **snap}
     reference_only = _reference_only_jobs(answer)
     return [{**card, **({"match": snapshots[card["id"]]} if card["id"] in snapshots else {}),
              **({"show_card": False} if card["id"] in reference_only else {})} for card in cards]

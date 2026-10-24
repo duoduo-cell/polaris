@@ -148,7 +148,7 @@ class ToolRuntime:
                 output, ok, kind = data.answer, data.error is None, "report_incomplete" if data.error else None
                 data = {"status": data.status}
             else:
-                output, ok, kind = render(data), True, None
+                output, ok, kind = render(data, spec.max_output_chars), True, None
         except ToolError as e:
             data = None
             output, ok, kind = e.render(), False, "tool_error"

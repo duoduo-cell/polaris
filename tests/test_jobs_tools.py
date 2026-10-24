@@ -70,21 +70,43 @@ def test_jobs_search_by_days_per_week_reports_jds_that_do_not_say(db):
     """10-12 回答评测：问"只要去 2 天的那个"时，模型以前只能拿"每周2天"做全文检索，换说法搜了 16 次。"""
     ids = seed()
     rt = ToolRuntime()
-    none = json.loads(rt.invoke(REGISTRY["jobs_search"], {"max_days_per_week": 3}))
-    assert none["returned"] == 0
-    assert none["days_filter"]["jd_without_days"] == 1 and none["days_filter"]["least_days_in_jd"] >= 4  # 腾讯那条没写天数
-    some = json.loads(rt.invoke(REGISTRY["jobs_search"], {"max_days_per_week": 5, "company": "字节"}))
-    assert [i["id"] for i in some["items"]] == [f"J-{ids['bd']}"] and some["days_filter"]["jd_without_days"] == 0
+    unknown = json.loads(rt.invoke(REGISTRY["jobs_search"], {"max_days_per_week": 3}))
+    # 写明 4、5 天的被排除；腾讯那条没写天数，保留并标待确认（10-24：原来整批排除，北京实习只剩 1 个）
+    assert [i["id"] for i in unknown["items"]] == [f"J-{ids['tx']}"]
+    days_check = next(c for c in unknown["items"][0]["match"]["checks"] if c["key"] == "days")
+    assert days_check["ok"] is None
+    assert unknown["days_filter"]["jd_without_days"] == 1 and unknown["days_filter"]["least_days_in_jd"] >= 4
+    some = json.loads(rt.invoke(REGISTRY["jobs_search"], {"max_days_per_week": 4}))
+    assert [i["id"] for i in some["items"]] == [f"J-{ids['bd']}", f"J-{ids['tx']}"]  # 写明符合的排在待确认前面
     assert "days_filter" not in json.loads(rt.invoke(REGISTRY["jobs_search"], {"company": "字节"}))
 
 
 def test_jobs_search_with_query_keeps_retrieval_order(db, monkeypatch):
     ids = seed()
-    monkeypatch.setattr(jobs_tools, "ranked_ids", lambda q, scope, company: ([ids["tx"], ids["bd"]], None))
+    scopes = []
+
+    def ranked(q, scope, company, job_ids=None):
+        scopes.append(set(job_ids))
+        return [ids["tx"], ids["bd"]], None
+
+    monkeypatch.setattr(jobs_tools, "ranked_ids", ranked)
     out = ToolRuntime().invoke(REGISTRY["jobs_search"], {"query": "Coding Agent 研究实习"})
     assert out.index(f"J-{ids['tx']}") < out.index(f"J-{ids['bd']}")
     out = ToolRuntime().invoke(REGISTRY["jobs_search"], {"query": "Coding Agent 研究实习", "company": "字节"})
     assert f"J-{ids['tx']}" not in out and f"J-{ids['bd']}" in out  # 检索结果仍按字段筛
+    assert scopes[-1] == {ids["bd"], ids["bd_bj"]}  # 只在结构化范围里排，不先取全库前几名再取交集
+
+
+def test_search_ranks_only_inside_given_jobs(db, monkeypatch):
+    """10-24 整链实测：北京 Agent 实习范围里 40 个候选，全库前 50 块取交集后只剩 1 个。"""
+    from polaris.search.index import sync_chunks
+    from polaris.search.retrieve import SearchQuery, search
+
+    ids = seed()
+    sync_chunks()
+    hits, _ = search(SearchQuery("Agent 实习", scope="jobs", channels=("keyword",), rerank=False, mmr=False, top_k=50,
+                                 job_ids=(ids["tx"],)))
+    assert hits and {h.job_id for h in hits} == {ids["tx"]}
 
 
 def test_search_falls_back_to_keywords_when_the_embedding_service_fails(db, monkeypatch):

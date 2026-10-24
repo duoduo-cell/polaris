@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     llm_model_judge: str | None = None
     llm_model_brief: str | None = None
     llm_timeout: float = 120.0
+    # 建连（含 TLS 握手）单独限时：10-24 本机加速器隧道下握手 1~8 秒、时常卡死，原来要等 30 秒以上才报错重试
+    llm_connect_timeout: float = 10.0
+    # 这些域名在本机加速器（fake-ip）下绕开隧道直连，见 llm/direct.py；空字符串关闭
+    llm_direct_hosts: str = "dashscope.aliyuncs.com"
     llm_max_retries: int = 4
     llm_concurrency: int = 4
     llm_cache: bool = False
@@ -89,6 +93,14 @@ class Settings(BaseSettings):
         if self.demo_mode:
             require_demo_database_url(self.database_url)
         return self
+
+    def request_timeout(self) -> Any:
+        import openai
+
+        from polaris.llm.direct import install
+
+        install(self.llm_direct_hosts)  # 每个模型客户端都经过这里取超时，顺带启用直连
+        return openai.Timeout(self.llm_timeout, connect=self.llm_connect_timeout)
 
     def model_for(self, role: Role) -> str:
         return getattr(self, f"llm_model_{role}") or self.llm_model

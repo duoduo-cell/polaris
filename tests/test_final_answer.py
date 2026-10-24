@@ -65,7 +65,7 @@ def test_search_count_context_survives_later_detail_and_uses_shown_not_requested
     original, actual = apply(messages)
     note = actual.messages[-1].content
     assert "18" in note and "展示2" in note and "还有下一页" in note
-    assert "52" in note and "天数筛选前" in note
+    assert "52" in note and "待确认" in note
     assert "团队未知" in note and "last_seen" in note
     assert original.messages is messages and len(messages) == 5
 
@@ -144,3 +144,33 @@ def test_chat_still_displays_only_final_answer_and_does_not_save_system_reminder
     messages = saved.checkpoint["channel_values"]["messages"]
     assert not any(FINAL_ANSWER_NOTE == message.content for message in messages)
     assert messages[-1].content == turn.answer
+
+
+def test_gate_sends_model_back_once_when_questions_were_asked_but_never_searched():
+    """10-24 整链实测：要真实面经题，模型没调 questions_search 就写“库里找到”的题。"""
+    from polaris.agent.final_answer import MISSING_QUESTIONS_NOTE, QuestionEvidenceGate
+
+    jobs = ToolMessage(content="{}", tool_call_id="c1", name="jobs_search")
+    request = Request(messages=[HumanMessage(content="找北京实习，再用真实面经题帮我准备面试"), jobs], tools=["t"])
+    seen = []
+    replies = iter([AIMessage(content="我在库里找到了一道题……"), AIMessage(content="", tool_calls=[
+        {"id": "q", "name": "questions_search", "args": {}}])])
+    result = QuestionEvidenceGate().wrap_model_call(request, lambda r: seen.append(r) or next(replies))
+    assert len(seen) == 2 and seen[1].messages[-1].content == MISSING_QUESTIONS_NOTE
+    assert result.tool_calls[0]["name"] == "questions_search"
+
+
+def test_gate_leaves_answers_alone_when_evidence_exists_or_not_asked():
+    from polaris.agent.final_answer import QuestionEvidenceGate
+
+    gate, final = QuestionEvidenceGate(), AIMessage(content="回答")
+    searched = ToolMessage(content="{}", tool_call_id="c2", name="questions_search")
+    cases = [
+        Request(messages=[HumanMessage(content="用面经题帮我准备"), searched], tools=["t"]),  # 已经查过
+        Request(messages=[HumanMessage(content="北京有哪些 Agent 实习")], tools=["t"]),  # 没要面经
+        Request(messages=[HumanMessage(content="用面经题帮我准备")], tools=[]),  # 最后一次调用不给工具
+    ]
+    for request in cases:
+        calls = []
+        assert gate.wrap_model_call(request, lambda r, calls=calls: calls.append(r) or final) is final
+        assert len(calls) == 1

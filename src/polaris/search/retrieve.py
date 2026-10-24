@@ -61,6 +61,8 @@ class SearchQuery:
     material: str | None = None
     category: str | None = None
     source: str | None = None
+    # 只在这些岗位里排（结构化条件先筛出来的范围）。10-24 整链实测：先取全库前 50 再取交集，范围里 40 个只剩 1 个
+    job_ids: tuple[int, ...] | None = None
 
 
 @dataclass
@@ -101,6 +103,8 @@ def _filters(q: SearchQuery) -> list[Any]:
         conds.append(SearchChunk.companies.any(big.name if big else q.company))
     if q.since:
         conds.append(SearchChunk.published_at >= q.since)
+    if q.job_ids is not None:
+        conds.append(SearchChunk.job_id.in_(q.job_ids))
     question_conditions = []
     for attr in ("job_type", "round", "material", "category"):
         if value := getattr(q, attr):

@@ -33,7 +33,7 @@ from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.types import Command
 
-from polaris.agent.final_answer import FinalAnswerReminder
+from polaris.agent.final_answer import FinalAnswerReminder, QuestionEvidenceGate
 from polaris.agent.minimal import text_of
 from polaris.agent.models import chat_model
 from polaris.agent.task_delivery import TaskDelivery, tag
@@ -47,7 +47,7 @@ from polaris.report import BEIJING
 from polaris.tools import REGISTRY
 from polaris.tools.runtime import ToolRuntime
 
-PROMPT_VERSION = "main-v38"  # v38：停止补齐当前工具批协议、结果未确认与待本人审批保留。
+PROMPT_VERSION = "main-v40"  # v40：要面经原题却没查就收尾时退回先查；v39：没写天数的岗位保留并标待确认。
 # v9：回答评测后——天数用筛选不当关键词、查无此岗不反复换说法、指代不明直接问、不对用户念工具名和内部规则；
 # v10：先想好要哪些证据一次发出、不扩大范围、听 budget 提醒（对比题查了 24 次）；
 # v11：回答评测里深度扣分最多的两处——统计和核实类没落到用户自己的条件上、结尾只问"要不要我"没有具体下一步；
@@ -180,7 +180,8 @@ SYSTEM = """你是北极星，一个求职者的个人 agent，帮他找 LLM / A
 {asks}
 工具怎么选：
 - 找岗位：jobs_search（按公司、城市、类型、方向、最近多少天、每周最多去几天筛；query 写想找什么）；看要求、来源、说法冲突用 jobs_get。
-  每周天数用 max_days_per_week 筛，不要把"每周2天"当关键词搜；结果里的 days_filter 说了多少岗位没写天数，照实转告。
+  每周天数用 max_days_per_week 筛，不要把"每周2天"当关键词搜；没写天数的岗位会留在结果里、match 标待确认，
+  照实列出并说明要问 HR，不要说它们符合，也不要自己把它们排除。
 - 要查好几样东西时（几个岗位的详情、两家公司的统计），在同一步里同时发出多个工具调用，不要一个查完再查下一个：每多一步就要多等一次模型。
 - 动手前先想好回答这个问题要哪几样证据，通常两三样就够，之后最多补一轮；不要为了举例把每一组都查一遍；
   不查用户没问的范围（城市、公司、岗位类型）。
@@ -335,6 +336,7 @@ def build(model: BaseChatModel, tools: list[Any], system_prompt: str, summary_mo
                     ContextEditingMiddleware(edits=[ClearEarlierTurns(CLEAR_TRIGGER_TOKENS)]),
                     LastCallAnswers(),
                     FinalAnswerReminder(),
+                    QuestionEvidenceGate(),
                     HumanInTheLoopMiddleware(interrupt_on=approval_policy())])
 
 

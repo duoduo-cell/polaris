@@ -55,7 +55,7 @@ def test_unverified_reference_warning_survives_transcript_reconnect(db):
             return self
 
     out = chat("按原文给一道面经题", "citation-reconnect",
-               model=Model(messages=iter([AIMessage("声称原题[Q-12]")])),
+               model=Model(messages=iter([AIMessage("声称原题[Q-12]")] * 2)),  # 没查面经就收尾会被退回一次
                remember_fn=lambda *a, **kw: {"events": [], "questions": []})
     assert out.error and "引用" in out.error
     messages = snapshot("citation-reconnect")["messages"]

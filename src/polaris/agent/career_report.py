@@ -212,8 +212,8 @@ def render_report(plan: CareerReportPlan, calls: list[dict[str, Any]]) -> str:
         lines.append(f"还有后页候选，下一页 offset={page['next_offset']}；本页数量不是总数。")
     days = search.get("days_filter") or {}
     if days.get("jd_without_days") is not None:
-        lines.append(f"应用每周天数限制之前、更宽的结构化范围中，有 {days['jd_without_days']} 条未写天数，"
-                     "未当作天数符合；该数不属于筛后候选内部。")
+        lines.append(f"结构化范围中有 {days['jd_without_days']} 条未写天数，已保留在候选里并标为待确认，"
+                     "不能当作天数符合。")
     if not evidence.jobs:
         status = meta.get("status")
         lines.append({"scope_empty": "当前本地结构化范围为空。",

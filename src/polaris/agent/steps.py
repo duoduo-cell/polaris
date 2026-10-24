@@ -117,6 +117,6 @@ def outcome(tool: str, data: Any, ok: bool, output: str = "") -> str:
         unit = {"jobs_search": "个岗位", "posts_search": "篇帖子", "questions_search": "道题"}.get(tool, "条")
         more = "，还有更多" if data.get("next_offset") is not None else ""
         if (days := data.get("days_filter")) and days.get("jd_without_days"):
-            more += f"（另有 {days['jd_without_days']} 个 JD 没写每周天数）"
+            more += f"（范围内 {days['jd_without_days']} 个 JD 没写每周天数，待确认）"
         return f"找到 {n} {unit}{more}" if n else f"没找到符合条件的{more}"
     return "读到了"

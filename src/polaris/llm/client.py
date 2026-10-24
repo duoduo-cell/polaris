@@ -122,11 +122,11 @@ class LLM:
         self._sleep = sleep
         # 重试自己做，每次失败都要记下来，所以关掉 SDK 自带的重试
         self.chat_client = OpenAI(base_url=s.chat_base, api_key=s.llm_api_key.get_secret_value(),
-                                  timeout=s.llm_timeout, max_retries=0, http_client=http_client)
+                                  timeout=s.request_timeout(), max_retries=0, http_client=http_client)
         self.embed_client = OpenAI(base_url=s.embed_base, api_key=s.embed_key.get_secret_value(),
-                                   timeout=s.llm_timeout, max_retries=0, http_client=http_client)
+                                   timeout=s.request_timeout(), max_retries=0, http_client=http_client)
         self.rerank_client = (OpenAI(base_url=s.rerank_base_url, api_key=s.embed_key.get_secret_value(),
-                                     timeout=s.llm_timeout, max_retries=0, http_client=http_client)
+                                     timeout=s.request_timeout(), max_retries=0, http_client=http_client)
                               if s.rerank_enabled else None)
         self._no_json_schema: set[str] = set()  # 已知不支持 json_schema 的模型，下次直接用 json_object
         self._lock = threading.Lock()

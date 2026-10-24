@@ -49,10 +49,12 @@ def test_current_search_details_and_cards_do_not_revert_to_long_term_city(db):
     assert item["match"]["eligibility"] != "incompatible"
     assert item["match"]["criteria"] == {"city": "上海", "job_type": "intern", "max_days_per_week": 3}
     detail = json.loads(runtime.invoke(REGISTRY["jobs_get"], {"job_id": f"J-{jid}"}))
-    assert detail["match"] == item["match"]
+    # 列表只留核对结果，逐条门槛解释和固定说明在详情里；其余与详情一致
+    assert {k: v for k, v in detail["match"].items() if k not in ("requirements_review", "note")} == item["match"]
+    assert output["match_note"] == detail["match"]["note"]
     with session_scope() as s:
         card = presentation(s, f"本次可看 J-{jid}，出勤已写明。", runtime.calls)[0]
-        assert card["match"] == item["match"]
+        assert card["match"] == detail["match"]  # 卡片按同一条件补回逐条门槛解释
         assert {(f.attribute, f.value) for f in s.scalars(select(MemoryFact))} == {
             ("target_city", "北京"), ("days_per_week", "5"), ("degree", "本科在读")}
 

@@ -36,7 +36,7 @@ def test_steps_read_like_sentences_and_never_show_raw_ids(db):
     assert outcome("jobs_search", {"returned": 3, "items": [], "next_offset": 3}, True) == "找到 3 个岗位，还有更多"
     assert describe("jobs_search", {"company": "字节", "max_days_per_week": 3}) == "搜岗位 · 字节 · 每周不超过 3 天"
     no_days = {"returned": 0, "items": [], "days_filter": {"jd_without_days": 96}}
-    assert outcome("jobs_search", no_days, True) == "没找到符合条件的（另有 96 个 JD 没写每周天数）"
+    assert outcome("jobs_search", no_days, True) == "没找到符合条件的（范围内 96 个 JD 没写每周天数，待确认）"
     assert outcome("posts_search", {"returned": 0, "items": []}, True) == "没找到符合条件的"
     assert outcome("kg_stats", {"matched": 12, "groups": [{}, {}]}, True) == "符合条件的有 12 个，分成 2 组"
     assert outcome("jobs_search", None, False, "出错了：来源暂时限流（HTTP 429）。\n怎么改：……") == "来源暂时限流（HTTP 429）。"

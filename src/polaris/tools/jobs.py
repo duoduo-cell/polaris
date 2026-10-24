@@ -42,9 +42,12 @@ def _company_filter(name_col, big_col, company: str, is_array: bool = False):
     return any_(name_col) == company if is_array else name_col.ilike(f"%{company}%")
 
 
-def ranked_ids(query: str, scope: str, company: str | None) -> tuple[list[int], str | None]:
-    """混合检索，返回按相关度排好的岗位编号或帖子编号（同一文档只取第一次出现），以及检索打了折扣时的说明。"""
-    hits, trace = search(SearchQuery(query, scope=scope, company=company, top_k=SEARCH_DEPTH))
+def ranked_ids(query: str, scope: str, company: str | None,
+               job_ids: list[int] | None = None) -> tuple[list[int], str | None]:
+    """混合检索，返回按相关度排好的岗位编号或帖子编号（同一文档只取第一次出现），以及检索打了折扣时的说明。
+    给了 job_ids 就只在这些岗位里排（先筛后排），不会被全库更相关的岗位挤掉。"""
+    hits, trace = search(SearchQuery(query, scope=scope, company=company, top_k=SEARCH_DEPTH,
+                                     job_ids=tuple(job_ids) if job_ids is not None else None))
     ids = [h.job_id if scope == "jobs" else h.post_id for h in hits]
     return list(dict.fromkeys(i for i in ids if i)), degraded(trace)
 
@@ -67,8 +70,8 @@ class JobsSearchArgs(Page):
     date_basis: Literal["published", "reported"] = Field("published", description=(
         "published只用明确来源发布日期；reported允许来源更新时间，只在用户要求看最近更新时用"))
     max_days_per_week: int | None = Field(None, ge=1, le=7, description=(
-        "每周最多能去几天：只留 JD 写明的到岗天数不超过它的岗位。用户说每周能去几天、问有没有只要去 N 天的，用这个筛，"
-        "不要把「每周2天」当关键词搜。没写天数的岗位不算进来，结果里另报个数"))
+        "每周最多能去几天：去掉 JD 写明要去更多天的岗位。用户说每周能去几天、问有没有只要去 N 天的，用这个筛，"
+        "不要把「每周2天」当关键词搜。没写天数的岗位保留，match 里标为待确认，结果里另报个数"))
 
 
 def _job_row(j: Job, detailed: bool) -> dict[str, Any]:
@@ -229,16 +232,19 @@ def jobs_search(args: JobsSearchArgs) -> dict:
             days = {"max_days_per_week": args.max_days_per_week,
                     "jd_without_days": s.scalar(stmt.where(Job.days_per_week.is_(None)).with_only_columns(func.count(Job.id))),
                     "least_days_in_jd": s.scalar(stmt.with_only_columns(func.min(Job.days_per_week))),
-                    "note": "关键词检索前的范围统计；只算 JD 写明天数的岗位，没写不能当成符合"}
-            stmt = stmt.where(Job.days_per_week <= args.max_days_per_week)
-        rows = s.scalars(stmt.order_by(Job.posted_at.desc().nulls_last(), Job.id)).all()
+                    "note": "关键词检索前的范围统计；没写天数的岗位保留在候选里、标为待确认，不能当成符合"}
+            # 10-24 整链实测：北京实习 207 个里 140 个没写天数，原来整批排除，用户只看到 1 个岗位
+            stmt = stmt.where(or_(Job.days_per_week.is_(None), Job.days_per_week <= args.max_days_per_week))
+        order = [Job.days_per_week.is_(None)] if args.max_days_per_week else []  # 写明天数符合的排前面
+        rows = s.scalars(stmt.order_by(*order, Job.posted_at.desc().nulls_last(), Job.id)).all()
         kinds = job_date_kinds(s, [j.id for j in rows])
         excluded = sum(kinds[j.id] != "published" for j in rows) if args.since_days and args.date_basis == "published" else 0
         excluded_rows = [j for j in rows if kinds[j.id] != "published"][:3] if excluded else []
         if args.since_days and args.date_basis == "published":
             rows = [j for j in rows if kinds[j.id] == "published"]
     candidates = len(rows)
-    order, note = ranked_ids(args.query, "jobs", args.company) if args.query and candidates else (None, None)
+    order, note = (ranked_ids(args.query, "jobs", args.company, [j.id for j in rows])
+                   if args.query and candidates else (None, None))
     if order is not None:
         ids = set(order)
         rows = _in_order([j for j in rows if j.id in ids], order, lambda j: j.id)
@@ -259,13 +265,16 @@ def jobs_search(args: JobsSearchArgs) -> dict:
         from polaris.match import matches
 
         fits = matches(s, [j.id for j in rows[:args.limit]], criteria=current)
+        match_note = None
         for j, item in zip(rows[:args.limit], items, strict=True):
             item["sources"] = sources[j.id][:3]
             item["source_count"] = len(sources[j.id])
             item["followup"] = progress[j.id]
             item["posted_at_kind"] = kinds[j.id]
             if j.id in fits:
-                item["match"] = fits[j.id]
+                # 列表里只留核对结果；逐条门槛解释和固定说明每个岗位都一样长，放到 jobs_get 和顶层 match_note
+                item["match"] = {k: v for k, v in fits[j.id].items() if k not in ("requirements_review", "note")}
+                match_note = fits[j.id].get("note")
     has_more = len(rows) > args.limit
     result: dict = {"pagination": {"candidate_count": retrieved,
                                   "count_basis": "关键词已召回的候选子集（不是所有相关岗位）" if args.query else "本地结构化范围全量候选",
@@ -278,6 +287,8 @@ def jobs_search(args: JobsSearchArgs) -> dict:
                        "date_from": (date.today() - timedelta(days=args.since_days - 1)).isoformat() if args.since_days else None,
                        "date_to": date.today().isoformat(), "excluded_unconfirmed_publication_dates": excluded,
                        "note": "来源发布日期不保证是岗位首次上线；更新时间、首次采到、最后采到均不能冒充发布时间"}
+    if match_note:
+        result["match_note"] = match_note
     if days:
         result["days_filter"] = days
     if excluded_examples:
@@ -463,7 +474,8 @@ TOOLS = [
              description="查岗位（多来源合并后的）：按公司、城市、类型、方向筛，给 query 时按相关度排，默认只看大厂。"
                          "返回标题、来源及search诊断：scope_empty应停止同范围补查，query_empty允许保持条件有限改写，"
                          "page_exhausted表示翻页越界；不自行放宽用户条件。详情用jobs_get。",
-             args_schema=JobsSearchArgs, func=jobs_search, example='{"company": "字节", "city": "杭州", "query": "Agent"}'),
+             args_schema=JobsSearchArgs, func=jobs_search, example='{"company": "字节", "city": "杭州", "query": "Agent"}',
+             max_output_chars=16000),  # 10-24 整链实测：6000 字一页只放得下 1~2 个岗位，模型要一条条翻
     ToolSpec(name="jobs_get", description="按编号取一个岗位的全部字段、任职要求、每条来源，以及说法不一致的字段取了哪个、为什么；"
                                           "detailed 再给职位描述全文。",
              args_schema=JobsGetArgs, func=jobs_get, example='{"job_id": "J-12"}'),

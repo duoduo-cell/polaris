@@ -58,7 +58,7 @@ def test_three_counts_and_pre_days_scope_are_rendered_from_tool(sample):
     text = render_report(CareerReportPlan.model_validate(raw), calls)
     assert "结构化范围候选 18 条；本页返回 2 条；本次列出 2 条" in text
     assert "关键词召回 3 条，是召回子集" in text
-    assert "之前、更宽的结构化范围中，有 52 条未写天数" in text
+    assert "有 52 条未写天数，已保留在候选里并标为待确认" in text
     assert "下一页 offset=2" in text
 
 

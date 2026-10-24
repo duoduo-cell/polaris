@@ -18,7 +18,7 @@ def chat_model(role: Role = "chat", settings: Settings | None = None, **kwargs: 
     if options := s.thinking_options(role, kwargs.get("extra_body")):
         kwargs = {**kwargs, "extra_body": options}
     return ChatOpenAI(model=s.model_for(role), base_url=s.chat_base, api_key=s.llm_api_key.get_secret_value(),
-                      timeout=s.llm_timeout, max_retries=0, **kwargs)
+                      timeout=s.request_timeout(), max_retries=0, **kwargs)
 
 
 class ReplayChatModel(BaseChatModel):

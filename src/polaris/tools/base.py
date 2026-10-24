@@ -60,16 +60,17 @@ class ToolSpec:
     tags: tuple[str, ...] = field(default_factory=tuple)
     live: bool = False  # 现查：会去网站或用你登录的浏览器，只给主 agent，不进 MCP，每次回答限次数
     return_direct: bool = False
+    max_output_chars: int = MAX_OUTPUT_CHARS
 
     @property
     def namespace(self) -> str:
         return self.name.rsplit("_", 1)[0]
 
 
-def render(data: Any) -> str:
+def render(data: Any, max_chars: int = MAX_OUTPUT_CHARS) -> str:
     """工具结果统一转成 JSON 文本；超长时截断并附提示。"""
     if isinstance(data, str):
-        return data if len(data) <= MAX_OUTPUT_CHARS else data[:MAX_OUTPUT_CHARS] + TRUNCATED_HINT
+        return data if len(data) <= max_chars else data[:max_chars] + TRUNCATED_HINT
     def encode(value):
         return json.dumps(value, ensure_ascii=False, default=str)
     out = json.loads(encode(data))
@@ -91,21 +92,21 @@ def render(data: Any) -> str:
         out = {"pagination": page, **{k: v for k, v in out.items() if k != "pagination"}}
 
     sync_page()
-    if len(encode(out)) <= MAX_OUTPUT_CHARS:
+    if len(encode(out)) <= max_chars:
         return encode(out)
     if isinstance(out, dict):
         out["truncated"] = True
         out["hint"] = TRUNCATED_HINT
         if isinstance(out.get("items"), list):
-            while len(out["items"]) > 1 and len(encode(out)) > MAX_OUTPUT_CHARS:
+            while len(out["items"]) > 1 and len(encode(out)) > max_chars:
                 out["items"].pop()
                 sync_page()
         # 始终保留完整合法 JSON 和真实 URL；全文由详情接口直接返回。
         for key in ("jd_text", "question_details", "text", "interview_questions", "advice", "questions"):
-            if len(encode(out)) <= MAX_OUTPUT_CHARS:
+            if len(encode(out)) <= max_chars:
                 break
             out.pop(key, None)
-        if len(encode(out)) > MAX_OUTPUT_CHARS:
+        if len(encode(out)) > max_chars:
             def compact(value: Any) -> Any:
                 if isinstance(value, dict):
                     result = {}
@@ -126,7 +127,7 @@ def render(data: Any) -> str:
                 return value[:600] + "…" if isinstance(value, str) and len(value) > 600 else value
             out = compact(out)
             sync_page()
-        if len(encode(out)) > MAX_OUTPUT_CHARS:
+        if len(encode(out)) > max_chars:
             out = {k: out[k] for k in ("pagination", "search", "scope", "id", "items", "returned", "offset", "next_offset") if k in out}
             if "items" in out:
                 out["items"] = [{k: item[k] for k in ("id", "from", "display_title", "title") if k in item}
