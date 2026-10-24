@@ -6,7 +6,7 @@
 
 ## 启动（项目根目录，PowerShell）
 
-需要 Docker、uv、Node.js，以及一个 OpenAI 兼容的模型服务。
+需要 Docker、uv、Node.js，以及一个 OpenAI 兼容的模型服务。准备好 `.env.demo` 并导入过一次资料后，以后直接 `.\scripts\up.ps1 -Demo` 就能把个人实例和演示一起在后台拉起来；下面是第一次的完整步骤。
 
 1. 准备配置：复制 `config/demo.env.example` 为 `.env.demo`，填独立的数据库密码和 OWNER_TOKEN（随机串即可）。`.env.demo` 不进仓库。
    - 模型密钥可以直接写在 `.env.demo` 的 `LLM_API_KEY`；本机作者用 `scripts\run_demo_bailian.py` 在进程里借用个人配置的百炼密钥，不写进文件。

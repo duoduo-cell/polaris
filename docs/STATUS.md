@@ -28,21 +28,17 @@
 | 官网：腾讯、字节、小红书招聘 | 偶发超时，1 小时冷却后重试 |
 | Boss | 不可用：令牌被平台拒绝，需本人在 Boss 专用窗口重新登录或完成验证 |
 
-开机自启（计划任务“Polaris 常驻采集”）是 Disabled，是否恢复待用户决定。
+小红书 9–23 点、脉脉和 Boss 9–22 点采集，夜里只查官网。
 
 ## 怎么起
 
-个人实例（`start.ps1` 起的 API 用 `.env` 模型，目前不可用）：
-
 ```powershell
-docker compose up -d db neo4j
-.venv\Scripts\python.exe -X utf8 scripts\run_web_bailian.py --port 8000   # API
-npm --prefix web run dev -- -H 127.0.0.1 --port 3000                      # 网页
-uv run polaris browser open                                               # 两个采集专用窗口
-.\scripts\run_daemon.ps1 -Bailian                                          # 采集常驻，日志 data\logs\daemon.log
+.\scripts\up.ps1          # 数据库 + API(8000) + 网页(3000) + 常驻采集，已在跑的跳过
+.\scripts\up.ps1 -Demo    # 再加合成演示：独立库 + API(8010) + 网页(3010)，见 DEMO.md
+uv run polaris status     # 看采集
 ```
 
-合成演示：见 [DEMO.md](DEMO.md)。
+`up.ps1` 用 WMI 在后台启动，进程不挂在终端或编程软件下（10-24：从编程工具里起的采集和网页，工具一重启就被一起带走）。电脑重启后要再运行一次；开机自启（计划任务“Polaris 常驻采集”）是 Disabled，是否恢复待用户决定。`start.ps1` 起的 API 用 `.env` 里的模型，目前不可用。
 
 ## 已知局限
 
