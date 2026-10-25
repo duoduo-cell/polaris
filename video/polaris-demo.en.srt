@@ -1,0 +1,95 @@
+1
+00:00:00,500 --> 00:00:05,684
+Polaris is a job-search agent for people looking for LLM and Agent internships in China.
+
+2
+00:00:06,034 --> 00:00:10,064
+Its one rule: every claim must open to the source it came from.
+
+3
+00:00:11,064 --> 00:00:17,868
+Job posts and interview write-ups are scattered across many sites, and each must be checked against your own constraints.
+
+4
+00:00:18,218 --> 00:00:22,978
+General chatbots answer confidently, and often invent the job or the question.
+
+5
+00:00:23,328 --> 00:00:28,052
+Polaris answers only from stored sources, and says so when it finds nothing.
+
+6
+00:00:29,052 --> 00:00:36,057
+This is the synthetic demo. The jobs, posts and profile are invented, and the interface is in Chinese.
+
+7
+00:00:36,406 --> 00:00:43,391
+I ask for Agent internships in Shanghai, at most four days a week, and a comparison of the first job with my profile.
+
+8
+00:00:43,741 --> 00:00:48,760
+Polaris puts my constraints into the tool arguments, and filters before it retrieves.
+
+9
+00:00:49,110 --> 00:00:57,725
+The answer lists matching jobs, checks education, papers, attendance and internship length against my memory card, and explains three different dates.
+
+10
+00:00:58,075 --> 00:01:05,334
+Each job and interview question links to its stored source. A citation that no tool returned would be flagged as unverified.
+
+11
+00:01:06,334 --> 00:01:12,374
+A follow-up card watches one goal over weeks. The demo script changes the data step by step.
+
+12
+00:01:12,723 --> 00:01:20,843
+A focus job moves from four days a week to five. Another job is taken down. A new job and a new interview post appear.
+
+13
+00:01:21,193 --> 00:01:28,082
+Each change is found by comparing snapshots in the local database, and ranked as urgent, digest, or quiet.
+
+14
+00:01:28,433 --> 00:01:34,812
+The situation report is built from facts that rules compute first. The model only puts them into words.
+
+15
+00:01:35,812 --> 00:01:39,641
+The competitiveness view asks the three questions a recruiter asks.
+
+16
+00:01:39,991 --> 00:01:46,271
+Which hard requirements block me, which common skills my card is missing, and what an interviewer will want to know.
+
+17
+00:01:46,621 --> 00:01:49,860
+When the sample of peers is small, it says so.
+
+18
+00:01:50,861 --> 00:01:57,725
+Applications are tracked as a funnel. A rejection reason is stored in memory, and later gap analysis uses it.
+
+19
+00:01:58,075 --> 00:02:02,640
+Polaris drafts follow-up messages, but never sends anything by itself.
+
+20
+00:02:02,990 --> 00:02:08,604
+Every model call and tool call is traced, with tokens, latency, and cost.
+
+21
+00:02:09,605 --> 00:02:13,740
+Running the whole loop for real exposed problems no offline test caught.
+
+22
+00:02:14,089 --> 00:02:24,814
+Post-filtering lost almost all recall. A tight tool budget made the model page through results. And the model invented an interview question, until an orchestration gate stopped it.
+
+23
+00:02:25,164 --> 00:02:32,533
+Polaris runs on Qwen through Alibaba Cloud Bailian. This entry does not use Nebius Token Factory or an NVIDIA model.
+
+24
+00:02:32,884 --> 00:02:37,148
+Code and docs are on GitHub, at duoduo-cell slash polaris.

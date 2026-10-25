@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: #faf9f6; color: #1b1a18; font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  .card { width: 1920px; height: 1080px; box-sizing: border-box; padding: 110px 140px; position: relative; overflow: hidden; }
+  .kicker { font-size: 30px; color: #6b675f; letter-spacing: 0.04em; margin-bottom: 26px; }
+  h1 { font-size: 132px; margin: 0; letter-spacing: -0.02em; }
+  h2 { font-size: 64px; margin: 0 0 40px; letter-spacing: -0.01em; }
+  .tagline { font-size: 46px; line-height: 1.35; margin-top: 30px; max-width: 1450px; }
+  .meta { position: absolute; left: 140px; bottom: 230px; font-size: 30px; color: #5f5b54; line-height: 1.6; }
+  .meta b { color: #1b1a18; }
+  .two { display: flex; gap: 70px; align-items: flex-start; }
+  .two .text { flex: 1.05; font-size: 38px; line-height: 1.5; }
+  .two .text p { margin: 0 0 30px; }
+  .two .fig { flex: 1; background: #fff; border: 2px solid #e6e2da; border-radius: 22px; padding: 22px; }
+  .two .fig img { display: block; max-height: 600px; max-width: 100%; margin: 0 auto; }
+  ul.cases { list-style: none; margin: 0; padding: 0; font-size: 34px; line-height: 1.4; }
+  ul.cases li { display: flex; gap: 30px; padding: 20px 0; border-bottom: 2px solid #e6e2da; }
+  ul.cases .n { min-width: 300px; font-weight: 700; font-size: 40px; }
+  .note { margin-top: 44px; font-size: 32px; line-height: 1.5; background: #fff; border: 2px solid #e6e2da; border-radius: 18px; padding: 24px 30px; }
+  .accent { color: #2f4bbf; }
+</style>
+</head>
+<body>
+  <div class="card" id="s0_title">
+    <div class="kicker">Nebius × NVIDIA Global AI Hackathon · Personal AI track</div>
+    <h1>Polaris</h1>
+    <div class="tagline">A job-search agent for LLM and Agent internship seekers in China. <span class="accent">Every claim opens to its source.</span></div>
+    <div class="meta">
+      Synthetic demo data · interface in Chinese · models: Qwen via Alibaba Cloud Bailian<br>
+      <b>github.com/duoduo-cell/polaris</b>
+    </div>
+  </div>
+
+  <div class="card" id="s1_problem">
+    <h2>The problem</h2>
+    <div class="two">
+      <div class="text">
+        <p>Jobs and interview write-ups are spread across many sites, and each must be checked against your own constraints: days per week, months available, degree, papers.</p>
+        <p>General chatbots answer confidently and often invent the job or the question.</p>
+        <p><b>Polaris answers only from stored sources, and says when it finds nothing.</b></p>
+      </div>
+      <div class="fig"><img src="FLOW_SVG" alt="One request through the agent"></div>
+    </div>
+  </div>
+
+  <div class="card" id="s6_close">
+    <h2>What running it for real taught us</h2>
+    <ul class="cases">
+      <li><span class="n">1 → 32</span><span>candidates after filtering before retrieval instead of after</span></li>
+      <li><span class="n">265 s → 77 s</span><span>full task, after the tool budget, network and evidence fixes together</span></li>
+      <li><span class="n">103 s → 2 s</span><span>job search, with a narrow direct route around a local network tunnel</span></li>
+      <li><span class="n">gate</span><span>the model invented an interview question; orchestration now sends it back to search first</span></li>
+    </ul>
+    <div class="note">Runs on <b>Qwen via Alibaba Cloud Bailian</b>. This entry does <b>not</b> use Nebius Token Factory or an NVIDIA model.<br>
+      Code and docs: <b class="accent">github.com/duoduo-cell/polaris</b> · Project page: <b class="accent">duoduo-cell.github.io/polaris</b></div>
+  </div>
+</body>
+</html>

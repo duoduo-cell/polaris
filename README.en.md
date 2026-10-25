@@ -11,6 +11,8 @@
 
 The author uses it for their own internship search. It is also their entry to the Nebius × NVIDIA Global AI Hackathon, Personal AI track. The interface and the documents are in Chinese, because the users and the sources are.
 
+**▶ [2:38 demo video](https://youtu.be/ogbxFrPQ2Is)** (English narration and captions, synthetic demo)
+
 ![Chat: jobs found under the user's constraints, with why each fits and a check of the hard requirements](docs/img/demo-chat.png)
 
 <sub>All screenshots come from the [synthetic demo](docs/DEMO.md): jobs, interview posts, company names and the profile are all invented.</sub>
