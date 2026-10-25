@@ -17,11 +17,26 @@
     - #8 / PR #9：面试讲稿移出仓库，放在作者 vault 的 `projects/polaris-interview.md`；
     - #10 / PR #11：过程文档归档到 `docs/archive/`；
     - #13 / PR #14：重写中英文 README，含 4 张合成演示截图、两张 Mermaid 架构图和 5 个工程案例。
+  - 第二批：
+    - #27 / PR #28：CHANGELOG，发布 [v0.1.0](https://github.com/duoduo-cell/polaris/releases/tag/v0.1.0)（10-25 公开时的全部能力）；
+    - 同一个 PR 里改正了 README 中 v7 的日期，应为 10-25。
 - `main` 受保护：只能通过 PR 合并，不要求审批；两项 CI 必须通过；对管理员同样生效；不许强推和删除；只允许 squash 合并，合并后自动删分支。私密漏洞报告已开启。
-- 开着的 Issue：
-  - #5：数据库停了没人知道；
-  - #12：演示记忆里“每周 3 天”是 v7 之前的误记，“重来一遍”也不恢复记忆。
-- 还没做：Milestone 和路线图 Issue、Release、项目主页、个人主页。
+- **[v0.2.0 Milestone：比赛提交](https://github.com/duoduo-cell/polaris/milestone/1)**（截止 10-29），共 7 个 Issue。标签 `owner-action` 表示要作者本人操作的：
+  - #16 部署公开演示（owner-action：学生认证、买服务器）；
+  - #17 演示调用上限；
+  - #18 演示改用虚构公司名（比赛规定视频里不能出现第三方商标）；
+  - #19 项目主页；
+  - #20 视频（owner-action）；
+  - #21 Devpost 提交（owner-action）；
+  - #12 演示记忆误记。
+- 之后的路线图（不挂 Milestone）：
+  - #22 读简历建证据链；
+  - #23 云端子集（owner-action：定区域、预算、通知渠道）；
+  - #24 邮箱日历；
+  - #25 跟进卡几小时内发现变化；
+  - #26 每周运行报告；
+  - #5 数据库停了没人知道。
+- 还没做：个人主页（Profile README）。
 
 ## 现状（10-25 凌晨）
 
