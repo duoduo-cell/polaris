@@ -12,7 +12,7 @@ from sqlalchemy.engine import make_url
 from polaris import demo
 from polaris.config import Settings, get_settings
 from polaris.data_scope import synthetic_filter
-from polaris.db.models import Base, Job, MemoryEvent, MemoryFact, MemorySuppression, Run
+from polaris.db.models import Base, Job, JobFollowup, JobFollowupEvent, MemoryEvent, MemoryFact, MemorySuppression, Run
 from polaris.db.session import session_scope
 from polaris.demo import VERSION, assert_ready, fixture, require_demo_target, seed
 from polaris.memory.schema import value_key
@@ -292,7 +292,7 @@ def test_seed_requires_explicit_apply_before_loading_settings(monkeypatch, capsy
     assert "offline_check" in capsys.readouterr().out
 
 
-def test_reset_restores_seeded_memory_and_drops_memory_made_during_the_demo(db, monkeypatch):
+def test_reset_restores_seeded_memory_and_drops_what_visitors_recorded(db, monkeypatch):
     """#12: a query read as "at most 3 days a week" replaced the seeded 4 days and outlived every reset."""
     monkeypatch.setattr(demo, "get_settings", lambda: SimpleNamespace(demo_mode=True))
     with session_scope() as s:
@@ -309,11 +309,14 @@ def test_reset_restores_seeded_memory_and_drops_memory_made_during_the_demo(db, 
                          supersedes_id=seeded_days.id, source_text="那北京RAG实习每周最多3天呢？"))
         s.add(MemoryEvent(op="update", attribute="days_per_week", value="3", reason="演示中的一次更新", created_at=later))
         s.add(MemorySuppression(attribute="skill", value_key="java", reason="演示中否认过"))
+        s.add(JobFollowup(job_id=2, status="rejected", stage="二面", note="二面挂", revision=2))
+        s.add(JobFollowupEvent(job_id=2, request_key="demo-visitor-1", before={}, after={"status": "rejected"},
+                               changes={"status": "rejected"}, source_text="访客标记未通过"))
 
     with session_scope() as s:
         out = demo.reset_script(s, later + timedelta(hours=1))
 
-    assert out["removed_memory_facts"] == 1
+    assert out["removed_memory_facts"] == 1 and out["removed_followups"] == 1
     with session_scope() as s:
         facts = s.scalars(select(MemoryFact).order_by(MemoryFact.id)).all()
         assert [(f.attribute, f.value, f.status, f.superseded_at) for f in facts] == [
@@ -322,3 +325,5 @@ def test_reset_restores_seeded_memory_and_drops_memory_made_during_the_demo(db, 
                 ("job_type", "日常实习"), ("days_per_week", "4"), ("skill", "Python"), ("skill", "RAG")]]
         assert s.scalar(select(func.count()).select_from(MemoryEvent)) == 0
         assert s.scalar(select(func.count()).select_from(MemorySuppression)) == 0
+        assert s.scalar(select(func.count()).select_from(JobFollowup)) == 0
+        assert s.scalar(select(func.count()).select_from(JobFollowupEvent)) == 0
