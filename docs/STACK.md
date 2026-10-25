@@ -2,13 +2,13 @@
 
 > 2026-10-11 起，技术方案以 `TECH.md` 为准（它吸收了本文的选型表，并按参考答案 WeKnora 做了调整，见 `REFERENCE_WEKNORA.md`）。本文保留选型时的调研和理由。其中"中文关键词检索"一行已改：用 ParadeDB 的 `pg_search`，它有中文分词器 `chinese_lindera`，本文当时写"没找到"是查错了。
 
-2026-10-11 定稿。用户的原则：用行业通用、方便的，优先选字节、小红书、阿里这些公司招人时认可的；每一项都要有依据。项目要做什么见 `INTRO.md`，模块顺序见 `PLAN.md`。
+2026-10-11 定稿。用户的原则：用行业通用、方便的，优先选字节、小红书、阿里这些公司招人时认可的；每一项都要有依据。项目要做什么见 `archive/INTRO.md`，模块顺序见 `archive/PLAN.md`。
 
 ## 选型依据从哪来
 
 1. **大厂在招什么。** 字节跳动官网 50 个 Agent 研发实习岗位（`research/2026-10-11-bytedance-agent-intern-jd.md`）；小红书官网 2027 届校招研发方向 89 个岗位，其中 59 个和 AI、Agent、全栈相关（`research/2026-10-11-xiaohongshu-agent-jd.md`）。阿里集团、阿里云的校招和实习页面今天都显示"暂无在招职位"，所以阿里只看它的开源项目。
 2. **大厂自己开源了什么。** 字节：DeerFlow（多 agent 的超级 agent 框架，基于 LangGraph）[A5]、Coze Loop（提示词、评测、追踪）[E6]、Midscene.js（AI 驱动的网页自动化）[B1]。阿里：AgentScope（多 agent 框架，Apache-2.0，约 2.8 万星）[AS]。
-3. **工程团队的公开经验和论文。** 见 `INTRO.md` 的依据列表。
+3. **工程团队的公开经验和论文。** 见 `archive/INTRO.md` 的依据列表。
 
 ## 总览
 
@@ -32,9 +32,9 @@
 | 代码沙箱 | Docker 容器：不联网、只读挂载、限时，用来跑工程师角色写的代码；查库用只读数据库账号 | DeerFlow 的沙箱也是本地、Docker 或 K8s 三种 [A5] | NVIDIA OpenShell：比赛相关的加分项，上云后有余力再试 [S3] |
 | 调用追踪 | 自有的 `llm_calls`、`runs` 表（产品里的评测页和回放都从这里取数）；开发期加 **LangSmith**（LangGraph 原生集成，免费版每月 5,000 条，支持 OpenTelemetry）[LS] | 公开演示的评测页必须用自己的数据；调试和实验对比用业界通用工具；小红书的 AI 可观测岗位点名 OpenTelemetry [XHS] | Langfuse 自己部署要 ClickHouse、Redis、S3，小主机扛不住 [LF]；Coze Loop：Go 服务，部署重，作为参照 [E6] |
 | 追踪格式 | 按 OpenTelemetry 生成式 AI 规范命名（invoke_agent、execute_tool） | 业界标准；LangSmith 能直接接收 [E5][LS] | — |
-| 评测 | 自建 Polaris-Bench：pytest 风格的跑法、录制回放环境、故障注入；评分参照 τ-bench（比最终状态，算 pass^k）；对比实验也可以推到 LangSmith 的数据集里 | 见 `INTRO.md` 的评测一节 | 直接套现成 benchmark：领域不对 |
+| 评测 | 自建 Polaris-Bench：pytest 风格的跑法、录制回放环境、故障注入；评分参照 τ-bench（比最终状态，算 pass^k）；对比实验也可以推到 LangSmith 的数据集里 | 见 `archive/INTRO.md` 的评测一节 | 直接套现成 benchmark：领域不对 |
 | 前端 | **Next.js 加 TypeScript**，Tailwind 加 shadcn/ui；对话用 **Vercel AI SDK** 的 `useChat`，后端 FastAPI 用流式接口返回 | 字节的前端 Agent 岗位点名 React、Next.js、Vercel AI SDK、SSE 流式 [J1]；小红书的 AI 岗位里全栈 37%、React/Vue 29% [XHS]；Vercel 有官方的 Next.js 加 FastAPI 流式模板 [VA] | Vite 加 React：也可以，但字节岗位点名的是 Next.js；LangGraph 自带的 Agent Chat UI：定制余地小 |
-| 部署 | Docker Compose 加 Caddy（自动 HTTPS），阿里云香港轻量 | `PLAN.md` 第 5 节 | — |
+| 部署 | Docker Compose 加 Caddy（自动 HTTPS），阿里云香港轻量 | `archive/PLAN.md` 第 5 节 | — |
 | 代码质量 | ruff、pytest；GitHub Actions 跑检查、测试和离线 benchmark 冒烟 | 通用做法 | — |
 
 ## 几个关键决定的展开
@@ -90,7 +90,7 @@
 
 ## 依据
 
-本文件新增的来源；其他编号见 `INTRO.md` 的依据列表。
+本文件新增的来源；其他编号见 `archive/INTRO.md` 的依据列表。
 
 - [LG1] LangChain, LangChain and LangGraph 1.0（2025-10-22）— https://www.langchain.com/blog/langchain-langgraph-1dot0 ；LangGraph v1 发布说明：https://docs.langchain.com/oss/python/releases/langgraph-v1
 - [LG2] LangGraph 持久化和 Postgres 检查点：https://pypi.org/project/langgraph-checkpoint-postgres/ ；`Send` 并行：https://forum.langchain.com/t/best-practices-for-parallel-nodes-fanouts/1900

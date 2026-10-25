@@ -18,10 +18,10 @@
 3. `docs/research/2026-10-21-github-and-project-audit.md`：8 个 GitHub 项目对标、本地能力边界、反例和开发建议；同目录 `2026-10-21-production-direction.md`：岗位/面经样本与工程实践依据。建议不等于已实现或已验收
 3a. `docs/research/2026-10-22-continuous-career-agent-scenario.md`：持续求职 Agent 的完整场景、数据支持程度、云端现实边界与建议切片；研究建议不自动改变 PURPOSE 路线
 3b. `docs/research/2026-10-22-product-landscape-and-engineering.md`：开发前开源/闭源产品与实现补充调研，11个源码仓库、16个产品、26个选定文件、4条合成源码探针；固定版本与来源另有JSON。后续设计需说明借鉴依据、中文领域差异及实际验收；新接口/表/依赖/云端部署仍待讨论，不因调研自动引入框架。
-4. `docs/PLAN.md`：历史总体框架和模块背景；当前迭代顺序以 PURPOSE 为准
-5. `docs/INTRO.md`：历史项目介绍、对标、流程与评测设计，结合本轮调研阅读
+4. `docs/archive/PLAN.md`：历史总体框架和模块背景；当前迭代顺序以 PURPOSE 为准
+5. `docs/archive/INTRO.md`：历史项目介绍、对标、流程与评测设计，结合本轮调研阅读
 6. `docs/TECH.md`：现有技术方案：架构、选型、检索和 Agent 规则；实现与文档不符时先核代码
-7. `docs/PRODUCT.md`：功能清单和数据源
+7. `docs/archive/PRODUCT.md`：功能清单和数据源
 8. `docs/DATASET.md`：数据格式、采集方式、频率与账号边界
 9. `docs/HACKATHON.md`：比赛硬性要求和历史核实的截止时间，提交前重查官网
 10. `docs/FINDINGS.md`：联网核对和实测过的历史结论
@@ -40,7 +40,7 @@
 - 模型的地址、key、模型名只从 `.env` 读。个人实例和演示实例都用百炼 Qwen；10-25 用户决定比赛不接 Token Factory、不花钱，照常提交并如实写明（见 docs/SHOWCASE.md 第 4 节）。`.env` 由用户自己在本机创建，不要代写。
 - 当前按 PURPOSE 的真实任务迭代顺序，每轮讲清一个失败和设计，只改一个机制，保存前后及预留新需求的验证证据。PLAN 中旧模块顺序作为历史，不从 M0 重做。
 - 当前 M0 到 M8 开发和验证以本机网页对话为主；云端方案先讨论需求、运行方式、成本与约束，未达成选择前不采购、部署或承诺设备离线后持续运行。实际开发顺序以 PURPOSE 为准。
-- 采集按方向找岗位，不要向用户要目标公司名单。做法见 `docs/PLAN.md` 第 4.1 节。
+- 采集按方向找岗位，不要向用户要目标公司名单。做法见 `docs/archive/PLAN.md` 第 4.1 节。
 - 从 M1 起做本地 git 提交，按大的节点提交（每个模块至少一次，模块内有完整可运行的节点再提交），不追求每一小步都提交；重点是先把本地开发做完。提交信息写清做了什么。暂时不推到远端。许可证用 Apache-2.0。
 - git 提交署名用仓库级配置：`duoduo-cell` / `184390280+duoduo-cell@users.noreply.github.com`（GitHub 专用邮箱，提交算在该账号名下）。
 - 具体的目录结构、数据表字段、接口设计、依赖选型由你提出方案，用户确认后再实现。

@@ -1,4 +1,4 @@
-"""工具层约定。依据 Anthropic《Writing effective tools for agents》（见 docs/INTRO.md [T1]）：
+"""工具层约定。依据 Anthropic《Writing effective tools for agents》（见 docs/archive/INTRO.md [T1]）：
 
 - 命名：命名空间前缀加动作，如 raw_items_search；同一组工具前缀相同，方便按组启用或屏蔽
 - 返回：response_format 取 concise（只给高信号字段）或 detailed（再给技术编号、时间等）
