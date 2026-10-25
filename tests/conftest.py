@@ -54,7 +54,7 @@ def engine():
     try:
         _ensure_test_database()
     except Exception as e:  # noqa: BLE001
-        if os.environ.get("CI"):  # skipping in CI would report green with most tests never run
+        if os.environ.get("CI"):  # skipping in CI would report green with the database tests never run
             raise
         pytest.skip(f"测试数据库连不上（先 docker compose up -d db）：{e}")
     from alembic import command
