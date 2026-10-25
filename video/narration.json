@@ -1,0 +1,61 @@
+[
+ {
+  "scene": "s0_title",
+  "sentences": [
+   "Polaris is a job-search agent for people looking for LLM and Agent internships in China.",
+   "Its one rule: every claim must open to the source it came from."
+  ]
+ },
+ {
+  "scene": "s1_problem",
+  "sentences": [
+   "Job posts and interview write-ups are scattered across many sites, and each must be checked against your own constraints.",
+   "General chatbots answer confidently, and often invent the job or the question.",
+   "Polaris answers only from stored sources, and says so when it finds nothing."
+  ]
+ },
+ {
+  "scene": "s2_chat",
+  "sentences": [
+   "This is the synthetic demo. The jobs, posts and profile are invented, and the interface is in Chinese.",
+   "I ask for Agent internships in Shanghai, at most four days a week, and a comparison of the first job with my profile.",
+   "Polaris puts my constraints into the tool arguments, and filters before it retrieves.",
+   "The answer lists matching jobs, checks education, papers, attendance and internship length against my memory card, and explains three different dates.",
+   "Each job and interview question links to its stored source. A citation that no tool returned would be flagged as unverified."
+  ]
+ },
+ {
+  "scene": "s3_watch",
+  "sentences": [
+   "A follow-up card watches one goal over weeks. The demo script changes the data step by step.",
+   "A focus job moves from four days a week to five. Another job is taken down. A new job and a new interview post appear.",
+   "Each change is found by comparing snapshots in the local database, and ranked as urgent, digest, or quiet.",
+   "The situation report is built from facts that rules compute first. The model only puts them into words."
+  ]
+ },
+ {
+  "scene": "s4_review",
+  "sentences": [
+   "The competitiveness view asks the three questions a recruiter asks.",
+   "Which hard requirements block me, which common skills my card is missing, and what an interviewer will want to know.",
+   "When the sample of peers is small, it says so."
+  ]
+ },
+ {
+  "scene": "s5_apps",
+  "sentences": [
+   "Applications are tracked as a funnel. A rejection reason is stored in memory, and later gap analysis uses it.",
+   "Polaris drafts follow-up messages, but never sends anything by itself.",
+   "Every model call and tool call is traced, with tokens, latency, and cost."
+  ]
+ },
+ {
+  "scene": "s6_close",
+  "sentences": [
+   "Running the whole loop for real exposed problems no offline test caught.",
+   "Post-filtering lost almost all recall. A tight tool budget made the model page through results. And the model invented an interview question, until an orchestration gate stopped it.",
+   "Polaris runs on Qwen through Alibaba Cloud Bailian. This entry does not use Nebius Token Factory or an NVIDIA model.",
+   "Code and docs are on GitHub, at duoduo-cell slash polaris."
+  ]
+ }
+]
