@@ -229,8 +229,22 @@ def advance(s: Session, now: datetime | None = None) -> dict[str, Any]:
             "watch": w.id, "check": result, "message": f"已推进：{SCRIPT[step]}。"}
 
 
+def _restore_seeded_memory(s: Session) -> int:
+    """Put memory back to the seeded profile: facts recorded during the demo go, with their events and suppressions,
+    and seeded facts that were superseded or forgotten become active again. Without this, a 10-24 query read as
+    "at most 3 days a week" outlived every reset and the reports kept telling visitors they could do 3 days."""
+    from polaris.db.models import MemoryEvent, MemorySuppression
+
+    seeded = MemoryFact.source_text.startswith(DISCLOSURE)
+    s.execute(MemoryEvent.__table__.delete())
+    s.execute(MemorySuppression.__table__.delete())
+    removed = s.execute(MemoryFact.__table__.delete().where(MemoryFact.source_text.is_(None) | ~seeded)).rowcount
+    s.execute(MemoryFact.__table__.update().where(seeded).values(status="active", superseded_at=None))
+    return removed
+
+
 def reset_script(s: Session, now: datetime | None = None) -> dict[str, Any]:
-    """剧本重来：把被改过的两个合成岗位恢复原样，删掉剧本新增的岗位、面经、样本和演示跟进卡。只动剧本碰过的东西。"""
+    """剧本重来：把被改过的两个合成岗位恢复原样，删掉剧本新增的岗位、面经、样本和演示跟进卡。Memory goes back to the seeded profile too."""
     from polaris.db.models import Watch
 
     if not get_settings().demo_mode:
@@ -248,7 +262,7 @@ def reset_script(s: Session, now: datetime | None = None) -> dict[str, Any]:
         [f"{VERSION}:job:new-1", f"{VERSION}:post:new-1"]))).rowcount
     s.execute(Run.__table__.delete().where(Run.kind == "demo-advance"))
     s.execute(Watch.__table__.delete().where(Watch.title == WATCH_TITLE))
-    return {"reset": True, "removed_raw_items": removed}
+    return {"reset": True, "removed_raw_items": removed, "removed_memory_facts": _restore_seeded_memory(s)}
 
 
 def script_state(s: Session) -> dict[str, Any]:

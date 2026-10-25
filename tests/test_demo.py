@@ -1,18 +1,21 @@
 """演示隔离与手写样本的离线检查；不冒充Postgres导入／网页验收。"""
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import make_url
 
+from polaris import demo
 from polaris.config import Settings, get_settings
 from polaris.data_scope import synthetic_filter
-from polaris.db.models import Base, Job, Run
+from polaris.db.models import Base, Job, MemoryEvent, MemoryFact, MemorySuppression, Run
+from polaris.db.session import session_scope
 from polaris.demo import VERSION, assert_ready, fixture, require_demo_target, seed
+from polaris.memory.schema import value_key
 from polaris.search import retrieve
 from polaris.tools.base import ToolSpec
 from polaris.tools.jobs import JobsSearchArgs
@@ -287,3 +290,35 @@ def test_seed_requires_explicit_apply_before_loading_settings(monkeypatch, capsy
     monkeypatch.setattr(demo, "get_settings", lambda: pytest.fail("缺少apply不能加载目标并写入"))
     demo.main()
     assert "offline_check" in capsys.readouterr().out
+
+
+def test_reset_restores_seeded_memory_and_drops_memory_made_during_the_demo(db, monkeypatch):
+    """#12: a query read as "at most 3 days a week" replaced the seeded 4 days and outlived every reset."""
+    monkeypatch.setattr(demo, "get_settings", lambda: SimpleNamespace(demo_mode=True))
+    with session_scope() as s:
+        for group in fixture(NOW).groups:
+            s.add_all(group)
+            s.flush()
+        s.add(Run(kind="demo-seed", params={"fixture": VERSION}, status="ok", stats={}, started_at=NOW, finished_at=NOW))
+    later = NOW + timedelta(days=2)
+    with session_scope() as s:
+        seeded_days = s.scalar(select(MemoryFact).where(MemoryFact.attribute == "days_per_week"))
+        seeded_days.status, seeded_days.superseded_at = "superseded", later
+        s.add(MemoryFact(attribute="days_per_week", value="3", value_key=value_key("days_per_week", "3"), statement="每周最多 3 天",
+                         kind="stated", status="active", recorded_at=later, last_confirmed_at=later,
+                         supersedes_id=seeded_days.id, source_text="那北京RAG实习每周最多3天呢？"))
+        s.add(MemoryEvent(op="update", attribute="days_per_week", value="3", reason="演示中的一次更新", created_at=later))
+        s.add(MemorySuppression(attribute="skill", value_key="java", reason="演示中否认过"))
+
+    with session_scope() as s:
+        out = demo.reset_script(s, later + timedelta(hours=1))
+
+    assert out["removed_memory_facts"] == 1
+    with session_scope() as s:
+        facts = s.scalars(select(MemoryFact).order_by(MemoryFact.id)).all()
+        assert [(f.attribute, f.value, f.status, f.superseded_at) for f in facts] == [
+            (attr, value, "active", None) for attr, value in [
+                ("degree", "本科在读"), ("paper_experience", "无论文"), ("target_city", "北京"), ("target_role", "Agent"),
+                ("job_type", "日常实习"), ("days_per_week", "4"), ("skill", "Python"), ("skill", "RAG")]]
+        assert s.scalar(select(func.count()).select_from(MemoryEvent)) == 0
+        assert s.scalar(select(func.count()).select_from(MemorySuppression)) == 0
