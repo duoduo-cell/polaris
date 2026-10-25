@@ -25,7 +25,7 @@ The author uses it for their own internship search. It is also their entry to th
 | **Follow-up cards** | Watch one goal over time: a focus job removed or changed, new jobs in scope, new interview posts, new outcomes from people like you | Reads the local database only, deduplicated by fingerprint; changes ranked urgent / digest / quiet; a daily situation report whose facts are computed by rules first and only written by the model |
 | **Competitiveness** | The three questions HR asks: which hard requirements block you, how many common skills your card covers, whether your experience has evidence; then a three-tier comparison with people who posted their own background | Says so when the sample is small; "not written" is not "does not have" |
 | **Applications** | Funnel from saved to offer, channels, weekly volume; drafts follow-up messages | Drafts only, never sends; placeholders where the card has no information, never "meets the requirement" |
-| **Memory** | Remembers what you said about your constraints and experience; viewable, with history, deletable | Bi-temporal (true when / learned when); asks before overwriting; since 10-24, constraints inside a question are not stored as facts about you |
+| **Memory** | Remembers what you said about your constraints and experience; viewable, with history, deletable | Bi-temporal (true when / learned when); asks before overwriting; since 10-25, constraints inside a question are not stored as facts about you |
 | **Safety** | Outside text is marked untrusted; changing data or opening a follow-up card waits for your approval | Approve or reject only; arguments cannot be edited and then executed |
 
 <table>
