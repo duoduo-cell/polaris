@@ -6,6 +6,18 @@
 
 整链在本机真实跑通、采集稳定 → 补齐功能 → 整体测试 → 演示模式。用户 10-24 明确：做到演示模式为止，换比赛模型、GitHub、部署、视频都不做。10-25 凌晨按 [场景调研](research/2026-10-24-career-agent-scenario-update.md) 第 9 节做了跟进卡、态势报告、HR 视角和同类对照（云端、邮箱日历不在范围内）。10-25 进入“展示与提交”阶段，策划见 [SHOWCASE](SHOWCASE.md)。
 
+## 比赛提交（10-26 凌晨）
+
+- **视频**已公开：https://youtu.be/ogbxFrPQ2Is （2:38，英文旁白和字幕，画面全是合成演示）。制作源文件在 [video/](../video/)。
+- **Devpost 草稿已全部填好**：作者账号已报名，[预览页](https://devpost.com/software/polaris-temldk)显示正常。
+- **只差作者本人的三步**，见 [SUBMISSION](SUBMISSION.md) 开头：
+  1. 勾两项声明（年满 18 岁、不是主办方员工）；
+  2. 勾同意规则和服务条款；
+  3. 点 Submit。
+
+  这几步是以作者名义的声明，自动化工具不代做。
+- **线上演示（#16）** 还要作者实名购买服务器。在那之前，Devpost 的演示链接填的是本机运行说明，正文里如实写明了。
+
 ## GitHub（10-25 晚）
 
 - 仓库 [duoduo-cell/polaris](https://github.com/duoduo-cell/polaris)，10-25 晚经用户同意**已公开**。全部历史提交都关联到 duoduo-cell。推送前扫过全部历史：没有真实密钥（命中的 `sk-...` 都是测试假值），`.env` 和 `data/` 从没进过仓库，也没有平台原帖链接。公开前又用 gitleaks v8.30.1 扫了 177 个提交，0 发现。
@@ -27,11 +39,15 @@
     - #17 / PR #35：演示的花费上限，默认每天 400 次模型调用、每个访客 10 分钟 8 次；
     - #19 / PR #36：[项目主页](https://duoduo-cell.github.io/polaris/)（中英文，GitHub Pages）；
     - PR #37：用 v3 演示重新截图。
+  - 第四批（10-26 凌晨，用户说“全部完成、不要问”）：
+    - PR #39：提交材料；
+    - #40 / PR #41：中英文一页作品集 PDF；
+    - #42 / PR #43：README 加“影响与贡献者”和接口一节，项目主页加 OpenAPI 接口参考；
+    - #20 / PR #44：演示视频上线，README 和主页挂上视频。
 - `main` 受保护：只能通过 PR 合并，不要求审批；两项 CI 必须通过；对管理员同样生效；不许强推和删除；只允许 squash 合并，合并后自动删分支。私密漏洞报告已开启。仓库已开启自动合并：用 `gh pr merge N --squash --auto` 排队，CI 一过 GitHub 就自动合并。
-- **[v0.2.0 Milestone：比赛提交](https://github.com/duoduo-cell/polaris/milestone/1)**（截止 10-29），7 个 Issue 已关 4 个（#12 #17 #18 #19）。剩下的 3 个都是 `owner-action`，要作者本人操作：
+- **[v0.2.0 Milestone：比赛提交](https://github.com/duoduo-cell/polaris/milestone/1)**（截止 10-29），7 个 Issue 已关 5 个（#12 #17 #18 #19 #20）。剩下 2 个都要作者本人操作：
   - #16 部署公开演示：学生认证、买服务器；
-  - #20 视频：配音或出镜；
-  - #21 Devpost 提交。
+  - #21 Devpost：勾声明、同意条款、提交。
 - 之后的路线图（不挂 Milestone）：
   - #22 读简历建证据链；
   - #23 云端子集（owner-action：定区域、预算、通知渠道）；

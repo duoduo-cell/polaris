@@ -8,6 +8,10 @@
 2. 核实运行状态：`docker ps`、8000／3000／9222／9223 端口、`data/logs/daemon.log` 末尾。旧 PID 不可沿用。Docker Desktop 装在 `D:\Docker\Docker\Docker Desktop.exe`，`up.ps1` 不会自己打开它。
 3. 按 STATUS 和 [v0.2.0 Milestone](https://github.com/duoduo-cell/polaris/milestone/1) 继续。
 
+## 比赛提交
+
+视频已公开，Devpost 草稿已填好，只差作者本人勾两项声明、同意条款、点提交。步骤见 [SUBMISSION](SUBMISSION.md) 开头。线上演示（#16）要作者实名买服务器。
+
 ## 仓库和提交流程（10-25 起）
 
 - 仓库 [duoduo-cell/polaris](https://github.com/duoduo-cell/polaris) 已公开，`main` 受保护：不能直接推，对管理员也生效；`AGENTS.md` 写了同样的流程。
