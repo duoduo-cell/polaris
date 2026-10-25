@@ -28,7 +28,8 @@ def smooth_scroll(page, total, steps=40, pause=0.08):
     # Scroll whichever element actually scrolls (the chat column has its own scroller).
     for _ in range(steps):
         page.evaluate("""(dy) => {
-            const els = [...document.querySelectorAll('*')].filter(e => e.scrollHeight > e.clientHeight + 40 && getComputedStyle(e).overflowY !== 'visible');
+            const els = [...document.querySelectorAll('*')]
+                .filter(e => e.scrollHeight > e.clientHeight + 40 && getComputedStyle(e).overflowY !== 'visible');
             const el = els.sort((a, b) => b.clientHeight - a.clientHeight)[0] || document.scrollingElement;
             el.scrollBy(0, dy); window.scrollBy(0, dy);
         }""", total / steps)
@@ -60,7 +61,8 @@ def prepare(browser):
     page.goto(BASE + "/watches", wait_until="networkidle")
     print("reset", api(page, "POST", "demo/reset"))
     for changes in ({"status": "applied"}, {"status": "interview", "stage": "二面"}, {"status": "rejected", "note": REASON}):
-        print("followup", changes["status"], api(page, "POST", "jobs/J-2/followup", {"request_id": str(uuid.uuid4()), "changes": changes})[0])
+        body = {"request_id": str(uuid.uuid4()), "changes": changes}
+        print("followup", changes["status"], api(page, "POST", "jobs/J-2/followup", body)[0])
     context.close()
 
 

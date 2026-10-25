@@ -39,7 +39,8 @@ for scene in timings:
         stretch = dur / raw
         # Pad the recording's last frame a little so speed changes never leave the tail short.
         run(["-i", f"{name}.webm", "-i", f"{name}.wav",
-             "-vf", f"setpts=PTS*{stretch:.5f},fps=30,tpad=stop_mode=clone:stop_duration=1,scale=1920:1080:flags=lanczos,{fades},format=yuv420p",
+             "-vf", f"setpts=PTS*{stretch:.5f},fps=30,tpad=stop_mode=clone:stop_duration=1,"
+                    f"scale=1920:1080:flags=lanczos,{fades},format=yuv420p",
              *common])
         print(f"{name}: recording {raw:.1f}s -> {dur:.1f}s (x{1 / stretch:.2f} speed)")
     parts.append(f"file '{name}.mp4'")
