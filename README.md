@@ -11,9 +11,9 @@
 
 作者自己找实习时就在用它，它也是作者参加 Nebius × NVIDIA Global AI Hackathon（Personal AI 赛道）的作品。
 
-![对话：按条件找岗位，逐项对照学历、论文、出勤，分开解释三个日期](docs/img/demo-chat.png)
+![对话：按条件找岗位，列出匹配点，再逐项对照硬性条件](docs/img/demo-chat.png)
 
-<sub>截图全部来自[合成演示](docs/DEMO.md)：岗位、面经和个人档案都是虚构的，公司名只是示例标签。</sub>
+<sub>截图全部来自[合成演示](docs/DEMO.md)：岗位、面经、公司名和个人档案都是虚构的。</sub>
 
 ## 能做什么
 
