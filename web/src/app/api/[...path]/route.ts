@@ -24,11 +24,14 @@ async function forward(req: Request, ctx: Ctx): Promise<Response> {
   }
   const { path } = await ctx.params;
   const url = new URL(req.url);
+  const forwardedFor = req.headers.get("x-forwarded-for");
   const target = `${API_BASE}/api/me/${path.map(encodeURIComponent).join("/")}${url.search}`;
   const init: RequestInit = {
     method: req.method,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json",
-      "X-Polaris-Expected-Dataset": demo ? "synthetic_demo" : "personal" },
+      "X-Polaris-Expected-Dataset": demo ? "synthetic_demo" : "personal",
+      // The demo API limits requests per visitor; Caddy puts the visitor's address here.
+      ...(demo && forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}) },
     cache: "no-store",
     ...(demo ? { redirect: "error" as const } : {}),
   };

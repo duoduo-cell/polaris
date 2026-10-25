@@ -81,6 +81,8 @@ class Settings(BaseSettings):
 
     database_url: str = DEFAULT_DATABASE_URL
     demo_mode: bool = False
+    demo_daily_model_calls: int = 400  # demo only: model calls per Beijing day before new requests are refused
+    demo_requests_per_client: int = 8  # demo only: model-using requests per visitor in any 10 minutes
     ingest_token: SecretStr | None = None
     mcp_token: SecretStr | None = None  # /mcp 的口令；不配就关闭 MCP
     portfolio_url: str | None = None  # 跟进消息里附的作品链接；不配就留“[作品链接]”让你自己填

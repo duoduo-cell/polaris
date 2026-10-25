@@ -14,7 +14,7 @@ Only `main` and the latest release get fixes.
 
 - Secrets in code or history: model keys, tokens, cookies, login state.
 - Collected platform text or personal data appearing anywhere public: the repository, the demo, the project page, release assets.
-- The public demo instance: escaping read-only mode, reading data other than the synthetic set, reaching the personal instance.
+- The public demo instance: escaping read-only mode, reading data other than the synthetic set, reaching the personal instance, getting around its daily model-call cap or per-visitor limit.
 - The local API: requests that skip the owner token or pairing code, the ingest token, or the MCP token.
 - Prompt injection through collected content that makes the agent take an action needing approval without it.
 

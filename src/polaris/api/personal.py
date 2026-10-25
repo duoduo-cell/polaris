@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
+from polaris import demo_budget
 from polaris.config import get_settings
 from polaris.data_scope import synthetic_filter
 from polaris.db.models import Notification
@@ -32,6 +33,7 @@ def require_owner(authorization: Annotated[str | None, Header()] = None,
 
 
 router = APIRouter(prefix="/api/me", tags=["personal"], dependencies=[Depends(require_owner)])
+BUDGET = [Depends(demo_budget.guard)]  # routes that call a model; limited only on the public demo
 
 
 class ChatIn(BaseModel):
@@ -68,12 +70,14 @@ def _submit(thread_id: str, kind: str, payload: dict[str, Any], request_id: UUID
         raise HTTPException(409, str(e)) from e
 
 
-@router.post("/chat/tasks", status_code=202, summary="Persist a message and start an independent background task")
+@router.post("/chat/tasks", status_code=202, dependencies=BUDGET,
+             summary="Persist a message and start an independent background task")
 def submit_chat(body: TaskIn) -> dict[str, Any]:
     return _submit(body.thread_id, "chat", {"message": body.message}, body.request_id)
 
 
-@router.post("/chat/{thread_id}/resume/tasks", status_code=202, summary="Persist an approval decision (idempotent)")
+@router.post("/chat/{thread_id}/resume/tasks", status_code=202, dependencies=BUDGET,
+             summary="Persist an approval decision (idempotent)")
 def submit_resume(thread_id: str, body: ResumeTaskIn) -> dict[str, Any]:
     return _submit(thread_id, "resume", {"approve": body.approve, "reason": body.reason}, body.request_id)
 
@@ -238,7 +242,8 @@ def update_followup(reference: str, body: FollowupIn) -> dict[str, Any]:
         raise HTTPException(422, str(e)) from e
 
 
-@router.post("/jobs/{reference}/followup/draft", summary="Draft a follow-up message for one job; never sent by Polaris")
+@router.post("/jobs/{reference}/followup/draft", dependencies=BUDGET,
+             summary="Draft a follow-up message for one job; never sent by Polaris")
 def draft_followup(reference: str) -> dict[str, Any]:
     from polaris.followups import draft
     from polaris.llm.client import LLMError
@@ -395,7 +400,8 @@ def check_watch(watch_id: int) -> dict[str, Any]:
         return {"result": result, "watch": view(s, w)}
 
 
-@router.post("/watches/{watch_id}/report", summary="Write a situation report now (rules first, then the model; falls back to rules)")
+@router.post("/watches/{watch_id}/report", dependencies=BUDGET,
+             summary="Write a situation report now (rules first, then the model; falls back to rules)")
 def report_watch(watch_id: int) -> dict[str, Any]:
     from polaris.watch import view
     from polaris.watch_report import write_report
