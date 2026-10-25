@@ -1,0 +1,28 @@
+name: Feature request
+description: A job-search task Polaris cannot do yet, or does badly.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: The task
+      description: What a job seeker is trying to get done, in their words. One concrete case beats a general wish.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What happens today
+      description: What Polaris answers now, or which step is missing.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Data it needs, where that data comes from, and how the answer would cite it.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: How we will check it worked, ideally a task that can run against the synthetic demo.
