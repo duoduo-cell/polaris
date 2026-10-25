@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-3776AB)
 ![Next.js](https://img.shields.io/badge/next.js-16-000000)
 
-[中文](README.md) · [Synthetic demo](docs/DEMO.md) · [Design](docs/TECH.md) · [Dev log (Chinese)](docs/DEVLOG.md)
+[中文](README.md) · [Project page](https://duoduo-cell.github.io/polaris/en.html) · [One-page PDF](site/polaris-portfolio-en.pdf) · [Synthetic demo](docs/DEMO.md) · [Design](docs/TECH.md) · [Dev log (Chinese)](docs/DEVLOG.md)
 
 **A job-search agent for people looking for LLM and Agent internships in China.** It keeps collecting jobs and interview write-ups from company career sites, Xiaohongshu and Maimai, searches them against your constraints (city, direction, days per week, how many months you can stay), marks every hard conflict between you and a job, pulls real interview questions out of real posts, and watches a search goal for you over weeks. Every claim it makes opens to the source text; when it finds nothing, it says so.
 

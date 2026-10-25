@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>北极星 Polaris 项目作品集</title>
+<style>
+  @page { size: A4; margin: 11mm 12mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #1b1a18; font: 9.6pt/1.5 "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif; }
+  a { color: #2f4bbf; text-decoration: none; }
+  h1 { font-size: 19pt; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 11pt; margin: 0 0 4px; padding-bottom: 2px; border-bottom: 1.5px solid #1b1a18; }
+  .lead { margin: 4px 0 6px; color: #3d3a34; font-size: 10pt; }
+  .links { font-size: 9pt; color: #5f5b54; }
+  .links b { color: #1b1a18; }
+  .row { display: flex; gap: 12px; margin-top: 9px; }
+  .col { flex: 1; min-width: 0; }
+  .shot { width: 100%; border: 1px solid #ddd8ce; border-radius: 5px; display: block; }
+  .cap { color: #6b675f; font-size: 8pt; margin-top: 2px; }
+  ul { margin: 0; padding-left: 15px; }
+  li { margin: 1.5px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.6pt; }
+  th, td { text-align: left; vertical-align: top; padding: 3px 5px; border-bottom: 1px solid #e3dfd6; }
+  th { color: #6b675f; font-weight: 600; }
+  .num { white-space: nowrap; font-weight: 700; }
+  .stats { display: flex; gap: 8px; margin-top: 7px; }
+  .stat { flex: 1; border: 1px solid #ddd8ce; border-radius: 5px; padding: 4px 7px; }
+  .stat b { font-size: 13pt; display: block; line-height: 1.2; }
+  .stat span { color: #6b675f; font-size: 8pt; }
+  .foot { margin-top: 8px; color: #6b675f; font-size: 8pt; }
+</style>
+</head>
+<body>
+  <h1>北极星 Polaris：给找 LLM / Agent 实习的人用的求职 Agent</h1>
+  <p class="lead">常驻采集官网、小红书、脉脉上的岗位和面经，按条件（城市、方向、每周几天、实习多久）查岗位，标出硬冲突，从真实帖子里找面试原题，长期盯着一个求职目标。每一条都能点开来源；查不到就说查不到。作者自己找实习时在用。</p>
+  <div class="links"><b>代码</b> <a href="https://github.com/duoduo-cell/polaris">github.com/duoduo-cell/polaris</a>　<b>主页</b> <a href="https://duoduo-cell.github.io/polaris/">duoduo-cell.github.io/polaris</a>　<b>版本</b> v0.1.0，Apache-2.0</div>
+  <div class="stats">
+    <div class="stat"><b>18</b><span>个 Agent 工具，副作用要批准</span></div>
+    <div class="stat"><b>801</b><span>项后端测试，PR 必过 CI</span></div>
+    <div class="stat"><b>3800+</b><span>道面经题（本机库 10-25）</span></div>
+    <div class="stat"><b>0.89</b><span>检索 NDCG@10（三路 + 重排）</span></div>
+  </div>
+
+  <div class="row">
+    <div class="col" style="flex: 1.15">
+      <img class="shot" src="img/demo-chat.png" alt="对话截图">
+      <div class="cap">合成演示：按条件找岗位，逐项对照硬性条件。资料与公司名均为虚构。</div>
+    </div>
+    <div class="col">
+      <h2>能做什么，怎么保证可信</h2>
+      <ul>
+        <li><b>找岗位</b>：关键词、向量、图谱三路召回，先按条件筛再排；没写的条件标“待确认”。</li>
+        <li><b>面经</b>：原题带出处和日期；要原题却没查面经库时，编排层强制先查。</li>
+        <li><b>引用核验</b>：回答里的编号必须出现在工具结果里，否则标“未核验”。</li>
+        <li><b>跟进卡</b>：盯一个目标，变化分紧急 / 简报 / 安静，态势报告先由规则算事实。</li>
+        <li><b>竞争力</b>：HR 三问加同类求职者对照，样本少就直说。</li>
+        <li><b>投递与记忆</b>：漏斗、只起草不发送；双时间线记忆，改口先确认。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top: 9px">
+    <h2>工程案例（真实跑出来的问题，离线测试都没发现）</h2>
+    <table>
+      <tr><th style="width:24%">现象</th><th style="width:38%">原因</th><th style="width:26%">改法</th><th>前后</th></tr>
+      <tr><td>按条件找岗位只列出 1 个</td><td>先全库取前 50 块再和条件范围取交集，40 个候选剩 1 个（后过滤丢召回）</td><td>范围内岗位编号传进三路召回，先筛后排</td><td class="num">1 → 32</td></tr>
+      <tr><td>一次任务 265 秒</td><td>工具结果上限 6000 字，每岗约 2200 字，模型一页页翻</td><td>精简列表项，上限放到 16000 字</td><td class="num">77 秒</td></tr>
+      <tr><td>模型请求 30 秒连接错误</td><td>本机加速器 TUN 接管百炼流量，握手 1～8 秒常卡</td><td>仅百炼域名、仅假地址时直连，失败退回</td><td class="num">103 → 2 秒</td></tr>
+      <tr><td>回答编造“库里的面试题”</td><td>模型跳过检索直接收尾，提示词禁令无效</td><td>编排层证据门禁</td><td class="num">题题有出处</td></tr>
+      <tr><td>数据库没起测试也“通过”</td><td>整批跳过且退出码 0，792 项里 306 项没跑</td><td>CI 里连不上库就失败</td><td class="num">PR #2</td></tr>
+    </table>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <h2>技术栈</h2>
+      <ul>
+        <li>LangGraph 1.2 / LangChain 1.4：审批、调用上限、重试、证据门禁中间件</li>
+        <li>PostgreSQL 17 + pgvector + ParadeDB pg_search（BM25 中文分词），Neo4j 可选，加权 RRF + 重排 + MMR</li>
+        <li>FastAPI、SQLAlchemy、Alembic、MCP；Next.js 16、React 19</li>
+        <li>百炼 Qwen；每次模型调用记录 token、耗时、费用；GitHub Actions</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h2>评测（10-11～10-13 模块评测）</h2>
+      <ul>
+        <li>检索 NDCG@10：单路 0.73 → 三路 0.81 → 加重排 0.89</li>
+        <li>多来源对齐测试集 F1 0.93（规则冻结后标注）</li>
+        <li>回答质量：开发集 24/24、留出集 13/14，编造来源 0</li>
+        <li>提示注入 15 次攻击 0 次得逞</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="foot">数据边界：登录平台只在本机、本人账号、只读低频，原文不进仓库和演示；不自动发消息、不自动投递。每个数字的出处见仓库 README 与 DEVLOG。</p>
+</body>
+</html>
