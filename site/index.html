@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>北极星 Polaris：给找 LLM / Agent 实习的人用的求职 Agent</title>
+<meta name="description" content="常驻采集岗位和面经，按你的条件查岗位、标出硬冲突、找面试原题、长期盯着一个求职目标；每一条都能点开来源。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./">北极星 Polaris</a>
+    <nav>
+      <a href="#features">能做什么</a>
+      <a href="#architecture">架构</a>
+      <a href="#cases">工程案例</a>
+      <a href="en.html">English</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h1>给找 LLM / Agent 实习的人用的求职 Agent</h1>
+    <p class="lead">它常驻采集官网、小红书、脉脉上的岗位和面经，按你的条件（城市、方向、每周几天、能实习多久）查岗位，标出你和每个岗位的硬冲突，从真实帖子里找面试原题，替你长期盯着一个求职目标。它说的每一条都能点开看到来源原文；查不到的，就说查不到。</p>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/duoduo-cell/polaris">GitHub 仓库</a>
+      <a class="btn" href="https://github.com/duoduo-cell/polaris/blob/main/docs/DEMO.md">在本机跑合成演示</a>
+      <a class="btn" href="https://github.com/duoduo-cell/polaris/releases/tag/v0.1.0">v0.1.0 发布说明</a>
+    </div>
+    <p class="caption">在线演示正在部署（<a href="https://github.com/duoduo-cell/polaris/issues/16">#16</a>）。作者自己找实习时就在用它；它也是 Nebius × NVIDIA Global AI Hackathon（Personal AI 赛道）的参赛作品。</p>
+    <div class="stats">
+      <div class="stat"><b>18</b><span>Agent 工具，有副作用的都要你批准</span></div>
+      <div class="stat"><b>792</b><span>项后端测试，每个 PR 都跑 CI</span></div>
+      <div class="stat"><b>5</b><span>个真实跑出来的工程案例</span></div>
+      <div class="stat"><b>3800+</b><span>道面经题，作者本机库（10-25）</span></div>
+    </div>
+  </div>
+
+  <section>
+    <img class="shot" src="img/demo-chat.png" alt="对话：按条件找岗位，逐项对照学历、论文、出勤，分开解释三个日期">
+    <p class="caption">截图全部来自合成演示：岗位、面经、公司名和个人档案都是虚构的。</p>
+  </section>
+
+  <section id="features">
+    <h2>能做什么</h2>
+    <p class="sub">每一项都写了“怎么保证可信”，因为求职建议最怕的是编。</p>
+    <div class="grid">
+      <div class="card"><h3>找岗位</h3><p>按城市、方向、实习类型、每周天数查；关键词、向量、知识图谱三路召回后融合、重排。</p><p class="trust">先按条件筛再召回；岗位没写的条件标“待确认”，不算符合。</p></div>
+      <div class="card"><h3>对照条件</h3><p>学历、论文、出勤、实习时长逐项和你的记忆卡片对照。</p><p class="trust">硬冲突单独标出；卡片没写的列为“要补充的信息”。</p></div>
+      <div class="card"><h3>面经</h3><p>从帖子里抽出的面试原题，带出处和发帖日期。</p><p class="trust">你要原题时编排层强制先查面经库；回答里的编号必须出现在工具结果里，否则标“未核验”。</p></div>
+      <div class="card"><h3>跟进卡</h3><p>长期盯一个目标：重点岗位下架或改了要求、范围里的新岗位、新面经、同类求职者的新结果。</p><p class="trust">变化分成紧急、进简报、安静三档；每天的态势报告由规则先算事实，模型只负责写。</p></div>
+      <div class="card"><h3>竞争力</h3><p>用 HR 的三个问题看你：被哪些硬门槛挡住、常见技能对上多少、经历有没有证据；再和公开自述的同类求职者对照。</p><p class="trust">样本少就直说；“没写”不等于“没有”。</p></div>
+      <div class="card"><h3>投递与记忆</h3><p>投递漏斗、跟进消息起草；记住你说过的条件和经历，能看、能查历史、能删。</p><p class="trust">只起草不发送；改数据、开跟进卡要你批准；双时间线记忆，改口先确认。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>演示里能看到的</h2>
+    <p class="sub">跟进卡演示剧本：天数 4→5、岗位下架、新岗位、新面经，全部被发现、分级、写进报告。</p>
+    <div class="grid">
+      <div><img class="shot" src="img/demo-watch.png" alt="跟进卡：重点岗位、变化分级、态势报告"><p class="caption">跟进卡与态势报告</p></div>
+      <div><img class="shot" src="img/demo-review.png" alt="竞争力：硬门槛冲突、技能对照、待补充信息"><p class="caption">竞争力：硬门槛、技能对照、HR 会追问的缺口</p></div>
+    </div>
+    <p style="margin-top:14px"><img class="shot" src="img/demo-funnel.png" alt="投递：漏斗、渠道、每周投递量、被拒反馈"></p>
+    <p class="caption">投递：按每个岗位走到的最远一步算漏斗；被拒理由记进卡片，之后问差距时会对照。</p>
+  </section>
+
+  <section id="architecture">
+    <h2>架构</h2>
+    <p class="sub">采集只在本机、只读、低频；检索在 PostgreSQL 里做混合召回；对话由 LangGraph 编排，每次模型调用都记录 token、耗时和费用。</p>
+    <div class="diagram"><a href="img/arch-zh.svg"><img src="img/arch-zh.svg" alt="系统架构：采集、抽取、对齐、PostgreSQL 混合检索、LangGraph Agent、网页和 MCP、常驻进程"></a></div>
+    <p class="caption">点图看大图。</p>
+    <p class="caption">一次请求在 Agent 里怎么走：</p>
+    <div class="diagram narrow"><a href="img/flow-zh.svg"><img src="img/flow-zh.svg" alt="一次请求：记忆抽取、规划、调工具、审批、证据门禁、引用核验"></a></div>
+  </section>
+
+  <section id="cases">
+    <h2>工程案例</h2>
+    <p class="sub">都来自把系统真实跑起来时遇到的问题，离线测试一个都没发现。</p>
+    <div class="table-scroll"><table>
+      <tr><th>现象</th><th>原因</th><th>改法</th><th>前后</th></tr>
+      <tr><td>“北京 Agent 日常实习”只列出 1 个岗位</td><td>先在全库取前 50 个文本块再和条件范围取交集，范围内 40 个候选只剩 1 个；北京实习 207 个里 140 个没写每周天数，被整批排除</td><td>把范围内的岗位编号传进三路召回，先筛后排；没写天数的保留并标“待确认”</td><td class="num">召回 1 → 32</td></tr>
+      <tr><td>一次任务 265 秒，模型在一页页翻结果</td><td>工具结果上限 6000 字，每个岗位约 2200 字，一页只放 1～2 个</td><td>列表去掉重复的长解释，上限放到 16000 字</td><td class="num">完整任务 77 秒</td></tr>
+      <tr><td>模型请求 30 秒后“连接错误”</td><td>本机加速器的 TUN 接管了百炼流量，握手 1～8 秒常卡住；网卡直连 6/6 成功，约 0.2 秒</td><td>只对百炼域名、只在 DNS 返回假地址时，查真实地址并从默认路由网卡直连，失败退回隧道</td><td class="num">103 秒 → 2 秒</td></tr>
+      <tr><td>回答说“在库里找到了一道面试题”，库里没有</td><td>模型没调面经检索就收尾；提示词里的禁令它照样跳过</td><td>编排层加证据门禁：要原题又没查过面经库时，退回去先查</td><td class="num">原题都有出处</td></tr>
+      <tr><td>数据库没起，测试照样“通过”</td><td>连不上测试库时整批跳过数据库测试，退出码仍是 0；一次 792 项里 306 项没跑</td><td>CI 里连不上库就失败，用和演示同一个 ParadeDB 镜像</td><td class="num"><a href="https://github.com/duoduo-cell/polaris/pull/2">PR #2</a></td></tr>
+    </table></div>
+    <p class="caption">前四项在提交 <a href="https://github.com/duoduo-cell/polaris/commit/1d8cf59">1d8cf59</a>，过程见 <a href="https://github.com/duoduo-cell/polaris/blob/main/docs/DEVLOG.md">DEVLOG</a>。</p>
+  </section>
+
+  <section>
+    <h2>评测</h2>
+    <p class="sub">10-11 到 10-13 的模块评测，数字只对当时的版本和题集成立。</p>
+    <div class="table-scroll"><table>
+      <tr><th>方面</th><th>指标</th></tr>
+      <tr><td>检索</td><td>NDCG@10：单路 0.73 → 三路 0.81 → 加重排 0.89（<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/M4.md">M4</a>）</td></tr>
+      <tr><td>多来源对齐</td><td>测试集 F1 0.93，规则冻结后标注、只评不调（<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/M4.md">M4</a>）</td></tr>
+      <tr><td>记忆</td><td>整句全对：开发 26/28、留出 14/16、测试 13/16（<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/M5.md">M5</a>）</td></tr>
+      <tr><td>回答质量</td><td>开发集 24/24 和 23/24，留出集 13/14，编造来源 0（<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/answers.md">开发</a>、<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/answers_v2.md">留出</a>）</td></tr>
+      <tr><td>提示注入</td><td>15 次攻击 0 次得逞（<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/injection.md">injection</a>）</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>技术栈</h2>
+    <div class="grid">
+      <div class="card"><h3>Agent</h3><p>LangGraph 1.2 / LangChain 1.4：中间件做审批、调用上限、重试、证据门禁；Postgres checkpointer。</p></div>
+      <div class="card"><h3>检索</h3><p>PostgreSQL 17 + pgvector + ParadeDB pg_search（BM25，中文分词）；Neo4j 图谱可选；加权 RRF、重排、MMR。</p></div>
+      <div class="card"><h3>后端与网页</h3><p>FastAPI、SQLAlchemy 2.1、Alembic、MCP；Next.js 16、React 19，可装到手机。</p></div>
+      <div class="card"><h3>模型</h3><p>阿里云百炼：对话 qwen3.7-plus，抽取 qwen-plus，向量 text-embedding-v4，重排 qwen3-rerank；换别家只改配置。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>数据边界</h2>
+    <ul class="plain">
+      <li>官网公开岗位正常采集；小红书、脉脉、Boss 只在作者本机、用本人账号、只读、低频，遇到验证就停下。</li>
+      <li>采集的原文不进仓库、公开演示和提交材料；不采个人主页，不自动发消息、不自动投递。</li>
+      <li>公开演示只用手写的合成资料，独立数据库、API 和网页，每天有调用上限。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <a href="https://github.com/duoduo-cell/polaris">duoduo-cell/polaris</a> · Apache-2.0 ·
+    <a href="https://github.com/duoduo-cell/polaris/blob/main/CHANGELOG.md">CHANGELOG</a> ·
+    <a href="https://github.com/duoduo-cell/polaris/milestone/1">下一个版本</a> · <a href="en.html">English</a>
+  </footer>
+</div>
+</body>
+</html>
