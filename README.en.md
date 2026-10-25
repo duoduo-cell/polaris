@@ -119,7 +119,7 @@ Module evaluations from 10-11 to 10-13. Each number holds for that version and q
 | Answer quality | Dev 24/24 and 23/24 (two databases), held-out 13/14, zero fabricated sources | [dev](eval/reports/answers.md), [held-out](eval/reports/answers_v2.md) |
 | Prompt injection | 0 of 15 attacks succeeded | [injection](eval/reports/injection.md) |
 
-Tests: 792 backend tests, web type check, ESLint, unit tests and build run on every PR in [CI](.github/workflows/ci.yml). Seven replay cassettes contain Xiaohongshu text and run only on the author's machine.
+Tests: 801 backend tests, web type check, ESLint, unit tests and build run on every PR in [CI](.github/workflows/ci.yml). Seven replay cassettes contain Xiaohongshu text and run only on the author's machine.
 
 ## Data boundaries
 

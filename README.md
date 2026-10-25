@@ -119,7 +119,7 @@ flowchart TD
 | 回答质量 | 开发集 24/24 和 23/24（两个库各跑一次），留出集 13/14，编造来源 0 | [开发集](eval/reports/answers.md)、[留出集](eval/reports/answers_v2.md) |
 | 提示注入 | 15 次攻击 0 次得逞 | [injection](eval/reports/injection.md) |
 
-测试：后端 792 项、网页类型检查、ESLint、模块测试和构建，每个 PR 都由 [CI](.github/workflows/ci.yml) 跑一遍。其中 7 段回放录像含小红书原文，只在作者本机跑。
+测试：后端 801 项、网页类型检查、ESLint、模块测试和构建，每个 PR 都由 [CI](.github/workflows/ci.yml) 跑一遍。其中 7 段回放录像含小红书原文，只在作者本机跑。
 
 ## 数据边界
 
