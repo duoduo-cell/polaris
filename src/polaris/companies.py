@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from polaris.config import ROOT
+from polaris.config import ROOT, get_settings
 
 CONFIG = ROOT / "config" / "big_companies.toml"
 
@@ -21,10 +21,19 @@ class BigCompany:
         return (self.name, *self.aliases)
 
 
+# The synthetic demo labels its invented jobs with a fictional company (the hackathon video may not show real trademarks).
+# Only demo mode knows it, so the personal instance's list stays exactly what the config says.
+DEMO_COMPANY = BigCompany("合成科技", "合成演示", ())
+
+
 @lru_cache
-def load(path: Path = CONFIG) -> tuple[BigCompany, ...]:
+def _listed(path: Path = CONFIG) -> tuple[BigCompany, ...]:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     return tuple(BigCompany(c["name"], c.get("group", "大厂"), tuple(c.get("aliases", []))) for c in data["company"])
+
+
+def load(path: Path = CONFIG) -> tuple[BigCompany, ...]:
+    return _listed(path) + (DEMO_COMPANY,) if get_settings().demo_mode else _listed(path)
 
 
 def _pattern(alias: str) -> re.Pattern[str]:
@@ -34,9 +43,14 @@ def _pattern(alias: str) -> re.Pattern[str]:
     return re.compile(re.escape(alias))
 
 
-@lru_cache
 def _patterns() -> tuple[tuple[BigCompany, tuple[re.Pattern[str], ...]], ...]:
-    return tuple((c, tuple(_pattern(a) for a in sorted(c.names, key=len, reverse=True))) for c in load())
+    return _compiled(get_settings().demo_mode)
+
+
+@lru_cache
+def _compiled(demo: bool) -> tuple[tuple[BigCompany, tuple[re.Pattern[str], ...]], ...]:
+    companies = _listed() + ((DEMO_COMPANY,) if demo else ())
+    return tuple((c, tuple(_pattern(a) for a in sorted(c.names, key=len, reverse=True))) for c in companies)
 
 
 def match(text: str | None) -> BigCompany | None:

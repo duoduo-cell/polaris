@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import Engine, func, select, table, text
 from sqlalchemy.orm import Session
 
+from polaris.companies import DEMO_COMPANY
 from polaris.config import Settings, get_settings, require_demo_database_url
 from polaris.db.models import Base, InterviewQuestion, Job, MemoryFact, Post, Posting, RawItem, Run, SearchChunk
 from polaris.db.session import get_engine, session_scope
@@ -16,9 +17,9 @@ from polaris.interviews import profile
 from polaris.memory.schema import value_key
 from polaris.search.chunking import Chunk, chunk_values, job_chunks
 
-VERSION = "demo-fixture-v2"
-DISCLOSURE = "纯合成演示，预置岗位、面经及档案为人工虚构；公司名仅为示例标签，与实际招聘无关。"
-COMPANY = "腾讯"
+VERSION = "demo-fixture-v3"
+DISCLOSURE = "纯合成演示，预置岗位、面经、公司名及档案均为人工虚构，与实际招聘无关。"
+COMPANY = DEMO_COMPANY.name
 
 
 @dataclass

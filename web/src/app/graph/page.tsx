@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { BarChart3, Search, Sparkles } from "lucide-react";
 import { Button, Card, EmptyState, ErrorNote, PageHeader, Skeleton } from "@/components/markdown";
+import { useDemoMode } from "@/components/demo-mode";
 import { ResultPanel } from "@/components/result-cards";
 import { tool } from "@/lib/client";
 
@@ -25,6 +26,7 @@ export default function Graph() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<string | null>(null);
+  const demo = useDemoMode();
 
   async function run(a: Record<string, string>) {
     setBusy(true); setError(null);
@@ -41,6 +43,19 @@ export default function Graph() {
 
   const field = "rounded-lg border border-line bg-card px-3 py-1.5 text-sm outline-none focus:border-faint transition-colors";
   const max = Math.max(1, ...(stats?.groups.map((g) => g.count) ?? [1]));
+
+  if (demo) {
+    return (
+      <div className="space-y-5">
+        <PageHeader title="知识图谱">公司、部门、岗位、城市、技能、方向、帖子、面试题之间的关系</PageHeader>
+        <Card>
+          <EmptyState icon={BarChart3} title="合成演示不连知识图谱">
+            演示只用关键词检索几条虚构资料，统计不出有意义的分布。个人实例里，这一页按公司、部门、技能、城市统计真实采集的岗位和面试题。
+          </EmptyState>
+        </Card>
+      </div>
+    );
+  }
   return (
     <div className="space-y-5">
       <PageHeader title="知识图谱">

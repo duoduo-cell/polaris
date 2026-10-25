@@ -108,7 +108,7 @@ def test_fixture_contains_only_synthetic_sources_with_distinct_date_meanings():
     assert all("人工虚构" in f.source_text for f in rows.groups[-1])
 
 
-def test_seeded_question_post_parser_and_tool_projection_agree_on_source_facts():
+def test_seeded_question_post_parser_and_tool_projection_agree_on_source_facts(demo_mode):
     from polaris.interviews import profile
     from polaris.tools.jobs import _post_row
     from polaris.tools.knowledge import question_row
@@ -327,3 +327,15 @@ def test_reset_restores_seeded_memory_and_drops_what_visitors_recorded(db, monke
         assert s.scalar(select(func.count()).select_from(MemorySuppression)) == 0
         assert s.scalar(select(func.count()).select_from(JobFollowup)) == 0
         assert s.scalar(select(func.count()).select_from(JobFollowupEvent)) == 0
+
+
+def test_fictional_demo_company_is_known_only_in_demo_mode(demo_mode, monkeypatch):
+    """#18: the demo may not use a real company name, yet its questions still need a company to attribute to."""
+    from polaris import companies
+
+    assert companies.match("合成科技Agent一面面经") is companies.DEMO_COMPANY
+    assert demo.COMPANY == companies.DEMO_COMPANY.name
+    monkeypatch.setenv("DEMO_MODE", "false")
+    get_settings.cache_clear()
+    assert companies.match("合成科技Agent一面面经") is None
+    assert companies.DEMO_COMPANY not in companies.load()
