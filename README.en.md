@@ -1,102 +1,174 @@
 # Polaris
 
-[中文](README.md) · [Current acceptance status](docs/LOCAL_ACCEPTANCE.md)
+[![CI](https://github.com/duoduo-cell/polaris/actions/workflows/ci.yml/badge.svg)](https://github.com/duoduo-cell/polaris/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.12-3776AB)
+![Next.js](https://img.shields.io/badge/next.js-16-000000)
 
-Polaris is a local job-search workbench for LLM and Agent internships: find jobs and interview material, compare requirements with the user's recorded background, prepare answers, and save explicitly confirmed follow-ups. It keeps source evidence and model/tool traces.
+[中文](README.md) · [Synthetic demo](docs/DEMO.md) · [Design](docs/TECH.md) · [Dev log (Chinese)](docs/DEVLOG.md)
 
-**The current local release has not passed end-to-end acceptance.** There is no hosted demo or deployed continuous cloud agent. Collectors and services require an explicit manual start; project autostart is disabled. The author uses this project for internship preparation and is developing it toward a hackathon submission.
+**A job-search agent for people looking for LLM and Agent internships in China.** It keeps collecting jobs and interview write-ups from company career sites, Xiaohongshu and Maimai, searches them against your constraints (city, direction, days per week, how many months you can stay), marks every hard conflict between you and a job, pulls real interview questions out of real posts, and watches a search goal for you over weeks. Every claim it makes opens to the source text; when it finds nothing, it says so.
 
-![Historical UI example with synthetic company labels](docs/img/chat.png)
+The author uses it for their own internship search. It is also their entry to the Nebius × NVIDIA Global AI Hackathon, Personal AI track. The interface and the documents are in Chinese, because the users and the sources are.
 
-This historical screenshot illustrates the interface, not the current build's acceptance result. Historical evaluation numbers are scoped to their original experiments; see [the reports](eval/reports/) and [current status](docs/STATUS.md).
+![Chat: jobs found under the user's constraints, education, paper and attendance compared item by item, three dates explained separately](docs/img/demo-chat.png)
 
-## What the implementation contains
+<sub>All screenshots come from the [synthetic demo](docs/DEMO.md): jobs, interview posts and the profile are invented, and company names are only labels.</sub>
 
-- Source collection, extraction, job alignment and search infrastructure for personal use.
-- A persisted chat-task queue, LangGraph orchestration, profile memory, tool limits and human approval for designated actions.
-- Source-linked job/interview cards, eligibility conflicts and unknowns, interview preparation, and per-job follow-up records.
-- Traces for calls, latency, tokens and known or unknown cost; cancellation and unconfirmed-delivery handling.
+## What it does
 
-The independent demo uses only handcrafted synthetic jobs, interview text and a fictional profile. It uses PostgreSQL keyword retrieval; vector, graph, reranking, live platforms, external ingestion and MCP are disabled there. A public company name is an example label, not evidence of actual hiring or interview questions.
+| | What | Why you can trust it |
+|---|---|---|
+| **Find jobs** | Search by city, direction, internship type and days per week; keyword, vector and knowledge-graph recall, fused and reranked | Constraints filter before recall; a constraint the posting does not state is marked "to confirm", never counted as a match |
+| **Check fit** | Education, papers, attendance and internship length compared with your memory card | Hard conflicts are flagged; whatever your card lacks is listed as "information to add" |
+| **Interview questions** | Questions extracted from posts, with source and post date | When you ask for real questions, orchestration forces a question search first; any id the answer cites must appear in tool results, or the page marks it unverified |
+| **Follow-up cards** | Watch one goal over time: a focus job removed or changed, new jobs in scope, new interview posts, new outcomes from people like you | Reads the local database only, deduplicated by fingerprint; changes ranked urgent / digest / quiet; a daily situation report whose facts are computed by rules first and only written by the model |
+| **Competitiveness** | The three questions HR asks: which hard requirements block you, how many common skills your card covers, whether your experience has evidence; then a three-tier comparison with people who posted their own background | Says so when the sample is small; "not written" is not "does not have" |
+| **Applications** | Funnel from saved to offer, channels, weekly volume; drafts follow-up messages | Drafts only, never sends; placeholders where the card has no information, never "meets the requirement" |
+| **Memory** | Remembers what you said about your constraints and experience; viewable, with history, deletable | Bi-temporal (true when / learned when); asks before overwriting; since 10-24, constraints inside a question are not stored as facts about you |
+| **Safety** | Outside text is marked untrusted; changing data or opening a follow-up card waits for your approval | Approve or reject only; arguments cannot be edited and then executed |
+
+<table>
+<tr>
+<td><img src="docs/img/demo-watch.png" alt="Follow-up card: focus jobs, ranked changes, situation report"></td>
+<td><img src="docs/img/demo-review.png" alt="Competitiveness: hard-requirement conflicts, skill coverage, missing information"></td>
+</tr>
+<tr>
+<td align="center"><sub>Follow-up card: in the demo script, days 4→5, a removed job, a new job and a new interview post are all caught and reported</sub></td>
+<td align="center"><sub>Competitiveness: 1 of 2 open jobs conflicts on education and papers; evaluation/benchmark is required by both and missing from the card</sub></td>
+</tr>
+</table>
+
+## Architecture
 
 ```mermaid
-flowchart LR
-  U[User request] --> Q[Persisted task queue]
-  Q --> A[LangGraph and tool policy]
-  M[Recorded profile] --> A
-  A --> R[Scoped retrieval]
-  R --> S[Stored source evidence]
-  A --> O[Report and result cards]
-  O --> U
-  U --> F[Confirmed per-job follow-up]
-  A -.calls and usage.-> T[Trace records]
+flowchart TB
+  subgraph collect["Collection (always on, local)"]
+    O["Career sites: Tencent, ByteDance, Xiaohongshu<br/>public pages, daily batch"]
+    B["Xiaohongshu, Maimai, Boss<br/>own account, read-only, low rate"]
+  end
+  O --> RAW[("Raw layer<br/>raw_items")]
+  B --> RAW
+  RAW --> EX["LLM structured extraction<br/>jobs, posts, questions, peer samples"]
+  EX --> AL["Cross-source alignment<br/>same-job matching, conflict resolution"]
+  AL --> PG[("PostgreSQL 17<br/>pgvector + pg_search BM25")]
+  AL -.->|optional| KG[("Neo4j graph")]
+  subgraph agent["Chat: LangGraph agent"]
+    Q["Persisted task queue"] --> G["Orchestration: 18 tools<br/>call limits, retries, context compaction"]
+    G --> GATE["Evidence gate, citation check"]
+    G --> APR["Side-effecting tools<br/>wait for approval"]
+  end
+  PG --> G
+  KG --> G
+  MEM[("Bi-temporal memory")] <--> G
+  G --> WEB["Next.js web app"]
+  G --> MCP["Read-only MCP endpoint"]
+  subgraph daemon["Daemon"]
+    W["Follow-up checks<br/>ranked changes, situation reports"]
+    BR["Daily brief, system notifications"]
+  end
+  PG --> W
+  W --> WEB
+  BR --> WEB
+  G -.->|every call| TR[("Traces: tokens, latency, cost")]
 ```
 
-## Independent local demo
+One request through the agent:
 
-These are manual setup steps, **not a claim of a successful clean install**. Docker image pull, PostgreSQL migrations/import and a complete browser task are still unverified for this entry. The detailed, authoritative runbook is [DEMO.md](docs/DEMO.md); [ACCEPTANCE_RUNBOOK.md](docs/ACCEPTANCE_RUNBOOK.md) defines what must be checked afterwards.
-
-Requirements: Python 3.12+, uv, Docker Compose and Node.js 20.9+ (the locked Next.js package's requirement). You need your own compatible model service and must account for its usage. The demo does not copy the author's database or browser sessions.
-
-From a new PowerShell terminal in the repository root:
-
-```powershell
-uv sync --frozen
-Copy-Item config/demo.env.example .env.demo
+```mermaid
+flowchart TD
+  U["Your message"] --> M["Memory extraction: facts about you only"]
+  U --> P["Model plans: constraints go into tool arguments"]
+  P --> T{"Call tools"}
+  T -->|"jobs_search etc."| R["Scope jobs by constraints, then three-way recall, RRF fusion, rerank"]
+  R --> T
+  T -->|"change memory, open a card"| A["Pause for your approval"]
+  A --> T
+  T --> F{"About to answer"}
+  F -->|"you asked for real questions, none searched yet"| T
+  F --> C["Citation check: every id in the answer must be in tool results"]
+  C --> OUT["Answer with source cards you can open"]
 ```
 
-Edit `.env.demo` yourself: set a separate database password, a separate `OWNER_TOKEN`, and your provider's supported model configuration. The URL password and `DEMO_DB_PASSWORD` must agree. Keep credentials out of Git. Avoid inherited personal overrides for `DATABASE_URL`, `DEMO_MODE`, `POLARIS_API` and `OWNER_TOKEN`.
+## Engineering cases
 
-```powershell
-$env:POLARIS_ENV_FILE = (Resolve-Path .env.demo).Path
-uv run python -m polaris.demo
-uv run python -c "from polaris.config import get_settings; from polaris.db.migration_config import migration_database_url; s=get_settings(); assert s.demo_mode; assert migration_database_url()==s.database_url; print('Demo configuration agrees; no database or model request performed.')"
-```
+All of these came from running the whole system for real. No offline test caught any of them.
 
-The first command checks samples in memory. The second validates configuration, not provider availability. Only when you intend to start the independent demo:
+| Symptom | Cause | Fix | Before → after |
+|---|---|---|---|
+| "Beijing Agent internship" listed 1 job | The search took the top 50 chunks from the whole corpus and only then intersected with the user's scope: 40 in-scope candidates became 1 (post-filtering losing recall). Also, 140 of 207 Beijing internships did not state days per week and were dropped | Pass the in-scope job ids into all three recall paths (filter first, then rank); keep jobs with unknown days and mark them "to confirm" | Candidates 1 → 32 |
+| One task took 265 s while the model paged through results | Tool output was capped at 6,000 characters and each job took about 2,200, so a page held 1–2 jobs | Drop the threshold explanations repeated on every list item (details keep them); raise the cap to 16,000 characters | Fewer pages; with the next two fixes the full task took 77 s |
+| Model requests failed with "connection error" after 30 s | A local accelerator's TUN interface captured traffic to Alibaba Bailian: handshakes took 1–8 s and often hung, while direct Wi-Fi connections succeeded 6/6 in about 0.2 s | [`llm/direct.py`](src/polaris/llm/direct.py): only for the Bailian host and only when system DNS returns a 198.18/15 fake address, resolve the real address through Alibaba DNS and connect from the default-route interface; fall back to the tunnel on failure | jobs_search 103 s → 2 s, zero failed model requests |
+| The answer said "I found an interview question in the database"; there was none | The model finished without calling the question search, despite a prompt rule against inventing questions | [`QuestionEvidenceGate`](src/polaris/agent/final_answer.py) in orchestration: when the user asks for real questions and no question search has succeeded, route back to search first | Questions come from real posts with source and date; no unverified-citation warning |
+| Setting up CI showed tests "passing" with no database | `conftest.py` skipped every database test when the test database was unreachable, exit code 0. On 10-25 Docker had stopped and 306 of 792 tests never ran | Fail instead of skip in CI; CI uses the same ParadeDB image as the demo | [PR #2](https://github.com/duoduo-cell/polaris/pull/2) |
 
-```powershell
-docker compose --env-file .env.demo -f compose.demo.yml up -d --wait db
-uv run alembic upgrade head
-uv run python -m polaris.demo --seed --apply
-uv run polaris serve --port 8010
-```
+The first four are in commit [`1d8cf59`](https://github.com/duoduo-cell/polaris/commit/1d8cf59); the [dev log](docs/DEVLOG.md) entry for the evening of 10-24 records the runs. See also the [report delivery case](docs/design/REPORT_DELIVERY.md): why "generated" is not "saved".
 
-Use another new terminal at the repository root for the web app:
+## Evaluation
 
-```powershell
-$env:POLARIS_ENV_FILE = (Resolve-Path .env.demo).Path
-$env:POLARIS_API = 'http://127.0.0.1:8010'
-npm --prefix web ci
-npm --prefix web run dev -- -H 127.0.0.1 --port 3010
-```
+Module evaluations from 10-11 to 10-13. Each number holds for that version and question set only, not for today's end-to-end tasks.
 
-Open `http://127.0.0.1:3010`. Verify the synthetic banner and `/health` reporting `config.dataset=synthetic_demo`. The demo proxy also checks health before authenticated forwarding; a mode mismatch or unavailable demo blocks the request. Restart the corresponding process after changing its configuration.
+| Area | Result | Report |
+|---|---|---|
+| Retrieval | NDCG@10: single path 0.73 → three paths 0.81 → with rerank 0.89 | [M4](eval/reports/M4.md) |
+| Cross-source alignment | Test set F1 0.93 (labelled after the rules were frozen, evaluated only) | [M4](eval/reports/M4.md) |
+| Memory | Exact sentence match: dev 26/28, held-out 14/16, test 13/16 | [M5](eval/reports/M5.md) |
+| Tool calling | 14 tasks, pass^3 100% | [M2](eval/reports/M2.md) |
+| Answer quality | Dev 24/24 and 23/24 (two databases), held-out 13/14, zero fabricated sources | [dev](eval/reports/answers.md), [held-out](eval/reports/answers_v2.md) |
+| Prompt injection | 0 of 15 attacks succeeded | [injection](eval/reports/injection.md) |
 
-Stop the API and web terminals with Ctrl+C, then stop the independent database while retaining its volume:
+Tests: 792 backend tests, web type check, ESLint, unit tests and build run on every PR in [CI](.github/workflows/ci.yml). Seven replay cassettes contain Xiaohongshu text and run only on the author's machine.
 
-```powershell
-docker compose --env-file .env.demo -f compose.demo.yml stop
-```
+## Data boundaries
 
-Do not use the personal-data `polaris sandbox` copy for public recording. Demo source links under `example.invalid` are labels; inspect stored synthetic text in the app rather than treating them as live job pages.
+- **Public career pages**: collected normally, daily.
+- **Xiaohongshu, Maimai, Boss**: only on the author's machine, with the author's own account, read-only and low-rate. No fingerprint spoofing, proxy pools, account rotation or captcha bypass; on a verification prompt it stops and waits for a person. Raw text never enters this repository, the public demo or the submission.
+- **No people collection**: no Maimai or LinkedIn profiles, no automated messages, no automated applications.
+- **Public demo**: handwritten synthetic data only, with its own database, API and web app; the web app checks before every request that it is talking to the demo API.
 
-## Evidence and limits
+The author's local database as of 10-25: about 690 jobs, 2,400 posts, 3,800+ interview questions, and 11,000+ recorded model calls.
 
-The latest scoped checks recorded 182 backend tests passing, three database tests deselected, and 17 isolated web configuration/proxy tests passing. These include in-memory graphs, stubbed fetch and limited ASGI requests. They do not prove a working browser flow or current PostgreSQL behavior. Fourteen migrations rendered offline SQL; none were applied in that check.
+## Run it
 
-- [Fixture source facts](eval/reports/demo-fixture-facts-20261024.json): deterministic synthetic data, not an agent answer or a ranking benchmark.
-- [Report delivery case](docs/design/REPORT_DELIVERY.md): generated output, saved conversation and user delivery are separate states.
-- [Demo configuration and migrations](docs/research/2026-10-24-demo-config-and-migrations.md).
-- [Demo proxy dataset checks](docs/research/2026-10-24-demo-api-identity.md).
-- [Two-minute recording script](docs/DEMO_RECORDING.md): a plan, not a recorded video.
+You need Python 3.12 with [uv](https://docs.astral.sh/uv/), Node.js 24, Docker and an OpenAI-compatible model endpoint.
 
-## NVIDIA, Nebius and deployment status
+- **Synthetic demo**: follow [docs/DEMO.md](docs/DEMO.md): separate database, API on 8010 and web app on 3010, seeded from an empty database.
+- **Personal instance** (Windows): create `.env` from [`.env.example`](.env.example), then run `.\scripts\up.ps1`. It starts the database, API (8000), web app (3000) and the collection daemon in the background and skips whatever is already running.
+- **Development**: see [CONTRIBUTING.md](CONTRIBUTING.md); the commands match CI.
 
-The model layer accepts configurable OpenAI-compatible providers. Isolated development probes have used a temporary Bailian configuration; this is not evidence of current NVIDIA/Token Factory execution. Example endpoint/model strings alone do not establish provider integration.
+## Stack
 
-A verified NVIDIA model run, Token Factory/Nebius usage evidence, hosted access and submission materials remain pending. [Competition notes](docs/HACKATHON.md) are historical and must be rechecked against official rules before submission. Continuous cloud monitoring also requires an agreed execution environment, persistent storage, source coverage, operating budget and maintenance responsibility; no cloud resources have been purchased or deployed for it.
+| Layer | Used |
+|---|---|
+| Agent | LangGraph 1.2 / LangChain 1.4: middleware for approval, call limits, retries and evidence gates; Postgres checkpointer |
+| Retrieval | PostgreSQL 17 + pgvector + ParadeDB pg_search (BM25 with Chinese tokenization); Neo4j graph (optional); weighted RRF, rerank, MMR |
+| Backend | FastAPI, SQLAlchemy 2.1, Alembic, MCP (streamable HTTP, bearer token) |
+| Web | Next.js 16, React 19, installable on a phone (PWA) |
+| Collection | Playwright with a dedicated browser profile, read-only platform tools |
+| Models | Alibaba Cloud Bailian: chat qwen3.7-plus, extraction qwen-plus, embeddings text-embedding-v4, rerank qwen3-rerank; another provider is a `.env` change |
+| Engineering | pytest against real Postgres, ruff, GitHub Actions; every model call records tokens, latency and cost |
 
-## Authorship and license
+## Hackathon note
 
-Developed by [duoduo-cell](https://github.com/duoduo-cell). Licensed under [Apache-2.0](LICENSE). Third-party platform originals, cookies, private conversations and credentials are excluded from public demo material.
+Built for the Nebius × NVIDIA Global AI Hackathon, Personal AI track. **This entry runs on Qwen models through Alibaba Cloud Bailian. It does not use Nebius Token Factory or an NVIDIA model.** The model layer speaks the OpenAI-compatible API, so pointing `.env` at Token Factory is a configuration change ([`.env.example`](.env.example) has a commented block), but that path has not been run. The author chose not to set up Nebius billing and accepts that the entry does not meet those two requirements.
+
+## Known limits
+
+- How fast a follow-up card sees a change depends on collection frequency: career sites once a day, logged-in platforms at a low daytime rate.
+- Peer samples are sparse; for a specific company and direction there are often only a handful, so comparisons are case-level.
+- Boss rejects the session token from time to time and needs the owner to log in again.
+- Nobody is told when the database goes down ([#5](https://github.com/duoduo-cell/polaris/issues/5)); the demo reset does not restore memory ([#12](https://github.com/duoduo-cell/polaris/issues/12)).
+- Launch scripts exist for Windows only; CI covers tests and builds, but nobody has done a clean install on another machine yet.
+
+## Docs (Chinese)
+
+- [PURPOSE](docs/PURPOSE.md): why and the roadmap
+- [TECH](docs/TECH.md), [design/](docs/design/): design, including [follow-up cards](docs/design/WATCH.md)
+- [STACK](docs/STACK.md): technology choices; [DATASET](docs/DATASET.md): sources, rates and account boundaries
+- [HIRING](docs/HIRING.md): 352 Agent job requirements and 902 interview write-ups, which decided what to build
+- [research/](docs/research/): dated research; [archive/](docs/archive/): superseded plans
+- [STATUS](docs/STATUS.md): where things stand; [DEVLOG](docs/DEVLOG.md): what each round ran into and changed
+
+## License
+
+[Apache-2.0](LICENSE). Developed by [duoduo-cell](https://github.com/duoduo-cell).
