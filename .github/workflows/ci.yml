@@ -64,6 +64,9 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install dependencies
         run: npm ci
+      # PageProps, LayoutProps and RouteContext are generated globals; a fresh checkout has none.
+      - name: Generate route types
+        run: npx next typegen
       - name: Type check
         run: npx tsc --noEmit
       - name: Lint
