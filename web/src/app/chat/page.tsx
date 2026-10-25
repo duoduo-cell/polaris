@@ -6,6 +6,7 @@ import {
   ArrowUp, BookOpen, Briefcase, Check, ChevronDown, Copy, Flag, GraduationCap, Plus, ShieldCheck, Square, ThumbsDown, ThumbsUp,
 } from "lucide-react";
 import { Badge, Button, ErrorNote } from "@/components/markdown";
+import { useDemoMode } from "@/components/demo-mode";
 import { ResultCards } from "@/components/result-cards";
 import { type Compacted, type Task, TOOL_NAMES, useChatSession } from "@/components/chat-session";
 import { CompactDivider, ContextMeter, MemoryNotes, ThinkingDone, ThinkingLive } from "@/components/chat-thinking";
@@ -22,6 +23,13 @@ const SUGGESTIONS = [
   "按我的条件推荐 3 个岗位，说说哪里合适、哪里不合适",
   "腾讯和字节，哪家要求 LangGraph 的岗位多？",
   "字节面试问过哪些 Agent 记忆设计的问题？",
+];
+// The synthetic demo holds a handful of fictional jobs and posts; suggest what it can actually answer.
+const DEMO_SUGGESTIONS = [
+  "找上海 Agent 日常实习，每周最多 4 天，展开第一个岗位和我的情况对比",
+  "按我的条件推荐 2 个岗位，说说哪里合适、哪里不合适",
+  "合成科技面试问过哪些 Agent 工具调用的问题？",
+  "上海 RAG 实习每周最多 3 天的有没有？",
 ];
 const MODES = [
   { label: "找岗位", icon: Briefcase, text: "按我的条件推荐 3 个岗位，说说哪里合适、哪里不合适" },
@@ -45,6 +53,7 @@ function TaskNote({ task, stop }: { task: Task; stop: (id: string) => void }) {
 export default function Chat() {
   const { thread, threads, messages, approvals, tasks, input, busy, submitting, loading, live, elapsed, error,
           setInput, newThread, switchThread, send, decide, mark: markAnswer, stop } = useChatSession();
+  const suggestions = useDemoMode() ? DEMO_SUGGESTIONS : SUGGESTIONS;
   const scroller = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +118,7 @@ export default function Chat() {
               <h2 className="text-2xl font-semibold tracking-tight text-center">今天想找点什么？</h2>
               <p className="text-sm text-muted text-center mt-2">说说方向、城市、每周能去几天——北极星会记住，之后推荐、推送都按这个来。</p>
               <div className="mt-8 grid sm:grid-cols-2 gap-2">
-                {SUGGESTIONS.map((s, i) => (
+                {suggestions.map((s, i) => (
                   <motion.button key={s} type="button" onClick={() => send(s)}
                                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i + 0.1 }}
                                  className="text-left text-sm rounded-xl border border-line bg-card px-4 py-3 text-muted hover:text-foreground hover:border-faint transition-colors">
