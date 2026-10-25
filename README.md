@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-3776AB)
 ![Next.js](https://img.shields.io/badge/next.js-16-000000)
 
-[English](README.en.md) · [合成演示](docs/DEMO.md) · [技术方案](docs/TECH.md) · [研发日志](docs/DEVLOG.md)
+[English](README.en.md) · [项目主页](https://duoduo-cell.github.io/polaris/) · [作品集 PDF](site/polaris-portfolio-zh.pdf) · [合成演示](docs/DEMO.md) · [技术方案](docs/TECH.md) · [研发日志](docs/DEVLOG.md)
 
 **给找 LLM / Agent 实习的人用的求职 Agent。** 它常驻采集官网、小红书、脉脉上的岗位和面经，按你的条件（城市、方向、每周几天、能实习多久）查岗位，标出你和每个岗位的硬冲突，从真实帖子里找面试原题，替你长期盯着一个求职目标。它说的每一条都能点开看到来源原文；查不到的，就说查不到。
 

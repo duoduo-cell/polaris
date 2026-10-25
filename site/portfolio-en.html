@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Polaris portfolio</title>
+<style>
+  @page { size: A4; margin: 11mm 12mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #1b1a18; font: 9.4pt/1.45 "Segoe UI", "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif; }
+  a { color: #2f4bbf; text-decoration: none; }
+  h1 { font-size: 18pt; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 10.5pt; margin: 0 0 4px; padding-bottom: 2px; border-bottom: 1.5px solid #1b1a18; }
+  .lead { margin: 4px 0 6px; color: #3d3a34; font-size: 9.8pt; }
+  .links { font-size: 9pt; color: #5f5b54; }
+  .links b { color: #1b1a18; }
+  .row { display: flex; gap: 12px; margin-top: 9px; }
+  .col { flex: 1; min-width: 0; }
+  .shot { width: 100%; border: 1px solid #ddd8ce; border-radius: 5px; display: block; }
+  .cap { color: #6b675f; font-size: 8pt; margin-top: 2px; }
+  ul { margin: 0; padding-left: 15px; }
+  li { margin: 1.5px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+  th, td { text-align: left; vertical-align: top; padding: 3px 5px; border-bottom: 1px solid #e3dfd6; }
+  th { color: #6b675f; font-weight: 600; }
+  .num { white-space: nowrap; font-weight: 700; }
+  .stats { display: flex; gap: 8px; margin-top: 7px; }
+  .stat { flex: 1; border: 1px solid #ddd8ce; border-radius: 5px; padding: 4px 7px; }
+  .stat b { font-size: 13pt; display: block; line-height: 1.2; }
+  .stat span { color: #6b675f; font-size: 8pt; }
+  .foot { margin-top: 8px; color: #6b675f; font-size: 8pt; }
+</style>
+</head>
+<body>
+  <h1>Polaris: a job-search agent for LLM and Agent internship seekers</h1>
+  <p class="lead">Collects jobs and interview write-ups from career sites and job forums, searches them against your constraints (city, direction, days per week, months available), flags hard conflicts, pulls real interview questions from real posts, and watches a search goal over weeks. Every claim opens to its source; when nothing is found, it says so. The author uses it for their own internship search.</p>
+  <div class="links"><b>Code</b> <a href="https://github.com/duoduo-cell/polaris">github.com/duoduo-cell/polaris</a>　<b>Page</b> <a href="https://duoduo-cell.github.io/polaris/en.html">duoduo-cell.github.io/polaris</a>　<b>Release</b> v0.1.0, Apache-2.0</div>
+  <div class="stats">
+    <div class="stat"><b>18</b><span>agent tools; side effects need approval</span></div>
+    <div class="stat"><b>801</b><span>backend tests; CI on every PR</span></div>
+    <div class="stat"><b>3,800+</b><span>interview questions (author's DB, 10-25)</span></div>
+    <div class="stat"><b>0.89</b><span>retrieval NDCG@10 (3 paths + rerank)</span></div>
+  </div>
+
+  <div class="row">
+    <div class="col" style="flex: 1.15">
+      <img class="shot" src="img/demo-chat.png" alt="Chat screenshot">
+      <div class="cap">Synthetic demo (UI in Chinese): jobs under the user's constraints, hard requirements checked. Data and company names are invented.</div>
+    </div>
+    <div class="col">
+      <h2>What it does, and why you can trust it</h2>
+      <ul>
+        <li><b>Find jobs</b>: keyword, vector and graph recall, filtered by constraints first; unstated constraints are "to confirm".</li>
+        <li><b>Interview questions</b>: sourced and dated; asking for real questions forces a search before answering.</li>
+        <li><b>Citation check</b>: any id in the answer must appear in tool results, or it is marked unverified.</li>
+        <li><b>Follow-up cards</b>: watch a goal; changes ranked urgent / digest / quiet; reports built on rule-computed facts.</li>
+        <li><b>Competitiveness</b>: HR's three questions plus peers' public self-descriptions, honest about small samples.</li>
+        <li><b>Applications and memory</b>: funnel, drafts never auto-sent; bi-temporal memory that asks before overwriting.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top: 9px">
+    <h2>Engineering cases (found by running the whole system; no offline test caught them)</h2>
+    <table>
+      <tr><th style="width:23%">Symptom</th><th style="width:39%">Cause</th><th style="width:26%">Fix</th><th>Result</th></tr>
+      <tr><td>Constrained search listed 1 job</td><td>Top 50 chunks from the whole corpus, then intersected with the scope: 40 candidates became 1 (post-filtering)</td><td>Pass in-scope ids into all three recall paths</td><td class="num">1 → 32</td></tr>
+      <tr><td>A task took 265 s</td><td>6,000-character tool output, ~2,200 per job; the model paged through results</td><td>Slimmer list items, cap 16,000</td><td class="num">77 s</td></tr>
+      <tr><td>Model requests failed at 30 s</td><td>A local TUN accelerator captured model traffic; handshakes hung</td><td>Narrow direct route, fallback on failure</td><td class="num">103 → 2 s</td></tr>
+      <tr><td>Answer invented a "question from the database"</td><td>The model skipped the search; a prompt rule did not stop it</td><td>Evidence gate in orchestration</td><td class="num">all sourced</td></tr>
+      <tr><td>Tests "passed" with the DB down</td><td>Skipped with exit code 0; 306 of 792 never ran</td><td>Fail in CI instead</td><td class="num">PR #2</td></tr>
+    </table>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <h2>Stack</h2>
+      <ul>
+        <li>LangGraph 1.2 / LangChain 1.4 with approval, call-limit, retry and evidence-gate middleware</li>
+        <li>PostgreSQL 17 + pgvector + ParadeDB pg_search (BM25, Chinese tokenization), optional Neo4j; weighted RRF, rerank, MMR</li>
+        <li>FastAPI, SQLAlchemy, Alembic, MCP; Next.js 16, React 19</li>
+        <li>Qwen via Alibaba Cloud Bailian; every model call traced with tokens, latency, cost; GitHub Actions</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h2>Evaluation (module evaluations, 10-11 to 10-13)</h2>
+      <ul>
+        <li>Retrieval NDCG@10: one path 0.73 → three paths 0.81 → reranked 0.89</li>
+        <li>Cross-source alignment test F1 0.93 (labelled after rules were frozen)</li>
+        <li>Answer quality: dev 24/24, held-out 13/14, zero fabricated sources</li>
+        <li>Prompt injection: 0 of 15 attacks succeeded</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="foot">Data boundaries: logged-in platforms are read only on the author's machine, with their own account, at a low rate; raw text never enters the repository or the demo; no automated messages or applications. Sources for every number are in the README and dev log.</p>
+</body>
+</html>
