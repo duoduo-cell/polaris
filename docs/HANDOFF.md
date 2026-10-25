@@ -10,7 +10,7 @@
 
 ## 仓库和提交流程（10-25 起）
 
-- 仓库 [duoduo-cell/polaris](https://github.com/duoduo-cell/polaris) 已公开，`main` 受保护：不能直接推，对管理员也生效。`AGENTS.md` 里“做本地提交、暂时不推到远端”那条已经过时，以这里为准。
+- 仓库 [duoduo-cell/polaris](https://github.com/duoduo-cell/polaris) 已公开，`main` 受保护：不能直接推，对管理员也生效；`AGENTS.md` 写了同样的流程。
 - 每个改动：先开 Issue，从最新 `main` 拉分支（`feat/`、`fix/`、`docs/`、`ci/`），提 PR，按模板写为什么、改了什么、前后证据、没覆盖的。两项 CI 都通过后 squash 合并，合并后分支自动删除。
 - `gh` 登了两个账号：`duoduo-cell` 是当前活动账号，`2063365572abc-bot` 不用。绝不能用另一个账号去 star、fork 或开 Issue，那是虚假互动。
 - 版本记在 [CHANGELOG](../CHANGELOG.md)。v0.1.0 已发布；v0.2.0 对应比赛提交的 Milestone。标签 `owner-action` 表示只有作者本人能做的事。
