@@ -8,12 +8,13 @@
 
 ## GitHub（10-25 晚）
 
-- 仓库 [duoduo-cell/polaris](https://github.com/duoduo-cell/polaris)，**私有**，公开前要问用户。全部 167 个历史提交已推送，都关联到 duoduo-cell。推送前扫过全部历史：没有真实密钥（命中的 `sk-...` 都是测试假值），`.env` 和 `data/` 从没进过仓库，也没有平台原帖链接。
+- 仓库 [duoduo-cell/polaris](https://github.com/duoduo-cell/polaris)，10-25 晚经用户同意**已公开**。全部历史提交都关联到 duoduo-cell。推送前扫过全部历史：没有真实密钥（命中的 `sk-...` 都是测试假值），`.env` 和 `data/` 从没进过仓库，也没有平台原帖链接。公开前又用 gitleaks v8.30.1 扫了 177 个提交，0 发现。
 - 从这里开始，每个改动都走 Issue → 分支 → PR → CI → 合并。
   - #1 / PR #2：CI，包括 ruff、带 ParadeDB PG17 的 pytest，以及网页 typegen、tsc、ESLint、模块测试和构建。
   - #3 / PR #4：Issue 和 PR 模板、CONTRIBUTING、SECURITY。
-- 私有仓库用免费账号不能设分支保护，公开后再开（只要求 CI 通过）。私密漏洞报告也要等公开后才能开启。
-- 还没做：重写中英文 README、架构图、Milestone 和路线图 Issue、Release、项目主页、个人主页。
+  - PR #6：比赛不接 Token Factory，用百炼 Qwen 提交并如实写明。
+- `main` 受保护：只能通过 PR 合并，不要求审批；两项 CI 必须通过；对管理员同样生效；不许强推和删除；只允许 squash 合并，合并后自动删分支。私密漏洞报告已开启。
+- 还没做：重写中英文 README、架构图、过程文档归档、Milestone 和路线图 Issue、Release、项目主页、个人主页。`docs/INTERVIEW.md` 是面试讲稿，建议移出仓库，等用户决定。
 
 ## 现状（10-25 凌晨）
 
