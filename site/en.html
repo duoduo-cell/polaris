@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polaris: a job-search agent for LLM and Agent internship seekers</title>
+<meta name="description" content="Collects jobs and interview write-ups, searches them against your constraints, flags hard conflicts, finds real interview questions and watches a search goal; every claim opens to its source.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="en.html">Polaris</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#cases">Engineering</a>
+      <a href="./">中文</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h1>A job-search agent for people looking for LLM and Agent internships in China</h1>
+    <p class="lead">It keeps collecting jobs and interview write-ups from career sites, Xiaohongshu and Maimai, searches them against your constraints (city, direction, days per week, how long you can stay), marks every hard conflict between you and a job, pulls real interview questions out of real posts, and watches a search goal for you over weeks. Every claim opens to its source text; when it finds nothing, it says so.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/duoduo-cell/polaris">GitHub repository</a>
+      <a class="btn" href="https://github.com/duoduo-cell/polaris/blob/main/docs/DEMO.md">Run the synthetic demo locally</a>
+      <a class="btn" href="https://github.com/duoduo-cell/polaris/releases/tag/v0.1.0">v0.1.0 release notes</a>
+    </div>
+    <p class="caption">The hosted demo is being deployed (<a href="https://github.com/duoduo-cell/polaris/issues/16">#16</a>). The author uses Polaris for their own internship search, and it is their entry to the Nebius × NVIDIA Global AI Hackathon, Personal AI track. The interface is in Chinese because the users and sources are.</p>
+    <div class="stats">
+      <div class="stat"><b>18</b><span>agent tools; side effects wait for approval</span></div>
+      <div class="stat"><b>792</b><span>backend tests; CI on every PR</span></div>
+      <div class="stat"><b>5</b><span>engineering cases from real runs</span></div>
+      <div class="stat"><b>3,800+</b><span>interview questions in the author's database (10-25)</span></div>
+    </div>
+  </div>
+
+  <section>
+    <img class="shot" src="img/demo-chat.png" alt="Chat: jobs found under the user's constraints, education, paper and attendance compared item by item">
+    <p class="caption">All screenshots come from the synthetic demo: jobs, posts, company names and the profile are invented.</p>
+  </section>
+
+  <section id="features">
+    <h2>What it does</h2>
+    <p class="sub">Each feature says how it stays trustworthy, because invented advice is the worst failure for a job-search tool.</p>
+    <div class="grid">
+      <div class="card"><h3>Find jobs</h3><p>Search by city, direction, internship type and days per week; keyword, vector and graph recall, fused and reranked.</p><p class="trust">Constraints filter before recall; an unstated constraint is "to confirm", never a match.</p></div>
+      <div class="card"><h3>Check fit</h3><p>Education, papers, attendance and internship length against your memory card.</p><p class="trust">Hard conflicts are flagged; what your card lacks is listed as information to add.</p></div>
+      <div class="card"><h3>Interview questions</h3><p>Questions extracted from posts, with source and post date.</p><p class="trust">Asking for real questions forces a question search first; any cited id must appear in tool results or it is marked unverified.</p></div>
+      <div class="card"><h3>Follow-up cards</h3><p>Watch a goal: focus jobs removed or changed, new jobs in scope, new interview posts, outcomes of people like you.</p><p class="trust">Changes ranked urgent / digest / quiet; a daily report whose facts rules compute and the model only writes up.</p></div>
+      <div class="card"><h3>Competitiveness</h3><p>HR's three questions: which hard requirements block you, how many common skills your card covers, whether your experience has evidence; then peers' public self-descriptions.</p><p class="trust">Says so when the sample is small; "not written" is not "does not have".</p></div>
+      <div class="card"><h3>Applications and memory</h3><p>Application funnel, follow-up drafts; remembers your constraints and experience, with history, deletable.</p><p class="trust">Drafts only, never sends; changing data waits for approval; bi-temporal memory asks before overwriting.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>In the demo</h2>
+    <p class="sub">The follow-up card script: days 4 → 5, a removed job, a new job and a new interview post are all caught, ranked and reported.</p>
+    <div class="grid">
+      <div><img class="shot" src="img/demo-watch.png" alt="Follow-up card with ranked changes and a situation report"><p class="caption">Follow-up card and situation report</p></div>
+      <div><img class="shot" src="img/demo-review.png" alt="Competitiveness: hard requirements, skill coverage, missing information"><p class="caption">Competitiveness: hard requirements, skills, gaps HR will ask about</p></div>
+    </div>
+    <p style="margin-top:14px"><img class="shot" src="img/demo-funnel.png" alt="Applications: funnel, channels, weekly volume, rejection feedback"></p>
+    <p class="caption">Applications: the funnel counts the furthest step each job reached; rejection reasons feed later gap analysis.</p>
+  </section>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <p class="sub">Collection stays on the author's machine, read-only and low-rate; retrieval is hybrid inside PostgreSQL; LangGraph orchestrates the agent, and every model call records tokens, latency and cost.</p>
+    <div class="diagram"><a href="img/arch-en.svg"><img src="img/arch-en.svg" alt="System: collection, extraction, alignment, PostgreSQL hybrid retrieval, LangGraph agent, web and MCP, daemon"></a></div>
+    <p class="caption">Click a diagram for full size.</p>
+    <p class="caption">One request through the agent:</p>
+    <div class="diagram narrow"><a href="img/flow-en.svg"><img src="img/flow-en.svg" alt="One request: memory extraction, planning, tools, approval, evidence gate, citation check"></a></div>
+  </section>
+
+  <section id="cases">
+    <h2>Engineering cases</h2>
+    <p class="sub">All came from running the whole system for real. No offline test caught any of them.</p>
+    <div class="table-scroll"><table>
+      <tr><th>Symptom</th><th>Cause</th><th>Fix</th><th>Result</th></tr>
+      <tr><td>"Beijing Agent internship" listed 1 job</td><td>Top 50 chunks from the whole corpus, then intersected with the scope: 40 in-scope candidates became 1. Also 140 of 207 Beijing internships did not state days per week</td><td>Pass in-scope job ids into all three recall paths; keep unknown days as "to confirm"</td><td class="num">1 → 32 candidates</td></tr>
+      <tr><td>A task took 265 s while the model paged through results</td><td>6,000-character tool output, about 2,200 per job: 1–2 jobs per page</td><td>Slimmer list items, cap raised to 16,000</td><td class="num">Full task in 77 s</td></tr>
+      <tr><td>Model requests failed after 30 s</td><td>A local TUN accelerator captured Bailian traffic; direct Wi-Fi succeeded 6/6 in about 0.2 s</td><td>Only for the Bailian host and only on a fake DNS answer, resolve the real address and connect directly; fall back on failure</td><td class="num">103 s → 2 s</td></tr>
+      <tr><td>"I found an interview question in the database"; there was none</td><td>The model skipped the question search despite a prompt rule</td><td>Evidence gate in orchestration: no question search yet, no final answer</td><td class="num">Every question sourced</td></tr>
+      <tr><td>Tests "passed" with the database down</td><td>Database tests were skipped with exit code 0; once, 306 of 792 never ran</td><td>Fail in CI instead; CI uses the demo's ParadeDB image</td><td class="num"><a href="https://github.com/duoduo-cell/polaris/pull/2">PR #2</a></td></tr>
+    </table></div>
+    <p class="caption">The first four are in commit <a href="https://github.com/duoduo-cell/polaris/commit/1d8cf59">1d8cf59</a>.</p>
+  </section>
+
+  <section>
+    <h2>Evaluation</h2>
+    <p class="sub">Module evaluations from 10-11 to 10-13; each number holds for that version and question set only.</p>
+    <div class="table-scroll"><table>
+      <tr><th>Area</th><th>Result</th></tr>
+      <tr><td>Retrieval</td><td>NDCG@10: one path 0.73 → three paths 0.81 → reranked 0.89 (<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/M4.md">M4</a>)</td></tr>
+      <tr><td>Cross-source alignment</td><td>Test F1 0.93, labelled after the rules were frozen (<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/M4.md">M4</a>)</td></tr>
+      <tr><td>Memory</td><td>Exact sentence match: dev 26/28, held-out 14/16, test 13/16 (<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/M5.md">M5</a>)</td></tr>
+      <tr><td>Answer quality</td><td>Dev 24/24 and 23/24, held-out 13/14, zero fabricated sources (<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/answers.md">dev</a>, <a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/answers_v2.md">held-out</a>)</td></tr>
+      <tr><td>Prompt injection</td><td>0 of 15 attacks succeeded (<a href="https://github.com/duoduo-cell/polaris/blob/main/eval/reports/injection.md">injection</a>)</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Hackathon note</h2>
+    <p>Polaris runs on Qwen models through Alibaba Cloud Bailian. <strong>It does not use Nebius Token Factory or an NVIDIA model.</strong> The model layer speaks the OpenAI-compatible API, so Token Factory is a configuration change, but that path has not been run. The author chose not to set up Nebius billing and accepts that the entry does not meet those two requirements.</p>
+  </section>
+
+  <section>
+    <h2>Stack</h2>
+    <div class="grid">
+      <div class="card"><h3>Agent</h3><p>LangGraph 1.2 / LangChain 1.4: middleware for approval, call limits, retries and evidence gates; Postgres checkpointer.</p></div>
+      <div class="card"><h3>Retrieval</h3><p>PostgreSQL 17, pgvector, ParadeDB pg_search (BM25 with Chinese tokenization), optional Neo4j; weighted RRF, rerank, MMR.</p></div>
+      <div class="card"><h3>Backend and web</h3><p>FastAPI, SQLAlchemy 2.1, Alembic, MCP; Next.js 16 and React 19, installable on a phone.</p></div>
+      <div class="card"><h3>Models</h3><p>Alibaba Cloud Bailian: chat qwen3.7-plus, extraction qwen-plus, embeddings text-embedding-v4, rerank qwen3-rerank.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <a href="https://github.com/duoduo-cell/polaris">duoduo-cell/polaris</a> · Apache-2.0 ·
+    <a href="https://github.com/duoduo-cell/polaris/blob/main/CHANGELOG.md">Changelog</a> ·
+    <a href="https://github.com/duoduo-cell/polaris/milestone/1">Next release</a> · <a href="./">中文</a>
+  </footer>
+</div>
+</body>
+</html>

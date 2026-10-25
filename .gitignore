@@ -19,3 +19,6 @@ __pycache__/
 # Node
 node_modules/
 dist/
+
+# Project page: screenshots are copied from docs/img at deploy time
+site/img/demo-*.png
