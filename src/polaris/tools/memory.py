@@ -2,7 +2,7 @@
 memory/extract.py 先抽候选事实、memory/update.py 按规则改记忆；这里的工具让 agent（和你）能看、能改。
 
 对标：Muse 的记忆文件能看、能改、能下载、能让它忘掉；Dots 的记忆看不到单条。北极星每条都带"从哪句话来、什么时候成立、
-什么时候被取代"（`PLAN.md` 0.0 第 3 条）。
+什么时候被取代"（`docs/archive/PLAN.md` 0.0 第 3 条）。
 """
 from datetime import date, datetime, time
 from typing import Any, Literal

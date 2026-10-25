@@ -155,7 +155,7 @@ Nano 在 Nebius 官方页有，在第三方目录镜像里没有，优先用 Lig
 
 出处除表内链接外：[hiQ 案梳理](https://dataresearchtools.com/hiq-linkedin-ruling-scrapers-2026/)、[Greenhouse Job Board API](https://developers.greenhouse.io/job-board.html)
 
-关于"平台是否允许"：用户认为这些平台和比赛方都允许。能核对到的事实是规则原文要求按第三方条款使用数据，以及这些平台都没有面向个人的官方读取接口。没有查到任何一方的书面许可，也没有逐条读到各平台用户协议的原文。结论见 `PLAN.md` 第 4 节：功能照做，但不进公开演示和提交材料。
+关于"平台是否允许"：用户认为这些平台和比赛方都允许。能核对到的事实是规则原文要求按第三方条款使用数据，以及这些平台都没有面向个人的官方读取接口。没有查到任何一方的书面许可，也没有逐条读到各平台用户协议的原文。结论见 `archive/PLAN.md` 第 4 节：功能照做，但不进公开演示和提交材料。
 
 ### 4.2 2026-10-11 实测和补查
 
@@ -221,7 +221,7 @@ Nano 在 Nebius 官方页有，在第三方目录镜像里没有，优先用 Lig
 |---|---|---|
 | 依赖的许可证 | Hermes Agent 是 MIT；NemoClaw、xiaohongshu-mcp、boss-cli 是 Apache-2.0；JobSpy 是 MIT | 已查实 |
 | 不能用的 | MediaCrawler 的声明禁止商用，不要把它的代码放进仓库 | 已查实 |
-| 项目许可证 | 选 Apache-2.0，理由见 `PLAN.md` 第 2 节 | 决定 |
+| 项目许可证 | 选 Apache-2.0，理由见 `archive/PLAN.md` 第 2 节 | 决定 |
 | 买 star | GitHub 使用政策禁止"虚假互动"和"刷排名，如自动加星"，处置包括停用账号、终止账号、删除内容。2024 年底有研究统计出约 450 万个疑似假星 | 已查实 |
 
 出处：[NemoClaw 仓库](https://github.com/NVIDIA/NemoClaw)、[GitHub 使用政策](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies)、[假星研究](https://arxiv.org/abs/2412.13459)
