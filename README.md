@@ -121,6 +121,12 @@ flowchart TD
 
 测试：后端 801 项、网页类型检查、ESLint、模块测试和构建，每个 PR 都由 [CI](.github/workflows/ci.yml) 跑一遍。其中 7 段回放录像含小红书原文，只在作者本机跑。
 
+## 影响与贡献者
+
+- **作者自己在用**：10-10 起在作者电脑上常驻运行。到 10-25，库里有约 690 个岗位、2400 篇帖子、3800 多道面经题、675 份同类求职者样本，记录了 1.1 万多次模型调用；作者用一张“北京 Agent 日常实习（每周 4 天）”跟进卡盯着范围内的 128 个在招岗位。
+- **公开开发**：每个改动都走 Issue → 分支 → PR → CI → 合并，问题和修复都能在 [Issues](https://github.com/duoduo-cell/polaris/issues?q=is%3Aissue) 和 [PR](https://github.com/duoduo-cell/polaris/pulls?q=is%3Apr) 里查到；版本记在 [CHANGELOG](CHANGELOG.md)。
+- **贡献者**：作者 [duoduo-cell](https://github.com/duoduo-cell)。开发中用了 Claude Code、Codex 等 AI 编程助手，相关提交在历史里带共同作者标记。
+
 ## 数据边界
 
 - **官网公开岗位**：正常采集，每天整批。
@@ -128,7 +134,6 @@ flowchart TD
 - **不采人**：不抓脉脉、LinkedIn 的个人主页，不自动发消息、不自动投递。
 - **公开演示**：只用手写的合成资料，和个人实例用不同的数据库、API 和网页；网页每次转发前都确认对面是演示 API。
 
-作者本机库到 10-25 的规模：约 690 个岗位、2400 篇帖子、3800 多道面经题，记录了 1.1 万多次模型调用。
 
 ## 运行
 
@@ -137,6 +142,18 @@ flowchart TD
 - **合成演示**：按 [docs/DEMO.md](docs/DEMO.md)，独立数据库 + API（8010）+ 网页（3010），从空库导入合成资料。
 - **个人实例**（Windows）：`.env` 自己建（参照 [`.env.example`](.env.example)），然后运行 `.\scripts\up.ps1`，会在后台起数据库、API（8000）、网页（3000）和常驻采集，已经在跑的会跳过。
 - **开发和测试**：见 [CONTRIBUTING.md](CONTRIBUTING.md)，命令和 CI 一致。
+
+## 接口
+
+- 本机运行时打开 `http://127.0.0.1:8000/docs` 是可交互的接口文档；不想跑也可以看从代码导出的[在线接口参考](https://duoduo-cell.github.io/polaris/api.html)。
+- 个人接口都在 `/api/me/` 下，请求头带 `Authorization: Bearer <OWNER_TOKEN>`。交给北极星一件事，再查进度：
+
+  ```bash
+  curl -X POST http://127.0.0.1:8000/api/me/chat/tasks -H "Authorization: Bearer $OWNER_TOKEN" -H "Content-Type: application/json"        -d '{"message": "找北京 Agent 日常实习，每周最多 4 天", "request_id": "'$(uuidgen)'"}'
+  curl http://127.0.0.1:8000/api/me/chat/tasks/<task_id> -H "Authorization: Bearer $OWNER_TOKEN"
+  ```
+
+- 只读工具（查岗位、面经、记忆等）同时以 MCP（streamable HTTP）开放在 `/mcp/`，用 `MCP_TOKEN`；Claude、Hermes 这类 MCP 客户端可以直接接入。
 
 ## 技术栈
 
