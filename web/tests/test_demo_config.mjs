@@ -11,7 +11,7 @@ const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.Modu
 
 function settings(env = {}, text = '') {
   const reads = [];
-  const module = { exports: {} };
+  const mod = { exports: {} };
   const require = name => {
     if (name === 'server-only') return {};
     if (name === 'node:path') return path;
@@ -22,9 +22,9 @@ function settings(env = {}, text = '') {
     } };
     throw new Error('Unexpected module access');
   };
-  vm.runInNewContext(compiled, { module, exports: module.exports, require,
+  vm.runInNewContext(compiled, { module: mod, exports: mod.exports, require,
     URL, process: { env: { ...env }, cwd: () => process.cwd() } });
-  return { ...module.exports, reads };
+  return { ...mod.exports, reads };
 }
 
 test('personal mode retains the existing default API', () => {
