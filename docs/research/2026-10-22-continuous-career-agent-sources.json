@@ -1,0 +1,256 @@
+{
+  "researched_on": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "scope": "场景与实现机制调研；未运行竞品，未新采集登录平台，未启动监控。",
+  "repositories": [
+    {
+      "repository": "career-ops-hq/career-ops",
+      "url": "https://github.com/career-ops-hq/career-ops",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T04:55:17Z",
+      "archived": false,
+      "license_api": "MIT"
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "url": "https://github.com/shengjidaguai-china/BossHunter",
+      "default_branch": "main",
+      "pushed_at": "2026-10-13T23:51:11Z",
+      "archived": false,
+      "license_api": "NOASSERTION"
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "url": "https://github.com/siyuansdsd/OfferGraph",
+      "default_branch": "main",
+      "pushed_at": "2026-06-23T13:54:23Z",
+      "archived": false,
+      "license_api": "Apache-2.0"
+    },
+    {
+      "repository": "sanchittanwar7/job-search-agent",
+      "url": "https://github.com/sanchittanwar7/job-search-agent",
+      "default_branch": "main",
+      "pushed_at": "2026-07-02T16:05:14Z",
+      "archived": false,
+      "license_api": null
+    },
+    {
+      "repository": "speedyapply/JobSpy",
+      "url": "https://github.com/speedyapply/JobSpy",
+      "default_branch": "main",
+      "pushed_at": "2026-10-20T00:15:43Z",
+      "archived": false,
+      "license_api": "MIT"
+    },
+    {
+      "repository": "dgtlmoon/changedetection.io",
+      "url": "https://github.com/dgtlmoon/changedetection.io",
+      "default_branch": "master",
+      "pushed_at": "2026-10-19T10:32:32Z",
+      "archived": false,
+      "license_api": "Apache-2.0"
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "url": "https://github.com/langchain-ai/deepagents",
+      "default_branch": "main",
+      "pushed_at": "2026-10-22T05:37:57Z",
+      "archived": false,
+      "license_api": "MIT"
+    }
+  ],
+  "files": [
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "README.md",
+      "url": "https://github.com/career-ops-hq/career-ops/blob/main/README.md",
+      "blob_sha": "0b08bdc77ed17d1960586ab50ea2f5535d11aa30",
+      "review_scope": "主要产品与功能段，非全文逐行审阅",
+      "executed": false
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "modes/reply-watch.md",
+      "url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/modes/reply-watch.md",
+      "blob_sha": "435d1ba138308f32b457db4d7e3febc474ff02bd",
+      "review_scope": "全文",
+      "executed": false
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "modes/patterns.md",
+      "url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/modes/patterns.md",
+      "blob_sha": "a742f0447edb3f37297267921da440807ab780c7",
+      "review_scope": "前约 5000 字符",
+      "executed": false
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "liveness-core.mjs",
+      "url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/liveness-core.mjs",
+      "blob_sha": "cc127a5fa5fc372d4ca3ee966e32c435bfa84f16",
+      "review_scope": "前约 3000 字符",
+      "executed": false
+    },
+    {
+      "repository": "career-ops-hq/career-ops",
+      "path": "reply-watch.mjs",
+      "url": "https://github.com/career-ops-hq/career-ops/blob/dff9703a092e2872245aef09b096edcee054ac69/reply-watch.mjs",
+      "blob_sha": "e106dc095764412774e514a1a98014ecd699ae86",
+      "review_scope": "前约 4500 字符及状态更新、回执去重与锁的相关选段",
+      "executed": false
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "path": "README.md",
+      "url": "https://github.com/shengjidaguai-china/BossHunter/blob/main/README.md",
+      "blob_sha": "e67ab0852818976bd960ff04ab79fee9a43e6407",
+      "review_scope": "主要产品、功能与许可段",
+      "executed": false
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "path": "docs/AGENT_API.md",
+      "url": "https://github.com/shengjidaguai-china/BossHunter/blob/50bbbbe7e15932fa33b5f6b2969fae77ffa197e4/docs/AGENT_API.md",
+      "blob_sha": "784db3060267f4e86568a4af30546e4e2eb0a28c",
+      "review_scope": "接口及授权契约",
+      "executed": false
+    },
+    {
+      "repository": "shengjidaguai-china/BossHunter",
+      "path": "tests/test_collection_runs.py",
+      "url": "https://github.com/shengjidaguai-china/BossHunter/blob/50bbbbe7e15932fa33b5f6b2969fae77ffa197e4/tests/test_collection_runs.py",
+      "blob_sha": "44bd4ea26350231947e1f5c0b63a08726d1a403d",
+      "review_scope": "全文",
+      "executed": false
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "path": "README.md",
+      "url": "https://github.com/siyuansdsd/OfferGraph/blob/main/README.md",
+      "blob_sha": "5918c2ea5a5646eb792911093e508b23e217b854",
+      "review_scope": "主要功能与架构段",
+      "executed": false
+    },
+    {
+      "repository": "siyuansdsd/OfferGraph",
+      "path": "tools/approval.py",
+      "url": "https://github.com/siyuansdsd/OfferGraph/blob/main/tools/approval.py",
+      "blob_sha": "59263fc89391301798b8ce3f3ae1be87f99ffaad",
+      "review_scope": "全文",
+      "executed": false
+    },
+    {
+      "repository": "sanchittanwar7/job-search-agent",
+      "path": "README.md",
+      "url": "https://github.com/sanchittanwar7/job-search-agent/blob/main/README.md",
+      "blob_sha": "0bc4cde7a5f2913f5f7475be60add0f8a34009fe",
+      "review_scope": "主要功能与运行方式",
+      "executed": false
+    },
+    {
+      "repository": "sanchittanwar7/job-search-agent",
+      "path": "src/agent.js",
+      "url": "https://github.com/sanchittanwar7/job-search-agent/blob/main/src/agent.js",
+      "blob_sha": "6f23f1c23f4aecca10f00697600d8014055b309a",
+      "review_scope": "全文",
+      "executed": false
+    },
+    {
+      "repository": "sanchittanwar7/job-search-agent",
+      "path": "src/store.js",
+      "url": "https://github.com/sanchittanwar7/job-search-agent/blob/main/src/store.js",
+      "blob_sha": "2571ef0d10e58e77fc3265df6caecb21c97752c6",
+      "review_scope": "全文",
+      "executed": false
+    },
+    {
+      "repository": "speedyapply/JobSpy",
+      "path": "README.md",
+      "url": "https://github.com/speedyapply/JobSpy/blob/main/README.md",
+      "blob_sha": "ecc01c57e75a81842d801d4c772c0fe9224a47a9",
+      "review_scope": "第 1–105 行",
+      "executed": false
+    },
+    {
+      "repository": "dgtlmoon/changedetection.io",
+      "path": "README.md",
+      "url": "https://github.com/dgtlmoon/changedetection.io/blob/master/README.md",
+      "blob_sha": "172edb546c49189e514d9986ede90d5a8d475e05",
+      "review_scope": "第 1–125 行",
+      "executed": false
+    },
+    {
+      "repository": "langchain-ai/deepagents",
+      "path": "README.md",
+      "url": "https://github.com/langchain-ai/deepagents/blob/main/README.md",
+      "blob_sha": "efa13c884a5f984cf30c5da8f571fc9264e20216",
+      "review_scope": "第 1–120 行",
+      "executed": false
+    }
+  ],
+  "web_sources": [
+    {
+      "title": "Dots",
+      "url": "https://learn.chatgpt.com/docs/dots",
+      "purpose": "持续责任、云端与本机执行、权限及可控性",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "Dots admin guide",
+      "url": "https://learn.chatgpt.com/docs/enterprise/dots-admin-guide",
+      "purpose": "后台研究与明确授权执行的权限边界",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "Muse",
+      "url": "https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/",
+      "purpose": "官方云端个人 Agent 描述",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "LangGraph persistence",
+      "url": "https://docs.langchain.com/oss/python/langgraph/persistence",
+      "purpose": "检查点与跨会话存储",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "Effective harnesses for long-running agents",
+      "url": "https://www.anthropic.com/research/effective-harnesses-for-long-running-agents",
+      "purpose": "长任务中的进展材料与持续执行",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "MCP Tools",
+      "url": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools",
+      "purpose": "工具契约与错误结果",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "Gmail push notifications",
+      "url": "https://developers.google.com/workspace/gmail/api/guides/push",
+      "purpose": "事件通知、历史同步和丢失/延迟处理",
+      "access": "正文已打开并审阅相关段落"
+    },
+    {
+      "title": "牛客求职选择自述",
+      "url": "https://www.nowcoder.com/discuss/879349992144568320",
+      "purpose": "具体机会、准备与时间约束；自述未独立核验",
+      "access": "正文已打开并审阅相关段落"
+    }
+  ],
+  "limitations": [
+    "GitHub blob SHA 记录实际读取版本；分支链接后续可能变化。未固定 commit 的文件可用 GitHub blob API 与 blob SHA 复核。",
+    "本地数据只发布无原文聚合，14 条抽查材料留在忽略目录，不包含在本清单。",
+    "小红书公开检索未获得足够可核对正文，本轮小红书分析使用此前采到的本地数据。",
+    "部分牛客页返回导航或超时，小红书官网岗位页返回空正文，均未当作岗位下线证据。"
+  ],
+  "local_evidence": {
+    "code_snapshot": "1cdf2a6 plus pre-existing uncommitted changes inspected on 2026-10-22",
+    "aggregate": "2026-10-22-continuous-career-agent-data-audit.json",
+    "private_probe": "data/probe/scenario_audit_20261022.py",
+    "database_mode": "REPEATABLE READ, READ ONLY; rollback",
+    "sampling": "14 purposeful samples, not an error-rate or population estimate"
+  }
+}

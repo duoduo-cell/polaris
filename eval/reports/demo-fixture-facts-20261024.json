@@ -1,0 +1,171 @@
+{
+  "kind": "synthetic_source_facts_not_agent_output",
+  "fixture": "demo-fixture-v2",
+  "disclosure": "纯合成演示，预置岗位、面经及档案为人工虚构；公司名仅为示例标签，与实际招聘无关。",
+  "baseline_utc": "2026-10-23T16:00:00+00:00",
+  "scope": "Deterministic in-memory fixture facts only; no database, retrieval, model or UI run.",
+  "counts": {
+    "raw_items": 6,
+    "jobs": 5,
+    "postings": 5,
+    "posts": 1,
+    "interview_questions": 1,
+    "chunks": 12,
+    "memory_facts": 8
+  },
+  "profile": [
+    {
+      "attribute": "degree",
+      "value": "本科在读"
+    },
+    {
+      "attribute": "paper_experience",
+      "value": "无论文"
+    },
+    {
+      "attribute": "target_city",
+      "value": "北京"
+    },
+    {
+      "attribute": "target_role",
+      "value": "Agent"
+    },
+    {
+      "attribute": "job_type",
+      "value": "日常实习"
+    },
+    {
+      "attribute": "days_per_week",
+      "value": "4"
+    },
+    {
+      "attribute": "skill",
+      "value": "Python"
+    },
+    {
+      "attribute": "skill",
+      "value": "RAG"
+    }
+  ],
+  "profile_not_recorded": [
+    "duration_months"
+  ],
+  "jobs": [
+    {
+      "id": "J-1",
+      "title": "Agent工具工程实习（合成）",
+      "company": "腾讯",
+      "cities": [
+        "上海",
+        "北京"
+      ],
+      "requirements": [
+        "本科及以上在读，论文不是必要条件。",
+        "实习至少6个月。",
+        "负责Agent工具调用与可靠性评测，记录延迟、失败及恢复结果。",
+        "每周至少到岗4天。"
+      ],
+      "days_per_week": 4,
+      "duration_months": 6,
+      "source_url": "https://example.invalid/polaris-demo/jobs/1",
+      "published_at": "2026-10-19T16:00:00+00:00",
+      "snapshot_fetched_at": "2026-10-21T16:00:00+00:00",
+      "last_seen_at": "2026-10-23T16:00:00+00:00"
+    },
+    {
+      "id": "J-2",
+      "title": "Agent应用后端实习（合成）",
+      "company": "腾讯",
+      "cities": [
+        "上海"
+      ],
+      "requirements": [
+        "本科及以上在读，有工程项目经验优先。",
+        "实习至少3个月。",
+        "负责Agent工具调用与可靠性评测，记录延迟、失败及恢复结果。",
+        "每周至少到岗3天。"
+      ],
+      "days_per_week": 3,
+      "duration_months": 3,
+      "source_url": "https://example.invalid/polaris-demo/jobs/2",
+      "published_at": "2026-10-19T16:00:00+00:00",
+      "snapshot_fetched_at": "2026-10-21T16:00:00+00:00",
+      "last_seen_at": "2026-10-23T16:00:00+00:00"
+    },
+    {
+      "id": "J-3",
+      "title": "Agent研究实习（合成）",
+      "company": "腾讯",
+      "cities": [
+        "上海"
+      ],
+      "requirements": [
+        "硕士及以上在读，至少发表一篇论文。",
+        "实习至少6个月。",
+        "负责Agent工具调用与可靠性评测，记录延迟、失败及恢复结果。",
+        "每周至少到岗4天。"
+      ],
+      "days_per_week": 4,
+      "duration_months": 6,
+      "source_url": "https://example.invalid/polaris-demo/jobs/3",
+      "published_at": "2026-10-19T16:00:00+00:00",
+      "snapshot_fetched_at": "2026-10-21T16:00:00+00:00",
+      "last_seen_at": "2026-10-23T16:00:00+00:00"
+    },
+    {
+      "id": "J-4",
+      "title": "RAG应用实习（合成，天数未知）",
+      "company": "腾讯",
+      "cities": [
+        "上海"
+      ],
+      "requirements": [
+        "本科及以上在读。",
+        "实习至少6个月。",
+        "负责RAG工具调用与可靠性评测，记录延迟、失败及恢复结果。"
+      ],
+      "days_per_week": null,
+      "duration_months": 6,
+      "source_url": "https://example.invalid/polaris-demo/jobs/4",
+      "published_at": "2026-10-19T16:00:00+00:00",
+      "snapshot_fetched_at": "2026-10-21T16:00:00+00:00",
+      "last_seen_at": "2026-10-23T16:00:00+00:00"
+    },
+    {
+      "id": "J-5",
+      "title": "RAG评测实习（合成）",
+      "company": "腾讯",
+      "cities": [
+        "北京"
+      ],
+      "requirements": [
+        "本科及以上在读，论文非必需。",
+        "实习至少3个月。",
+        "负责RAG工具调用与可靠性评测，记录延迟、失败及恢复结果。",
+        "每周至少到岗3天。"
+      ],
+      "days_per_week": 3,
+      "duration_months": 3,
+      "source_url": "https://example.invalid/polaris-demo/jobs/5",
+      "published_at": "2026-10-19T16:00:00+00:00",
+      "snapshot_fetched_at": "2026-10-21T16:00:00+00:00",
+      "last_seen_at": "2026-10-23T16:00:00+00:00"
+    }
+  ],
+  "interview": {
+    "post_id": "P-1",
+    "post_title": "腾讯Agent一面与二面面经（合成）",
+    "post_text": "腾讯Agent一面与二面面经（合成）\n纯合成演示，预置岗位、面经及档案为人工虚构；公司名仅为示例标签，与实际招聘无关。\n一面问了系统设计，二面交流工程项目。\n面试官问：如何评测Agent工具超时后的重试和恢复是否正确？",
+    "question_id": "Q-1",
+    "question": "如何评测Agent工具超时后的重试和恢复是否正确？",
+    "company": "腾讯",
+    "round": null,
+    "material": "firsthand",
+    "evidence": "面试官问：如何评测Agent工具超时后的重试和恢复是否正确？"
+  },
+  "limits": [
+    "Not evidence of current hiring, live source readability, matching scores, search ranking, or latency.",
+    "The real import uses its own current UTC time; compare date semantics rather than these fixed dates.",
+    "These are disclosed regression facts, not unseen evaluation data or a successful report transcript."
+  ]
+}

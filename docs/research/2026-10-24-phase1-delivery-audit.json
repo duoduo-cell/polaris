@@ -1,0 +1,128 @@
+{
+  "kind": "phase1_completion_audit_not_acceptance_pass",
+  "review_date": "2026-10-24",
+  "code_baseline": "b41134f",
+  "objective_unchanged": "先完成本机可用版本，再处理经具体选择的第二阶段；不将目标缩成模块通过。",
+  "phase1": "not_accepted",
+  "phase2": "not_deployed",
+  "current_runtime_permission": "保持禁用自启，无新的明确启动指令，不启动项目服务。",
+  "inspected_local_evidence": {
+    "backend_xml": "data/probe/demo-api-identity-regression-20261024.xml",
+    "backend_checks": {
+      "tests": 182,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "database_checks_deselected": 3,
+    "web_module_tests": 17,
+    "web_static_exit_codes": {
+      "node_test": 0,
+      "typescript": 0,
+      "eslint": 0
+    },
+    "runtime_snapshot": "2026-10-24 01:05:18 +08:00",
+    "polaris_task_disabled": true,
+    "checked_project_ports_listening": []
+  },
+  "requirements": [
+    {
+      "id": 1,
+      "requirement": "完整求职任务",
+      "evidence_state": "current_build_not_verified",
+      "finding": "当前候选没有PG／网页完整任务；历史第七轮失败不能证明新代码仍失败，也不能当通过。",
+      "source": "docs/research/2026-10-23-question-scope-and-report-plan.md"
+    },
+    {
+      "id": 2,
+      "requirement": "重复与预留请求",
+      "evidence_state": "current_build_not_verified",
+      "finding": "旧单个新请求有证据；当前固定条件重复和新需求完整验收缺失，公布场景不称未见。",
+      "source": "docs/LOCAL_ACCEPTANCE.md"
+    },
+    {
+      "id": 3,
+      "requirement": "临时条件与记忆",
+      "evidence_state": "partial_web_and_offline_evidence",
+      "finding": "已有分段网页与模块证据，完整任务及只读画像一致性还需相应范围核实。",
+      "source": "docs/research/2026-10-23-request-matching.md"
+    },
+    {
+      "id": 4,
+      "requirement": "门槛与匹配",
+      "evidence_state": "candidate_offline_only_for_recent_changes",
+      "finding": "学历／论文／时长说明候选及检查已补，当前真实组合任务未验。",
+      "source": "docs/research/2026-10-23-bounded-report-integration.md"
+    },
+    {
+      "id": 5,
+      "requirement": "日期与来源",
+      "evidence_state": "partial_real_source_evidence",
+      "finding": "一次公开来源读取与三态证据成立；合成原文不能替代真实原链接核验。",
+      "source": "docs/research/2026-10-23-source-and-match-review.md"
+    },
+    {
+      "id": 6,
+      "requirement": "数量与零结果",
+      "evidence_state": "partial_evidence_current_workflow_pending",
+      "finding": "确定性数量口径候选和旧请求局部证据存在，当前整任务仍待验。",
+      "source": "docs/LOCAL_ACCEPTANCE.md"
+    },
+    {
+      "id": 7,
+      "requirement": "面经归属",
+      "evidence_state": "candidate_offline_evidence",
+      "finding": "题目／帖子范围与同源资料候选检查已补，当前真实任务未验。",
+      "source": "docs/research/2026-10-23-question-scope-and-report-plan.md"
+    },
+    {
+      "id": 8,
+      "requirement": "数据可用性",
+      "evidence_state": "real_single_sample_evidence",
+      "finding": "原文／抽取／关键词／向量与冷却补跑已有真实单条证据，不额外要求或宣称全量SLA。",
+      "source": "docs/research/2026-10-23-real-availability.md"
+    },
+    {
+      "id": 9,
+      "requirement": "跟进保存与重连",
+      "evidence_state": "isolated_real_browser_segment_evidence",
+      "finding": "旧隔离合成网页保存与刷新成立；当前完整任务衔接和相关回归待验。",
+      "source": "docs/research/2026-10-23-followup-web-acceptance.md"
+    },
+    {
+      "id": 10,
+      "requirement": "故障与重复提交",
+      "evidence_state": "partial_browser_and_recent_offline_evidence",
+      "finding": "旧幂等分段与最新内存停止／交付证据成立，当前PG／网页和旧无标签等仍有欠项。",
+      "source": "docs/research/2026-10-24-stopped-tool-protocol.md"
+    },
+    {
+      "id": 11,
+      "requirement": "独立演示与干净启动",
+      "evidence_state": "independent_runtime_not_executed",
+      "finding": "镜像、真实迁移／导入／检索／完整网页及他人干净启动未执行；离线SQL不是执行。",
+      "source": "docs/DEMO.md"
+    },
+    {
+      "id": 12,
+      "requirement": "交付与可接续",
+      "evidence_state": "materials_partial_video_and_install_pending",
+      "finding": "中文／英文说明、工程案例、事实对照、复验与录制脚本已有；实际视频、安装和整体验收仍欠。",
+      "source": "docs/DEMO_RECORDING.md"
+    }
+  ],
+  "new_materials": [
+    "README.en.md",
+    "docs/ACCEPTANCE_RUNBOOK.md",
+    "docs/DEMO_RECORDING.md",
+    "eval/reports/demo-fixture-facts-20261024.json"
+  ],
+  "video_recorded": false,
+  "clean_install_proven": false,
+  "current_full_task_proven": false,
+  "limits": [
+    "文件存在不等于运行成功；脚本和分镜不是视频。",
+    "检查范围不相加当整体成功率。",
+    "没有连接数据库、模型或真实服务；没有重新执行旧真实样本或改变阶段标准。"
+  ]
+}

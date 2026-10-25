@@ -1,0 +1,282 @@
+{
+  "snapshot_utc": "2026-10-22 06:51:01.457284+00:00",
+  "read_only": "on",
+  "raw_sources": [
+    {
+      "source": "xhs",
+      "kind": "post",
+      "count": 604,
+      "newest_fetch": "2026-10-21 06:13:17.131420+00:00",
+      "newest_published": "2026-10-21 04:42:30+00:00"
+    },
+    {
+      "source": "boss",
+      "kind": "job",
+      "count": 4,
+      "newest_fetch": "2026-10-20 11:08:49.295057+00:00",
+      "newest_published": null
+    },
+    {
+      "source": "maimai",
+      "kind": "post",
+      "count": 1179,
+      "newest_fetch": "2026-10-21 05:40:12.384160+00:00",
+      "newest_published": "2026-10-20 08:30:27+00:00"
+    },
+    {
+      "source": "tencent:careers",
+      "kind": "job",
+      "count": 360,
+      "newest_fetch": "2026-10-21 04:23:22.551794+00:00",
+      "newest_published": "2026-10-20 16:00:00+00:00"
+    },
+    {
+      "source": "bytedance:campus",
+      "kind": "job",
+      "count": 343,
+      "newest_fetch": "2026-10-20 11:06:51.821964+00:00",
+      "newest_published": "2026-10-20 07:14:01.914000+00:00"
+    },
+    {
+      "source": "xhs:careers",
+      "kind": "job",
+      "count": 46,
+      "newest_fetch": "2026-10-20 11:22:53.060275+00:00",
+      "newest_published": null
+    }
+  ],
+  "peer_records_all": 560,
+  "peer_recent_before_dedupe": 468,
+  "cohorts": {
+    "recent_all": {
+      "records_after_existing_dedupe": 461,
+      "distinct_posts": 367,
+      "by_source": {
+        "maimai": 227,
+        "xhs": 234
+      },
+      "by_stage": {
+        "未说明": 272,
+        "本科": 70,
+        "硕士": 69,
+        "已工作": 44,
+        "博士": 6
+      },
+      "by_job_type": {
+        "社招": 13,
+        "日常实习": 46,
+        "未说明": 270,
+        "校招": 106,
+        "暑期实习": 26
+      },
+      "by_outcome": {
+        "进行中": 105,
+        "拿到offer": 102,
+        "未说明": 172,
+        "挂了": 71,
+        "放弃": 11
+      },
+      "field_present": {
+        "school": 108,
+        "grad_year": 77,
+        "major": 103,
+        "target_team": 72,
+        "target_role": 262,
+        "direction": 288,
+        "paper_summary": 25,
+        "papers": 15,
+        "internships": 144,
+        "evidence": 461,
+        "from_image": 13
+      },
+      "newest_post": "2026-10-20 08:30:27+00:00"
+    },
+    "broad_llm": {
+      "records_after_existing_dedupe": 140,
+      "distinct_posts": 134,
+      "by_source": {
+        "maimai": 42,
+        "xhs": 98
+      },
+      "by_stage": {
+        "硕士": 34,
+        "未说明": 82,
+        "本科": 16,
+        "已工作": 4,
+        "博士": 4
+      },
+      "by_job_type": {
+        "日常实习": 21,
+        "未说明": 75,
+        "校招": 35,
+        "暑期实习": 8,
+        "社招": 1
+      },
+      "by_outcome": {
+        "进行中": 34,
+        "拿到offer": 40,
+        "挂了": 24,
+        "未说明": 40,
+        "放弃": 2
+      },
+      "field_present": {
+        "school": 39,
+        "grad_year": 25,
+        "major": 21,
+        "target_team": 30,
+        "target_role": 108,
+        "direction": 139,
+        "paper_summary": 20,
+        "papers": 12,
+        "internships": 42,
+        "evidence": 140,
+        "from_image": 9
+      },
+      "newest_post": "2026-10-16 05:35:42+00:00"
+    },
+    "agent_rag": {
+      "records_after_existing_dedupe": 95,
+      "distinct_posts": 92,
+      "by_source": {
+        "xhs": 73,
+        "maimai": 22
+      },
+      "by_stage": {
+        "未说明": 61,
+        "硕士": 18,
+        "本科": 11,
+        "已工作": 3,
+        "博士": 2
+      },
+      "by_job_type": {
+        "未说明": 53,
+        "校招": 22,
+        "日常实习": 13,
+        "暑期实习": 7
+      },
+      "by_outcome": {
+        "拿到offer": 24,
+        "挂了": 17,
+        "未说明": 32,
+        "进行中": 21,
+        "放弃": 1
+      },
+      "field_present": {
+        "school": 22,
+        "grad_year": 18,
+        "major": 10,
+        "target_team": 18,
+        "target_role": 70,
+        "direction": 94,
+        "paper_summary": 8,
+        "papers": 6,
+        "internships": 25,
+        "evidence": 95,
+        "from_image": 3
+      },
+      "newest_post": "2026-10-13 09:44:33+00:00"
+    },
+    "agent_rag_explicit_intern": {
+      "records_after_existing_dedupe": 20,
+      "distinct_posts": 20,
+      "by_source": {
+        "xhs": 13,
+        "maimai": 7
+      },
+      "by_stage": {
+        "硕士": 6,
+        "未说明": 11,
+        "本科": 2,
+        "博士": 1
+      },
+      "by_job_type": {
+        "日常实习": 13,
+        "暑期实习": 7
+      },
+      "by_outcome": {
+        "拿到offer": 7,
+        "未说明": 7,
+        "挂了": 4,
+        "进行中": 2
+      },
+      "field_present": {
+        "school": 6,
+        "grad_year": 8,
+        "major": 1,
+        "target_team": 5,
+        "target_role": 14,
+        "direction": 20,
+        "paper_summary": 3,
+        "papers": 2,
+        "internships": 8,
+        "evidence": 20,
+        "from_image": 1
+      },
+      "newest_post": "2026-10-11 12:52:29+00:00"
+    },
+    "agent_rag_undergrad_intern": {
+      "records_after_existing_dedupe": 2,
+      "distinct_posts": 2,
+      "by_source": {
+        "maimai": 1,
+        "xhs": 1
+      },
+      "by_stage": {
+        "本科": 2
+      },
+      "by_job_type": {
+        "日常实习": 2
+      },
+      "by_outcome": {
+        "未说明": 1,
+        "进行中": 1
+      },
+      "field_present": {
+        "school": 1,
+        "grad_year": 1,
+        "major": 0,
+        "target_team": 0,
+        "target_role": 2,
+        "direction": 2,
+        "paper_summary": 0,
+        "papers": 0,
+        "internships": 0,
+        "evidence": 2,
+        "from_image": 0
+      },
+      "newest_post": "2026-10-10 20:02:00+00:00"
+    },
+    "undergrad_intern_known_outcome": {
+      "records_after_existing_dedupe": 1,
+      "distinct_posts": 1,
+      "by_source": {
+        "xhs": 1
+      },
+      "by_stage": {
+        "本科": 1
+      },
+      "by_job_type": {
+        "日常实习": 1
+      },
+      "by_outcome": {
+        "进行中": 1
+      },
+      "field_present": {
+        "school": 0,
+        "grad_year": 0,
+        "major": 0,
+        "target_team": 0,
+        "target_role": 1,
+        "direction": 1,
+        "paper_summary": 0,
+        "papers": 0,
+        "internships": 0,
+        "evidence": 1,
+        "from_image": 0
+      },
+      "newest_post": "2026-09-15 09:34:48+00:00"
+    }
+  },
+  "method": "180 days by published_at; nonsynthetic; existing heuristic _dedupe; target team/role/direction regex. Not identity-verified people or a representative applicant pool.",
+  "purposeful_sample_count": 14
+}
