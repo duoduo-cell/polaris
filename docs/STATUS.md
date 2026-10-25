@@ -13,8 +13,15 @@
   - #1 / PR #2：CI，包括 ruff、带 ParadeDB PG17 的 pytest，以及网页 typegen、tsc、ESLint、模块测试和构建。
   - #3 / PR #4：Issue 和 PR 模板、CONTRIBUTING、SECURITY。
   - PR #6：比赛不接 Token Factory，用百炼 Qwen 提交并如实写明。
+  - 公开后第一批：
+    - #8 / PR #9：面试讲稿移出仓库，放在作者 vault 的 `projects/polaris-interview.md`；
+    - #10 / PR #11：过程文档归档到 `docs/archive/`；
+    - #13 / PR #14：重写中英文 README，含 4 张合成演示截图、两张 Mermaid 架构图和 5 个工程案例。
 - `main` 受保护：只能通过 PR 合并，不要求审批；两项 CI 必须通过；对管理员同样生效；不许强推和删除；只允许 squash 合并，合并后自动删分支。私密漏洞报告已开启。
-- 还没做：重写中英文 README、架构图、过程文档归档、Milestone 和路线图 Issue、Release、项目主页、个人主页。`docs/INTERVIEW.md` 是面试讲稿，建议移出仓库，等用户决定。
+- 开着的 Issue：
+  - #5：数据库停了没人知道；
+  - #12：演示记忆里“每周 3 天”是 v7 之前的误记，“重来一遍”也不恢复记忆。
+- 还没做：Milestone 和路线图 Issue、Release、项目主页、个人主页。
 
 ## 现状（10-25 凌晨）
 
