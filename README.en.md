@@ -11,9 +11,9 @@
 
 The author uses it for their own internship search. It is also their entry to the Nebius × NVIDIA Global AI Hackathon, Personal AI track. The interface and the documents are in Chinese, because the users and the sources are.
 
-![Chat: jobs found under the user's constraints, education, paper and attendance compared item by item, three dates explained separately](docs/img/demo-chat.png)
+![Chat: jobs found under the user's constraints, with why each fits and a check of the hard requirements](docs/img/demo-chat.png)
 
-<sub>All screenshots come from the [synthetic demo](docs/DEMO.md): jobs, interview posts and the profile are invented, and company names are only labels.</sub>
+<sub>All screenshots come from the [synthetic demo](docs/DEMO.md): jobs, interview posts, company names and the profile are all invented.</sub>
 
 ## What it does
 
