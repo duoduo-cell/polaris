@@ -121,6 +121,12 @@ Module evaluations from 10-11 to 10-13. Each number holds for that version and q
 
 Tests: 801 backend tests, web type check, ESLint, unit tests and build run on every PR in [CI](.github/workflows/ci.yml). Seven replay cassettes contain Xiaohongshu text and run only on the author's machine.
 
+## Impact and contributors
+
+- **In daily use by the author**: running on the author's machine since 10-10. By 10-25 the database held about 690 jobs, 2,400 posts, 3,800+ interview questions and 675 peer samples, with 11,000+ recorded model calls; one follow-up card, "Beijing Agent internship, 4 days a week", watches 128 open jobs in scope.
+- **Developed in the open**: every change goes issue → branch → PR → CI → merge, so problems and fixes are traceable in [issues](https://github.com/duoduo-cell/polaris/issues?q=is%3Aissue) and [pull requests](https://github.com/duoduo-cell/polaris/pulls?q=is%3Apr); releases are in the [changelog](CHANGELOG.md).
+- **Contributors**: the author, [duoduo-cell](https://github.com/duoduo-cell). AI coding assistants (Claude Code, Codex) were used during development; those commits carry co-author trailers in the history.
+
 ## Data boundaries
 
 - **Public career pages**: collected normally, daily.
@@ -128,7 +134,6 @@ Tests: 801 backend tests, web type check, ESLint, unit tests and build run on ev
 - **No people collection**: no Maimai or LinkedIn profiles, no automated messages, no automated applications.
 - **Public demo**: handwritten synthetic data only, with its own database, API and web app; the web app checks before every request that it is talking to the demo API.
 
-The author's local database as of 10-25: about 690 jobs, 2,400 posts, 3,800+ interview questions, and 11,000+ recorded model calls.
 
 ## Run it
 
@@ -137,6 +142,18 @@ You need Python 3.12 with [uv](https://docs.astral.sh/uv/), Node.js 24, Docker a
 - **Synthetic demo**: follow [docs/DEMO.md](docs/DEMO.md): separate database, API on 8010 and web app on 3010, seeded from an empty database.
 - **Personal instance** (Windows): create `.env` from [`.env.example`](.env.example), then run `.\scripts\up.ps1`. It starts the database, API (8000), web app (3000) and the collection daemon in the background and skips whatever is already running.
 - **Development**: see [CONTRIBUTING.md](CONTRIBUTING.md); the commands match CI.
+
+## API
+
+- Running locally, `http://127.0.0.1:8000/docs` is the interactive reference; without running anything, see the [API reference](https://duoduo-cell.github.io/polaris/api.html) exported from the code.
+- Personal routes live under `/api/me/` and take `Authorization: Bearer <OWNER_TOKEN>`. Hand Polaris a task, then poll it:
+
+  ```bash
+  curl -X POST http://127.0.0.1:8000/api/me/chat/tasks -H "Authorization: Bearer $OWNER_TOKEN" -H "Content-Type: application/json"        -d '{"message": "找北京 Agent 日常实习，每周最多 4 天", "request_id": "'$(uuidgen)'"}'
+  curl http://127.0.0.1:8000/api/me/chat/tasks/<task_id> -H "Authorization: Bearer $OWNER_TOKEN"
+  ```
+
+- Read-only tools (jobs, interview posts, memory and more) are also served over MCP (streamable HTTP) at `/mcp/` with `MCP_TOKEN`, so MCP clients such as Claude or Hermes can connect directly.
 
 ## Stack
 
