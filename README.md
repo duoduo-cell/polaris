@@ -39,6 +39,8 @@
 </tr>
 </table>
 
+<p align="center"><img src="docs/img/demo-funnel.png" width="80%" alt="投递：漏斗、渠道、每周投递量、被拒反馈"><br><sub>投递：按每个岗位走到的最远一步算漏斗；标“未通过”时写的理由记进卡片，之后问差距会对照</sub></p>
+
 ## 架构
 
 ```mermaid

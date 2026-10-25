@@ -39,6 +39,8 @@ The author uses it for their own internship search. It is also their entry to th
 </tr>
 </table>
 
+<p align="center"><img src="docs/img/demo-funnel.png" width="80%" alt="Applications: funnel, channels, weekly volume, rejection feedback"><br><sub>Applications: the funnel counts the furthest step each job reached; a rejection reason goes into the card and is used when you ask what to improve</sub></p>
+
 ## Architecture
 
 ```mermaid
