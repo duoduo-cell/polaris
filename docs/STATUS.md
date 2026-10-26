@@ -6,17 +6,11 @@
 
 整链在本机真实跑通、采集稳定 → 补齐功能 → 整体测试 → 演示模式。用户 10-24 明确：做到演示模式为止，换比赛模型、GitHub、部署、视频都不做。10-25 凌晨按 [场景调研](research/2026-10-24-career-agent-scenario-update.md) 第 9 节做了跟进卡、态势报告、HR 视角和同类对照（云端、邮箱日历不在范围内）。10-25 进入“展示与提交”阶段，策划见 [SHOWCASE](SHOWCASE.md)。
 
-## 比赛提交（10-26 凌晨）
+## 比赛提交（10-26 已完成）
 
-- **视频**已公开：https://youtu.be/ogbxFrPQ2Is （2:38，英文旁白和字幕，画面全是合成演示）。制作源文件在 [video/](../video/)。
-- **Devpost 草稿已全部填好**：作者账号已报名，[预览页](https://devpost.com/software/polaris-temldk)显示正常。
-- **只差作者本人的三步**，见 [SUBMISSION](SUBMISSION.md) 开头：
-  1. 勾两项声明（年满 18 岁、不是主办方员工）；
-  2. 勾同意规则和服务条款；
-  3. 点 Submit。
-
-  这几步是以作者名义的声明，自动化工具不代做。
-- **线上演示（#16）** 还要作者实名购买服务器。在那之前，Devpost 的演示链接填的是本机运行说明，正文里如实写明了。
+- **Devpost 已提交**：作者本人于 10-26 提交，https://devpost.com/software/polaris-temldk ，截止前仍可修改。
+- **视频**：https://youtu.be/ogbxFrPQ2Is 。版本 [v0.2.0](https://github.com/duoduo-cell/polaris/releases/tag/v0.2.0) 对应这次提交。
+- **线上演示（#16）**：还要作者实名购买服务器，上线后更新 Devpost 的演示链接。
 
 ## GitHub（10-25 晚）
 
