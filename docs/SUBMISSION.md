@@ -2,18 +2,12 @@
 
 Nebius × NVIDIA Global AI Hackathon，Personal AI 赛道。截止时间：北京时间 2026-10-31 01:00（太平洋时间 10-30 10:00），计划 10-29 提交。要求原文的整理见 [HACKATHON.md](HACKATHON.md)。**提交前，作者本人打开官网规则页再核对一遍。** 规则页有 Cloudflare 人机验证，只能本人在浏览器里过。
 
-## 现在的状态（10-26 凌晨）
+## 状态：已提交（2026-10-26）
 
-- **视频**：已公开发布在作者的 YouTube 频道，https://youtu.be/ogbxFrPQ2Is （2:38）。制作源文件和字幕在 [video/](../video/)。
-- **Devpost 草稿**：作者已登录并报名。下面的字段已经全部填进草稿，[公开预览页](https://devpost.com/software/polaris-temldk)显示正常：
-  - 项目名、一句话介绍、正文（英文）；
-  - 14 个技术标签、GitHub 和项目主页两个链接；
-  - 视频链接、5 张图（片头卡和 4 张演示截图，带英文说明）；
-  - Additional info 的全部问卷，赛道选了 Personal AI，附件是英文版作品集 PDF。
-- **只剩作者本人的三处确认，再点提交**（这几处是以作者名义做的声明和同意条款，按规矩不能代点）：
-  1. 打开草稿的 [Additional info](https://devpost.com/submit-to/30790-nebius-x-nvidia-global-ai-hackathon/manage/submissions/1263949-polaris/additional-info/edit)，在页面最下方勾选两项声明（“at least the age of majority”“not employees … of the Promotion Entities”），核对一遍其余答案，点 Save & continue。
-  2. 在 [Submit](https://devpost.com/submit-to/30790-nebius-x-nvidia-global-ai-hackathon/manage/submissions/1263949-polaris/finalization) 页勾选同意 Official Rules 和 Devpost Terms of Service。
-  3. 点 **Submit project**。提交后到截止前仍可修改。
+- **Devpost**：作者本人于 2026-10-26 勾选声明、同意规则后提交，项目页 https://devpost.com/software/polaris-temldk 显示 “Submitted to Nebius x NVIDIA Global AI Hackathon”。截止（北京时间 10-31 01:00）前仍可修改。
+- **视频**：https://youtu.be/ogbxFrPQ2Is （2:38，公开）。制作源文件和字幕在 [video/](../video/)，原片在 [v0.2.0 发布](https://github.com/duoduo-cell/polaris/releases/tag/v0.2.0)的附件里。
+- **Devpost 里填的内容**：英文正文、14 个技术标签、GitHub 和项目主页两个链接、视频、5 张图、Additional info 问卷，赛道 Personal AI，附件是英文作品集 PDF。
+- **还没做**：线上演示（[#16](https://github.com/duoduo-cell/polaris/issues/16)），要作者实名买服务器。上线后把 Devpost 的演示链接换成线上地址。
 
 下面是填进去的英文字段原文，留作记录，也方便以后修改。
 

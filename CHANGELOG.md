@@ -6,7 +6,33 @@ Until the repository went public on 2026-10-25, work landed as direct commits, a
 
 ## [Unreleased]
 
-Work toward 0.2.0, the hackathon submission, is tracked in the [v0.2.0 milestone](https://github.com/duoduo-cell/polaris/milestone/1).
+The hosted synthetic demo ([#16](https://github.com/duoduo-cell/polaris/issues/16)) waits on a server bought under the author's identity.
+
+## [0.2.0] - 2026-10-26
+
+Submitted to the Nebius × NVIDIA Global AI Hackathon, Personal AI track ([Devpost](https://devpost.com/software/polaris-temldk)).
+
+### Added
+
+- A 2:38 demo video with English narration and captions, published on [YouTube](https://youtu.be/ogbxFrPQ2Is), with the scripts that rebuild it in `video/` ([#44](https://github.com/duoduo-cell/polaris/pull/44)).
+- Project page on GitHub Pages in Chinese and English ([#36](https://github.com/duoduo-cell/polaris/pull/36)), with an OpenAPI reference ([#43](https://github.com/duoduo-cell/polaris/pull/43)).
+- One-page portfolio PDFs in Chinese and English ([#41](https://github.com/duoduo-cell/polaris/pull/41)).
+- A daily model-call cap and a per-visitor limit on the public demo ([#35](https://github.com/duoduo-cell/polaris/pull/35)).
+- README sections on impact, contributors and the API ([#43](https://github.com/duoduo-cell/polaris/pull/43)); the Devpost submission text in `docs/SUBMISSION.md` ([#39](https://github.com/duoduo-cell/polaris/pull/39), [#44](https://github.com/duoduo-cell/polaris/pull/44)).
+
+### Changed
+
+- The synthetic demo uses a fictional company that only demo mode recognises; chat suggestions and the graph page adapt to demo mode; fixture v3 ([#34](https://github.com/duoduo-cell/polaris/pull/34)). Screenshots retaken on it ([#37](https://github.com/duoduo-cell/polaris/pull/37)).
+- `AGENTS.md` describes the issue → branch → PR → CI → squash flow ([#32](https://github.com/duoduo-cell/polaris/pull/32)).
+
+### Fixed
+
+- The demo reset now restores the seeded memory and clears visitors' application marks; a stale "3 days a week" fact had outlived every reset ([#33](https://github.com/duoduo-cell/polaris/pull/33)).
+
+### Known issues
+
+- The entry does not meet the hackathon's "runs on Nebius" and "uses an NVIDIA open model" requirements; it runs on Qwen through Alibaba Cloud Bailian, as stated in the README, video and submission.
+- Nobody is told when the database goes down ([#5](https://github.com/duoduo-cell/polaris/issues/5)).
 
 ## [0.1.0] - 2026-10-25
 
@@ -52,5 +78,6 @@ Also:
 - Nobody is told when the database goes down ([#5](https://github.com/duoduo-cell/polaris/issues/5)).
 - The demo profile holds a stale weekly-days fact from before memory extraction v7, and the demo reset does not restore memory ([#12](https://github.com/duoduo-cell/polaris/issues/12)).
 
-[Unreleased]: https://github.com/duoduo-cell/polaris/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/duoduo-cell/polaris/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/duoduo-cell/polaris/releases/tag/v0.2.0
 [0.1.0]: https://github.com/duoduo-cell/polaris/releases/tag/v0.1.0
